@@ -50,3 +50,4 @@ router.delete('/addresses/:id', handleDeleteAddress);
 router.get('/orders', handleGetCustomerOrders);
 
 export default router;
+

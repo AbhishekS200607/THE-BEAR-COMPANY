@@ -50,3 +50,4 @@ router.get('/inventory', handleGetInventory);
 router.patch('/inventory/:variantId', validate(updateInventorySchema), handleUpdateInventory);
 
 export default router;
+

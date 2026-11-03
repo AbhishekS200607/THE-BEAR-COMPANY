@@ -24,3 +24,4 @@ router.use('/customer', customerRoutes);
 router.use('/admin', adminRoutes);
 
 export default router;
+

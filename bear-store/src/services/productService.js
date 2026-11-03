@@ -1,8 +1,11 @@
 import { mockDelay } from './mockStore.js';
 import { products } from '../data/products.js';
 import { collections } from '../data/collections.js';
+import { remember } from './cacheService.js';
 
 export async function getProducts(mode, filters = {}, sort = 'featured') {
+  const key = `products:${mode}:${JSON.stringify(filters)}:${sort}`;
+  return remember(key, async () => {
   await mockDelay();
   let result = products.filter((p) => p.mode === mode);
 
@@ -53,44 +56,57 @@ export async function getProducts(mode, filters = {}, sort = 'featured') {
   }
 
   return result;
+  });
 }
 
 export async function getProductBySlug(slug) {
-  await mockDelay(100, 200);
-  return products.find((p) => p.slug === slug) || null;
+  return remember(`product:${slug}`, async () => {
+    await mockDelay(100, 200);
+    return products.find((p) => p.slug === slug) || null;
+  });
 }
 
 export async function getCollections(mode) {
-  await mockDelay();
-  return collections[mode] || [];
+  return remember(`collections:${mode}`, async () => {
+    await mockDelay();
+    return collections[mode] || [];
+  });
 }
 
 export async function searchProducts(query, mode) {
-  await mockDelay(100, 250);
   if (!query || query.trim().length < 2) return [];
-  const q = query.trim().toLowerCase();
-  return products.filter(
-    (p) =>
-      (mode ? p.mode === mode : true) &&
-      (p.name.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q) ||
-        p.description.toLowerCase().includes(q))
-  );
+  return remember(`search:${mode}:${query.trim().toLowerCase()}`, async () => {
+    await mockDelay(100, 250);
+    const q = query.trim().toLowerCase();
+    return products.filter(
+      (p) =>
+        (mode ? p.mode === mode : true) &&
+        (p.name.toLowerCase().includes(q) ||
+          p.category.toLowerCase().includes(q) ||
+          p.description.toLowerCase().includes(q))
+    );
+  }, 2 * 60 * 1000); // 2 min TTL for search
 }
 
 export async function getFeatured(mode) {
-  await mockDelay();
-  return products.filter((p) => p.mode === mode && p.featured);
+  return remember(`featured:${mode}`, async () => {
+    await mockDelay();
+    return products.filter((p) => p.mode === mode && p.featured);
+  });
 }
 
 export async function getBestsellers(mode) {
-  await mockDelay();
-  return products.filter((p) => p.mode === mode && p.bestseller);
+  return remember(`bestsellers:${mode}`, async () => {
+    await mockDelay();
+    return products.filter((p) => p.mode === mode && p.bestseller);
+  });
 }
 
 export async function getNewArrivals(mode) {
-  await mockDelay();
-  return products.filter((p) => p.mode === mode && p.new);
+  return remember(`newArrivals:${mode}`, async () => {
+    await mockDelay();
+    return products.filter((p) => p.mode === mode && p.new);
+  });
 }
 
 export default { getProducts, getProductBySlug, getCollections, searchProducts, getFeatured, getBestsellers, getNewArrivals };

@@ -22,3 +22,4 @@ export const supabaseAnon = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY
     autoRefreshToken: false,
   },
 });
+

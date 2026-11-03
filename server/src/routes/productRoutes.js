@@ -22,3 +22,4 @@ router.get('/', publicRateLimiter, validate(getProductsSchema), handleGetProduct
 router.get('/:slug', publicRateLimiter, handleGetProductBySlug);
 
 export default router;
+

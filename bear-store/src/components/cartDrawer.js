@@ -66,7 +66,7 @@ export function mount(container) {
                     const img = item.image || (item.images && item.images[0]) || '';
                     return `
                     <div class="py-4 flex gap-space-md items-center">
-                      <div class="w-16 h-20 rounded-none bg-surface-container overflow-hidden shrink-0 border border-outline-variant/30">
+                      <div class="w-16 h-20 rounded-lg bg-surface-container overflow-hidden shrink-0 border border-outline-variant/30">
                         ${img ? `<img src="${img}" alt="${item.name}" class="w-full h-full object-cover" />` : makePlaceholderSVG(item.name, item.mode)}
                       </div>
                       <div class="flex-1 min-w-0">

@@ -168,3 +168,4 @@ function formatProductResponse(p) {
     sizes,
   };
 }
+

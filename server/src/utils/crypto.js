@@ -22,3 +22,4 @@ export function generateOrderFingerprint(items, deliveryDetails) {
     .update(`${sortedItems}##${normalizedAddress}`)
     .digest('hex');
 }
+

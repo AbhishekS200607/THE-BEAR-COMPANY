@@ -37,3 +37,4 @@ export function generateWhatsAppHandoff(order) {
     businessNumber: env.WHATSAPP_BUSINESS_NUMBER,
   };
 }
+

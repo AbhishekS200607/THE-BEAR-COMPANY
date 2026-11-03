@@ -24,3 +24,4 @@ export function errorResponse(res, message, statusCode = 400, details = null) {
 
   return res.status(statusCode).json(payload);
 }
+

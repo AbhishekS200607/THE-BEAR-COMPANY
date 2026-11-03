@@ -66,3 +66,4 @@ Frontend (Vanilla JS SPA) -> Node.js + Express REST API -> Supabase PostgreSQL (
 npm install
 npm run dev # Starts on port 4000
 ```
+

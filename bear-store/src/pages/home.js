@@ -4,16 +4,12 @@ import { createProductCard } from '../components/productCard.js';
 
 export async function render(container) {
   const currentMode = getMode();
-  const bearProducts = await getProducts('bear');
-  const sowProducts = await getProducts('sow');
+  const isSow = currentMode === 'sow';
 
   const page = document.createElement('div');
-  page.className = 'w-full flex flex-col pt-14 md:pt-20 pb-28 md:pb-12';
+  page.className = 'w-full flex flex-col pt-20 md:pt-24 pb-28 md:pb-12';
 
-  const isSow = currentMode === 'sow';
-  const activeProducts = isSow ? sowProducts : bearProducts;
-  const alternateProducts = isSow ? bearProducts : sowProducts;
-
+  // Render initial page with loading skeletons in grid to eliminate layout shift
   page.innerHTML = `
     <!-- Top Hero Campaign Section -->
     <section class="relative w-full max-w-[1360px] mx-auto px-4 md:px-gutter-desktop mt-2 md:mt-space-lg mb-6 md:mb-space-2xl">
@@ -69,8 +65,8 @@ export async function render(container) {
             </div>
           </div>
 
-          <div class="lg:col-span-5 relative flex justify-end items-end hidden md:flex">
-            <div class="w-full max-w-[360px] p-space-md rounded-DEFAULT bg-white/95 backdrop-blur-md shadow-2xl flex items-center justify-between border border-black/10">
+          <div class="hidden lg:flex lg:col-span-5 relative justify-end items-end">
+            <div class="w-full max-w-[360px] p-space-md rounded-2xl bg-white/95 backdrop-blur-md shadow-2xl flex items-center justify-between border border-black/10">
               <div class="flex items-center gap-space-md">
                 <div class="w-12 h-12 rounded-full ${isSow ? 'bg-[#80534C]' : 'bg-black'} text-white flex items-center justify-center font-headline-sm text-headline-sm font-bold font-headline">
                   01
@@ -96,7 +92,7 @@ export async function render(container) {
       </div>
     </section>
 
-    <!-- Category Matrix (Flipkart-Style 2-Col Mobile / 4-Col Desktop) -->
+    <!-- Category Matrix -->
     <section class="w-full max-w-[1360px] mx-auto px-4 md:px-gutter-desktop mb-6 md:mb-space-2xl">
       <div class="flex items-end justify-between mb-3 md:mb-space-lg">
         <div>
@@ -112,9 +108,9 @@ export async function render(container) {
 
       <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3.5 md:gap-gutter-desktop">
         <!-- Category 1 -->
-        <a href="#collection" class="group relative rounded-none sm:rounded-sm bg-white p-3 pb-4 sm:p-4 sm:pb-5 shadow-xs hover:shadow-md transition-all flex flex-col items-center border border-zinc-200/80">
-          <div class="w-full aspect-square rounded-none overflow-hidden bg-zinc-100 mb-2">
-            <img src="${isSow ? 'https://lh3.googleusercontent.com/aida-public/AB6AXuAwJwjClrMEmcZdI7T5_s4E_hHPVNSvONzixL7JG9-QvsrOFNVHsJuM34lczkEnDZwBuddxz_XYgYNG3dVxfyDWbS9nWSmYIm9hoZqLJC2kjzY0eZzeqffaWX-YYCyBV25Vha3ShEgy8-DsQyeiv8v-7doFJr0Aw4myGI4pHt412ia-kqZZyIN1J3O23yjiYoMKkZDS_f51t6qAJ4pXlwdu3EG3rgGzswUdnY2fxQ' : 'https://lh3.googleusercontent.com/aida-public/AB6AXuCCzKTdaaLRbanuHgk9tAnT3Od__K8RJ47QNldYiRR7AoApQCc0HaB6DuiijDI5ZEsm_MO36AofuWSm3CtHtIHJdUo8d3wJzYt5KYDvHtElcj6lVKsIi7pIJ1VneHGXzzBkdECisyUWAX_3O0YzSplDkpd2O2JyP3TdEAs03UoHehNq07xRUXrRNGRT1Cav6rakkFNYrqdyZSGUBe6S931X1B2eLXQOeaWtVGZ8bw'}" alt="${isSow ? 'Sports Bras' : 'T-Shirts'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 rounded-none" />
+        <a href="#collection" class="group relative rounded-xl sm:rounded-2xl bg-white p-3 pb-4 sm:p-4 sm:pb-5 shadow-xs hover:shadow-md transition-all flex flex-col items-center border border-zinc-200/80">
+          <div class="w-full aspect-square rounded-lg sm:rounded-xl overflow-hidden bg-zinc-100 mb-2">
+            <img src="${isSow ? 'https://lh3.googleusercontent.com/aida-public/AB6AXuAwJwjClrMEmcZdI7T5_s4E_hHPVNSvONzixL7JG9-QvsrOFNVHsJuM34lczkEnDZwBuddxz_XYgYNG3dVxfyDWbS9nWSmYIm9hoZqLJC2kjzY0eZzeqffaWX-YYCyBV25Vha3ShEgy8-DsQyeiv8v-7doFJr0Aw4myGI4pHt412ia-kqZZyIN1J3O23yjiYoMKkZDS_f51t6qAJ4pXlwdu3EG3rgGzswUdnY2fxQ' : 'https://lh3.googleusercontent.com/aida-public/AB6AXuCCzKTdaaLRbanuHgk9tAnT3Od__K8RJ47QNldYiRR7AoApQCc0HaB6DuiijDI5ZEsm_MO36AofuWSm3CtHtIHJdUo8d3wJzYt5KYDvHtElcj6lVKsIi7pIJ1VneHGXzzBkdECisyUWAX_3O0YzSplDkpd2O2JyP3TdEAs03UoHehNq07xRUXrRNGRT1Cav6rakkFNYrqdyZSGUBe6S931X1B2eLXQOeaWtVGZ8bw'}" alt="${isSow ? 'Sports Bras' : 'T-Shirts'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 rounded-lg sm:rounded-xl" />
           </div>
           <div class="w-full pt-1.5 flex flex-col items-center justify-center text-center min-w-0">
             <h3 class="font-headline text-xs sm:text-sm text-zinc-900 uppercase font-bold tracking-wide truncate w-full text-center">${isSow ? 'Sports Bras' : 'T-Shirts'}</h3>
@@ -122,10 +118,10 @@ export async function render(container) {
           </div>
         </a>
 
-        <!-- Category 2 -->
-        <a href="#collection" class="group relative rounded-none sm:rounded-sm bg-white p-3 pb-4 sm:p-4 sm:pb-5 shadow-xs hover:shadow-md transition-all flex flex-col items-center border border-zinc-200/80">
-          <div class="w-full aspect-square rounded-none overflow-hidden bg-zinc-100 mb-2">
-            <img src="${isSow ? 'https://lh3.googleusercontent.com/aida-public/AB6AXuCH0Y4L8Xz-zQk-wI9ZlR6Q9B0_3Z_8-Q_9Z_8-Q_9Z_8-Q_9Z_8-Q_9Z_8-Q_9Z_8-Q_9Z_8-Q_9Z_8-Q_9Z_8-Q_9Z_8-Q_9Z_8-Q' : 'https://lh3.googleusercontent.com/aida-public/AB6AXuBZfUaCLWobDsFeaa3fUotfDOwDwDCxViQiwoun9TK6_dXUUQXFOlWFGADID0ZMmkVuKjshRg_yXJ_0z9ern--ww8BVZ0wSTA7axQtzGhOEm14Kbno0vi-J495g6ghRL0de6ua4PncYU_8gVguf39AOI0U8ta6Agsn3oGpaUhfCyQYJhEJhNpyPwWR_3wWKE1p-FYpNffpR1LfSXhpLQ1ufI_FWbeQ2rivNiV_9uQ'}" alt="${isSow ? 'Leggings' : 'Tank Tops'}" onerror="this.src='https://lh3.googleusercontent.com/aida-public/AB6AXuAwJwjClrMEmcZdI7T5_s4E_hHPVNSvONzixL7JG9-QvsrOFNVHsJuM34lczkEnDZwBuddxz_XYgYNG3dVxfyDWbS9nWSmYIm9hoZqLJC2kjzY0eZzeqffaWX-YYCyBV25Vha3ShEgy8-DsQyeiv8v-7doFJr0Aw4myGI4pHt412ia-kqZZyIN1J3O23yjiYoMKkZDS_f51t6qAJ4pXlwdu3EG3rgGzswUdnY2fxQ'" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 rounded-none" />
+        <!-- Category 2 (Valid Non-Truncated SOW Leggings Image) -->
+        <a href="#collection" class="group relative rounded-xl sm:rounded-2xl bg-white p-3 pb-4 sm:p-4 sm:pb-5 shadow-xs hover:shadow-md transition-all flex flex-col items-center border border-zinc-200/80">
+          <div class="w-full aspect-square rounded-lg sm:rounded-xl overflow-hidden bg-zinc-100 mb-2">
+            <img src="${isSow ? 'https://lh3.googleusercontent.com/aida-public/AB6AXuA4Mwdd33IQiXxYvoZjoUYwVaNsHMyQqHGgfwrOLC7mgwyMN3lSQTRaAsvH_c2sWptQerXsbHRreHedH5S_sijZ2e9eD11keAse9pyNAJaO8GNrRM_mIUVfqDic0edxJTyW_sOIZDPUKThT-y1_8bMr9J7Yal_Sbrxk3jvw0pWsNV9HEJZeHeb9ZGWzF83475qVnVZTEVvoPfuPh-_QdwrIvx2C35dqyAykokYYRw' : 'https://lh3.googleusercontent.com/aida-public/AB6AXuBZfUaCLWobDsFeaa3fUotfDOwDwDCxViQiwoun9TK6_dXUUQXFOlWFGADID0ZMmkVuKjshRg_yXJ_0z9ern--ww8BVZ0wSTA7axQtzGhOEm14Kbno0vi-J495g6ghRL0de6ua4PncYU_8gVguf39AOI0U8ta6Agsn3oGpaUhfCyQYJhEJhNpyPwWR_3wWKE1p-FYpNffpR1LfSXhpLQ1ufI_FWbeQ2rivNiV_9uQ'}" alt="${isSow ? 'Contour Tights' : 'Tank Tops'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 rounded-lg sm:rounded-xl" />
           </div>
           <div class="w-full pt-1.5 flex flex-col items-center justify-center text-center min-w-0">
             <h3 class="font-headline text-xs sm:text-sm text-zinc-900 uppercase font-bold tracking-wide truncate w-full text-center">${isSow ? 'Contour Tights' : 'Tank Tops'}</h3>
@@ -134,9 +130,9 @@ export async function render(container) {
         </a>
 
         <!-- Category 3 -->
-        <a href="#collection" class="group relative rounded-none sm:rounded-sm bg-white p-3 pb-4 sm:p-4 sm:pb-5 shadow-xs hover:shadow-md transition-all flex flex-col items-center border border-zinc-200/80">
-          <div class="w-full aspect-square rounded-none overflow-hidden bg-zinc-100 mb-2">
-            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQEiogc_cPXim5UCGnhYNjkqhNBolHTUYVLmqhnzr9avfYJ3iL_FxP5Ms6egN1z6_30qHnq1THf0gkHHYr4apPcM0A0i6Za-NpBQlrl6THFESDuh0cwSL-TFQ8yhT03GNn129FPbbTTjblL7Td3hyUSQd0l7a6iquHpLS_cJ81XPtoOcbfO17xZxFBhAjnP4-vaB3dtZDRi8lytMq4pOCSwyvG41cKE6fHzltWvQ" alt="${isSow ? 'Biker Shorts' : 'Shorts'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 rounded-none" />
+        <a href="#collection" class="group relative rounded-xl sm:rounded-2xl bg-white p-3 pb-4 sm:p-4 sm:pb-5 shadow-xs hover:shadow-md transition-all flex flex-col items-center border border-zinc-200/80">
+          <div class="w-full aspect-square rounded-lg sm:rounded-xl overflow-hidden bg-zinc-100 mb-2">
+            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQEiogc_cPXim5UCGnhYNjkqhNBolHTUYVLmqhnzr9avfYJ3iL_FxP5Ms6egN1z6_30qHnq1THf0gkHHYr4apPcM0A0i6Za-NpBQlrl6THFESDuh0cwSL-TFQ8yhT03GNn129FPbbTTjblL7Td3hyUSQd0l7a6iquHpLS_cJ81XPtoOcbfO17xZxFBhAjnP4-vaB3dtZDRi8lytMq4pOCSwyvG41cKE6fHzltWvQ" alt="${isSow ? 'Biker Shorts' : 'Shorts'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 rounded-lg sm:rounded-xl" />
           </div>
           <div class="w-full pt-1.5 flex flex-col items-center justify-center text-center min-w-0">
             <h3 class="font-headline text-xs sm:text-sm text-zinc-900 uppercase font-bold tracking-wide truncate w-full text-center">${isSow ? 'Biker Shorts' : 'Shorts'}</h3>
@@ -145,9 +141,9 @@ export async function render(container) {
         </a>
 
         <!-- Category 4 -->
-        <a href="#collection" class="group relative rounded-none sm:rounded-sm bg-white p-3 pb-4 sm:p-4 sm:pb-5 shadow-xs hover:shadow-md transition-all flex flex-col items-center border border-zinc-200/80">
-          <div class="w-full aspect-square rounded-none overflow-hidden bg-zinc-100 mb-2">
-            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuA4Mwdd33IQiXxYvoZjoUYwVaNsHMyQqHGgfwrOLC7mgwyMN3lSQTRaAsvH_c2sWptQerXsbHRreHedH5S_sijZ2e9eD11keAse9pyNAJaO8GNrRM_mIUVfqDic0edxJTyW_sOIZDPUKThT-y1_8bMr9J7Yal_Sbrxk3jvw0pWsNV9HEJZeHeb9ZGWzF83475qVnVZTEVvoPfuPh-_QdwrIvx2C35dqyAykokYYRw" alt="${isSow ? 'Sculpt Sets' : 'Joggers'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 rounded-none" />
+        <a href="#collection" class="group relative rounded-xl sm:rounded-2xl bg-white p-3 pb-4 sm:p-4 sm:pb-5 shadow-xs hover:shadow-md transition-all flex flex-col items-center border border-zinc-200/80">
+          <div class="w-full aspect-square rounded-lg sm:rounded-xl overflow-hidden bg-zinc-100 mb-2">
+            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBQEsW48g189o2HUpuW4bFaJfaUBgKBVtO_OU2E2bAnL3yp0UngrE1oIWVJ1yPQ2P1bop8H5Y8cG8KxRVAC6oX4H52nf0pDhKf2Y5sJvekTMYg237GbPCjj4GlRHLMzgoa0-2RscYX7onBeEc4Ijz5jTQAQS_vad33JlCG9u4Y2BA7c7uFJFhcSQBo6kLHg6sjIQKx_ORBdCq-Fx4OsagH26f8nNj45yBC2rSlMsA" alt="${isSow ? 'Ribbed Tops' : 'Joggers'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 rounded-lg sm:rounded-xl" />
           </div>
           <div class="w-full pt-1.5 flex flex-col items-center justify-center text-center min-w-0">
             <h3 class="font-headline text-xs sm:text-sm text-zinc-900 uppercase font-bold tracking-wide truncate w-full text-center">${isSow ? 'Ribbed Tops' : 'Joggers'}</h3>
@@ -157,7 +153,7 @@ export async function render(container) {
       </div>
     </section>
 
-    <!-- Engineered Drops: Exact Flipkart-Style 2-Column Mobile Grid -->
+    <!-- Engineered Drops -->
     <section class="w-full max-w-[1360px] mx-auto px-4 md:px-gutter-desktop mb-8 md:mb-space-2xl" id="core-drops-section">
       <div class="flex items-end justify-between mb-3 md:mb-space-lg">
         <div>
@@ -177,8 +173,21 @@ export async function render(container) {
         </a>
       </div>
 
-      <!-- Core Drops Products Grid (2-Column Mobile, 4-Column Desktop) -->
-      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5 md:gap-4" id="home-primary-grid"></div>
+      <!-- Core Drops Products Grid with initial Loading Skeletons -->
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5 md:gap-4" id="home-primary-grid">
+        ${[1, 2, 3, 4]
+          .map(
+            () => `
+          <div class="animate-pulse bg-white rounded-xl sm:rounded-2xl p-2.5 sm:p-3 border border-zinc-200/80 flex flex-col">
+            <div class="w-full aspect-[4/5] bg-zinc-100 rounded-lg sm:rounded-xl mb-3"></div>
+            <div class="h-3 bg-zinc-100 rounded w-2/3 mb-2"></div>
+            <div class="h-3 bg-zinc-100 rounded w-1/3 mb-4"></div>
+            <div class="h-6 bg-zinc-100 rounded-full w-full mt-auto"></div>
+          </div>
+        `
+          )
+          .join('')}
+      </div>
     </section>
 
     <!-- Technical Value Props -->
@@ -189,9 +198,9 @@ export async function render(container) {
             <span class="material-symbols-outlined text-[20px]">local_shipping</span>
           </div>
           <div>
-            <h3 class="font-headline text-xs sm:text-sm text-zinc-900 uppercase font-bold mb-0.5">Express Pan-India Transit</h3>
+            <h3 class="font-headline text-xs sm:text-sm text-zinc-900 uppercase font-bold mb-0.5">Complimentary Shipping</h3>
             <p class="text-xs text-zinc-500 leading-relaxed">
-              Air express shipping across 19,000+ PIN codes. Dispatches within 24 hours.
+              Zero delivery charges nationwide across India. Dispatched securely.
             </p>
           </div>
         </div>
@@ -203,7 +212,7 @@ export async function render(container) {
           <div>
             <h3 class="font-headline text-xs sm:text-sm text-zinc-900 uppercase font-bold mb-0.5">1-Tap WhatsApp Checkout</h3>
             <p class="text-xs text-zinc-500 leading-relaxed">
-              Instant orders, UPI payment links, and live delivery updates on WhatsApp.
+              Instant order requests, direct verification, and live dispatch updates on WhatsApp.
             </p>
           </div>
         </div>
@@ -213,9 +222,9 @@ export async function render(container) {
             <span class="material-symbols-outlined text-[20px]">published_with_changes</span>
           </div>
           <div>
-            <h3 class="font-headline text-xs sm:text-sm text-zinc-900 uppercase font-bold mb-0.5">Hassle-Free 7-Day Swaps</h3>
+            <h3 class="font-headline text-xs sm:text-sm text-zinc-900 uppercase font-bold mb-0.5">Doorstep Exchange Support</h3>
             <p class="text-xs text-zinc-500 leading-relaxed">
-              Doorstep exchange pickups with immediate replacement dispatch.
+              Seamless 7-day doorstep size swaps coordinated directly via WhatsApp support.
             </p>
           </div>
         </div>
@@ -227,11 +236,11 @@ export async function render(container) {
       <div class="w-full bg-white p-5 md:p-space-xl rounded-xl shadow-xs flex flex-col lg:flex-row items-center justify-between gap-4 border border-zinc-200/80">
         <div class="space-y-1 text-center lg:text-left">
           <h3 class="font-headline text-base md:text-xl text-zinc-950 uppercase font-bold">Gain Priority Drop Access</h3>
-          <p class="text-xs text-zinc-500">Limited batch drops sell out quickly. Receive WhatsApp or Email release alerts.</p>
+          <p class="text-xs text-zinc-500">Limited batch drops sell out quickly. Receive priority release notifications.</p>
         </div>
         <div class="w-full lg:w-auto flex-1 max-w-md">
           <form class="flex items-center bg-zinc-100 p-1 rounded-full shadow-inner border border-zinc-200" id="newsletter-form">
-            <input class="flex-1 bg-transparent px-3 py-1.5 text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none" placeholder="Enter your WhatsApp number" required type="text" />
+            <input class="flex-1 bg-transparent px-3 py-1.5 text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none" placeholder="Enter your 10-digit WhatsApp number" required type="tel" inputmode="numeric" pattern="[0-9]{10}" />
             <button class="px-4 py-1.5 rounded-full ${isSow ? 'bg-[#80534C]' : 'bg-black'} text-white text-[11px] uppercase font-bold font-headline transition-opacity hover:opacity-90" type="submit">
               SUBSCRIBE
             </button>
@@ -242,10 +251,15 @@ export async function render(container) {
     </section>
   `;
 
-  // Mount product cards
+  container.innerHTML = '';
+  container.appendChild(page);
+
+  // Await product fetching and cleanly replace skeletons
+  const activeProducts = await getProducts(currentMode);
   const primaryGrid = page.querySelector('#home-primary-grid');
 
   if (primaryGrid) {
+    primaryGrid.innerHTML = '';
     activeProducts.slice(0, 8).forEach((p) => {
       primaryGrid.appendChild(createProductCard(p));
     });
@@ -259,9 +273,6 @@ export async function render(container) {
     nlForm.style.display = 'none';
     nlSuccess?.classList.remove('hidden');
   });
-
-  container.innerHTML = '';
-  container.appendChild(page);
 }
 
 export default { render };

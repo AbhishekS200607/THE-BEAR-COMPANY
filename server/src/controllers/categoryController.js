@@ -21,3 +21,4 @@ export async function handleGetCategories(req, res, next) {
     return next(err);
   }
 }
+

@@ -180,3 +180,4 @@ export async function handleUpdateInventory(req, res, next) {
     return next(err);
   }
 }
+

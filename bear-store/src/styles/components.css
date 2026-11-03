@@ -1912,6 +1912,82 @@
 .size-guide-link:hover { color: var(--color-text); }
 
 /* ─────────────────────────────────────────────────
+   COOKIE BANNER
+───────────────────────────────────────────────── */
+.cookie-banner {
+  position: fixed;
+  bottom: calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%) translateY(120%);
+  z-index: var(--z-top);
+  width: min(680px, calc(100vw - var(--space-8)));
+  background: var(--color-bg);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.35s ease;
+  opacity: 0;
+}
+.cookie-banner--visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+.cookie-banner--hiding {
+  transform: translateX(-50%) translateY(120%);
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.25s ease;
+}
+.cookie-banner__inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  flex-wrap: wrap;
+}
+.cookie-banner__icon {
+  font-size: 28px;
+  flex-shrink: 0;
+  animation: cookieWiggle 1.2s ease 0.5s both;
+}
+@keyframes cookieWiggle {
+  0%,100% { transform: rotate(0deg); }
+  20% { transform: rotate(-12deg); }
+  40% { transform: rotate(10deg); }
+  60% { transform: rotate(-8deg); }
+  80% { transform: rotate(6deg); }
+}
+.cookie-banner__body {
+  flex: 1;
+  min-width: 0;
+}
+.cookie-banner__title {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 2px;
+}
+.cookie-banner__desc {
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+  line-height: var(--leading-relaxed);
+}
+.cookie-banner__link {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.cookie-banner__actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+@media (max-width: 480px) {
+  .cookie-banner__inner { flex-direction: column; align-items: flex-start; }
+  .cookie-banner__actions { width: 100%; }
+  .cookie-banner__actions .btn { flex: 1; }
+}
+
+/* ─────────────────────────────────────────────────
    CAMPAIGN EDITORIAL SECTION
 ───────────────────────────────────────────────── */
 .campaign-section {

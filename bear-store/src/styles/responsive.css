@@ -125,8 +125,17 @@
     animation: none;
   }
 
-  .modal, .cart-drawer, .search-overlay {
-    transition: none;
+  .modal, .cart-drawer, .search-overlay, .cookie-banner, .cookie-banner__icon {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ── Mobile cookie banner clearance over dock ── */
+@media (max-width: 767px) {
+  .cookie-banner {
+    bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)) !important;
+    z-index: 60 !important;
   }
 }
 

@@ -16,12 +16,12 @@ const INDIAN_STATES = [
 export function render(container) {
   const cart = getCart();
   const total = getCartTotal();
-  const shipping = total >= 1999 || total === 0 ? 0 : 99;
-  const grandTotal = total + shipping;
+  const shipping = 0; // Pan-India Air Express Delivery is always Free (₹0)
+  const grandTotal = total;
   const mode = getMode();
 
   const page = document.createElement('div');
-  page.className = 'w-full flex flex-col pt-16 md:pt-20 pb-32 md:pb-16';
+  page.className = 'w-full flex flex-col pt-20 md:pt-24 pb-32 md:pb-16';
 
   if (cart.length === 0) {
     page.innerHTML = `
@@ -56,7 +56,7 @@ export function render(container) {
 
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <!-- LEFT: Delivery Details Form (7 Cols) -->
-        <div class="lg:col-span-7 bg-white p-5 sm:p-space-lg rounded-none sm:rounded-sm border border-zinc-200/80 shadow-xs">
+        <div class="lg:col-span-7 bg-white p-5 sm:p-space-lg rounded-xl border border-zinc-200/80 shadow-xs">
           <h2 class="font-headline text-sm uppercase tracking-wider font-bold text-primary mb-4 pb-2 border-b border-zinc-100 flex items-center gap-2">
             <span class="material-symbols-outlined text-[18px]">local_shipping</span>
             <span>Pan-India Delivery Address</span>
@@ -71,8 +71,8 @@ export function render(container) {
                   id="full-name" 
                   required 
                   placeholder="e.g. Rahul Sharma" 
-                  value="Arjun Sharma"
-                  class="w-full px-3.5 py-2.5 rounded-none sm:rounded-sm border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black transition-colors"
+                  value=""
+                  class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black transition-colors"
                 />
               </div>
 
@@ -83,8 +83,8 @@ export function render(container) {
                   id="mobile-number" 
                   required 
                   placeholder="10-digit mobile number" 
-                  value="9876543210"
-                  class="w-full px-3.5 py-2.5 rounded-none sm:rounded-sm border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black font-mono transition-colors"
+                  value=""
+                  class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black font-mono transition-colors"
                 />
               </div>
             </div>
@@ -98,14 +98,14 @@ export function render(container) {
                   required 
                   maxlength="6" 
                   placeholder="6-digit PIN code" 
-                  value="560001"
-                  class="w-full px-3.5 py-2.5 rounded-none sm:rounded-sm border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black font-mono transition-colors"
+                  value=""
+                  class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black font-mono transition-colors"
                 />
               </div>
 
               <div>
                 <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1 font-headline">State *</label>
-                <select id="state" class="w-full px-3.5 py-2.5 rounded-none sm:rounded-sm border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black bg-white">
+                <select id="state" class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black bg-white">
                   ${INDIAN_STATES.map((s) => `<option value="${s}" ${s === 'Karnataka' ? 'selected' : ''}>${s}</option>`).join('')}
                 </select>
               </div>
@@ -118,8 +118,8 @@ export function render(container) {
                 required 
                 rows="2" 
                 placeholder="Flat/House no., building, street address" 
-                class="w-full px-3.5 py-2.5 rounded-none sm:rounded-sm border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black transition-colors"
-              >24, 4th Cross, Indiranagar</textarea>
+                class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black transition-colors"
+              ></textarea>
             </div>
 
             <div>
@@ -128,9 +128,9 @@ export function render(container) {
                 type="text" 
                 id="city" 
                 required 
-                placeholder="City" 
-                value="Bengaluru"
-                class="w-full px-3.5 py-2.5 rounded-none sm:rounded-sm border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black transition-colors"
+                placeholder="City / District" 
+                value=""
+                class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black transition-colors"
               />
             </div>
           </form>
@@ -143,7 +143,7 @@ export function render(container) {
 
         <!-- RIGHT: Order Summary & Interactive Slide to Confirm (5 Cols) -->
         <aside class="lg:col-span-5 flex flex-col gap-4">
-          <div class="bg-white p-5 sm:p-space-lg rounded-none sm:rounded-sm border border-zinc-200/80 shadow-xs">
+          <div class="bg-white p-5 sm:p-space-lg rounded-xl border border-zinc-200/80 shadow-xs">
             <h2 class="font-headline text-sm uppercase tracking-wider font-bold text-primary mb-4 pb-2 border-b border-zinc-100">
               Cart Summary (${cart.reduce((s, i) => s + (i.quantity || 1), 0)} items)
             </h2>
@@ -156,7 +156,7 @@ export function render(container) {
                   return `
                   <div class="py-2.5 flex items-center justify-between gap-3">
                     <div class="flex items-center gap-2.5 min-w-0">
-                      <div class="w-10 h-12 rounded-none bg-zinc-100 overflow-hidden shrink-0 border border-zinc-200">
+                      <div class="w-10 h-12 rounded-lg bg-zinc-100 overflow-hidden shrink-0 border border-zinc-200">
                         ${img ? `<img src="${img}" alt="${item.name}" class="w-full h-full object-cover" />` : ''}
                       </div>
                       <div class="min-w-0">
@@ -179,7 +179,7 @@ export function render(container) {
               </div>
               <div class="flex justify-between text-zinc-600">
                 <span>Pan-India Air Express Delivery</span>
-                <span class="text-green-700 font-bold uppercase text-[11px]">${shipping === 0 ? 'FREE' : formatCurrency(shipping)}</span>
+                <span class="text-green-700 font-bold uppercase text-[11px]">FREE (₹0)</span>
               </div>
               <div class="flex justify-between items-baseline pt-3 mt-1 border-t border-zinc-200">
                 <div>
@@ -252,7 +252,7 @@ export function render(container) {
 
     const order = await submitOrder(cart, { fullName, mobile, pincode, address, city, state });
     const waText = generateWhatsAppMessage(order);
-    const waUrl = `https://wa.me/919876543210?text=${encodeURIComponent(waText)}`;
+    const waUrl = `https://wa.me/919605210198?text=${encodeURIComponent(waText)}`;
 
     // Open WhatsApp
     window.open(waUrl, '_blank');
@@ -276,7 +276,7 @@ export function render(container) {
           </p>
 
           <!-- Order Summary Card -->
-          <div class="p-5 sm:p-6 rounded-none sm:rounded-sm bg-zinc-50 text-left mb-6 border border-zinc-200 shadow-2xs">
+          <div class="p-5 sm:p-6 rounded-xl bg-zinc-50 text-left mb-6 border border-zinc-200 shadow-2xs">
             <div class="flex items-center justify-between pb-3 border-b border-zinc-200">
               <span class="font-headline text-xs uppercase text-zinc-950 font-bold">Reservation Summary</span>
               <span class="text-[11px] font-bold uppercase px-2 py-0.5 bg-amber-100 text-amber-900 rounded-sm">
@@ -358,12 +358,12 @@ export function render(container) {
             Your WhatsApp message has been recorded. Our fulfilment desk has assigned your dispatch queue. You will receive BlueDart live tracking alerts directly on WhatsApp.
           </p>
 
-          <div class="p-5 sm:p-6 rounded-none sm:rounded-sm bg-zinc-50 text-left mb-6 border border-zinc-200">
+          <div class="p-5 sm:p-6 rounded-xl bg-zinc-50 text-left mb-6 border border-zinc-200">
             <p class="font-headline text-xs uppercase text-zinc-950 font-bold mb-3 pb-1 border-b border-zinc-200">Shipment Details</p>
             <p class="text-xs text-zinc-700"><strong>Recipient:</strong> ${fullName} (${mobile})</p>
             <p class="text-xs text-zinc-700 mt-1"><strong>Address:</strong> ${address}, ${city}, ${state} — ${pincode}</p>
             <p class="text-xs text-zinc-700 mt-1"><strong>Total Paid / COD:</strong> ${formatCurrency(grandTotal)}</p>
-            <p class="text-xs text-green-700 mt-1 font-bold"><strong>Status:</strong> Processing (Dispatches within 24 hrs via BlueDart)</p>
+            <p class="text-xs text-green-700 mt-1 font-bold"><strong>Status:</strong> Processing (Standard dispatch via BlueDart Air Express)</p>
           </div>
 
           <div class="flex flex-wrap items-center justify-center gap-3">

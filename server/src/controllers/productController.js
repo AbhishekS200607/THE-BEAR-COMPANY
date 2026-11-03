@@ -25,3 +25,4 @@ export async function handleGetProductBySlug(req, res, next) {
     return next(err);
   }
 }
+

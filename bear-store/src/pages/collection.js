@@ -10,7 +10,7 @@ export async function render(container) {
   let sortOrder = 'featured';
 
   const page = document.createElement('div');
-  page.className = 'w-full flex flex-col pt-14 md:pt-20 pb-32';
+  page.className = 'w-full flex flex-col pt-20 md:pt-24 pb-32';
 
   async function updateGrid() {
     const allProducts = await getProducts(mode);
@@ -125,7 +125,7 @@ export async function render(container) {
           <div class="relative">
             <button id="size-dropdown-btn" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-md border border-zinc-200 bg-white text-zinc-800 font-medium hover:border-zinc-400 transition cursor-pointer">
               <span id="size-btn-label">Size</span>
-              <svg class="w-3 h-3 stroke-[2.2] text-zinc-500" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+              <svg class="w-3 h-3 stroke-[2.2] text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"></path>
               </svg>
             </button>
@@ -146,7 +146,7 @@ export async function render(container) {
           <div class="relative">
             <button id="colour-dropdown-btn" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-md border border-zinc-200 bg-white text-zinc-800 font-medium hover:border-zinc-400 transition cursor-pointer">
               <span>Colour</span>
-              <svg class="w-3 h-3 stroke-[2.2] text-zinc-500" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+              <svg class="w-3 h-3 stroke-[2.2] text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"></path>
               </svg>
             </button>
@@ -184,6 +184,13 @@ export async function render(container) {
 
       <!-- BEGIN: ProductGrid (Flipkart-Style 2-Column Mobile, 3-Column Tablet, 4-Column Desktop) -->
       <main class="px-4 pt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-3.5 md:gap-4 flex-1" data-purpose="product-catalog-grid" id="collection-products-grid">
+        ${[1, 2, 3, 4].map(() => `
+          <div class="rounded-xl sm:rounded-2xl border border-zinc-200/80 bg-white p-2.5 animate-pulse">
+            <div class="aspect-3/4 rounded-lg bg-zinc-200 mb-3"></div>
+            <div class="h-3 bg-zinc-200 rounded w-3/4 mb-2"></div>
+            <div class="h-3 bg-zinc-200 rounded w-1/2"></div>
+          </div>
+        `).join('')}
       </main>
     </div>
   `;

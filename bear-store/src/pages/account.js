@@ -33,7 +33,7 @@ export async function render(container) {
   let editingAddress = null;
 
   const page = document.createElement('div');
-  page.className = 'w-full flex flex-col pt-16 md:pt-20 pb-32';
+  page.className = 'w-full flex flex-col pt-20 md:pt-24 pb-32';
 
   function getSectionContent(id) {
     const wishlistIds = getWishlist();

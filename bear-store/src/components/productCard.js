@@ -44,7 +44,7 @@ export function openQuickAddSheet(product) {
   const isSow = product.mode === 'sow';
 
   root.innerHTML = `
-    <div class="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl p-5 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto border border-zinc-100" role="dialog" aria-modal="true">
+    <div class="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl p-5 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto border border-zinc-100" role="dialog" aria-modal="true" aria-labelledby="qa-sheet-title">
       <!-- Header: Thumb, Details & Close -->
       <div class="flex items-start justify-between pb-3 border-b border-zinc-100">
         <div class="flex items-center gap-3">
@@ -57,7 +57,7 @@ export function openQuickAddSheet(product) {
           </div>
           <div>
             <p class="text-[10px] font-bold uppercase tracking-wider text-zinc-400 font-headline">${product.mode.toUpperCase()}</p>
-            <h3 class="text-sm font-bold text-zinc-900 font-headline line-clamp-1">${product.name}</h3>
+            <h3 id="qa-sheet-title" class="text-sm font-bold text-zinc-900 font-headline line-clamp-1">${product.name}</h3>
             <div class="flex items-baseline gap-1.5 mt-0.5">
               <span class="text-sm font-bold text-zinc-950 font-headline">₹${product.price.toLocaleString('en-IN')}</span>
               ${product.compareAtPrice ? `<span class="text-xs text-zinc-400 line-through">₹${product.compareAtPrice.toLocaleString('en-IN')}</span>` : ''}
@@ -83,7 +83,7 @@ export function openQuickAddSheet(product) {
                 (c, idx) => `
               <button class="qa-colour-btn w-7 h-7 rounded-full border-2 transition-all cursor-pointer ${
                 idx === 0 ? (isSow ? 'border-[#80534C] ring-2 ring-offset-2 ring-[#80534C]' : 'border-black ring-2 ring-offset-2 ring-black') : 'border-zinc-200 hover:border-zinc-400'
-              }" style="background-color:${c.hex}" data-colour="${c.name}" title="${c.name}"></button>
+              }" style="background-color:${c.hex}" data-colour="${c.name}" title="${c.name}" aria-label="Select ${c.name} colour"></button>
             `
               )
               .join('')}
@@ -131,8 +131,16 @@ export function openQuickAddSheet(product) {
 
   document.body.appendChild(root);
 
-  // Close Sheet Function
-  const close = () => root.remove();
+  // Close Sheet Function with Escape key cleanup
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') close();
+  };
+  window.addEventListener('keydown', handleKeyDown);
+
+  const close = () => {
+    window.removeEventListener('keydown', handleKeyDown);
+    root.remove();
+  };
 
   root.querySelector('#qa-close-btn')?.addEventListener('click', close);
   root.addEventListener('click', (e) => {
@@ -197,7 +205,7 @@ export function openQuickAddSheet(product) {
  */
 export function createProductCard(product) {
   const card = document.createElement('article');
-  card.className = 'group flex flex-col cursor-pointer bg-white rounded-none sm:rounded-sm overflow-hidden hover:shadow-md transition-shadow duration-200 border border-zinc-200/80 p-2 sm:p-2.5';
+  card.className = 'group flex flex-col cursor-pointer bg-white rounded-xl sm:rounded-2xl overflow-hidden hover:shadow-md transition-shadow duration-200 border border-zinc-200/80 p-2 sm:p-2.5';
   card.setAttribute('data-purpose', 'product-card');
   card.setAttribute('data-product-id', product.id);
 
@@ -212,32 +220,32 @@ export function createProductCard(product) {
     : null;
 
   card.innerHTML = `
-    <!-- Thumbnail Container with 4:5 aspect ratio (Non-curved clean straight edges) -->
-    <div class="relative bg-zinc-100 rounded-none overflow-hidden aspect-[4/5] mb-2">
+    <!-- Thumbnail Container with 4:5 aspect ratio -->
+    <div class="relative bg-zinc-100 rounded-lg sm:rounded-xl overflow-hidden aspect-[4/5] mb-2">
       <a href="#product/${product.slug}" class="block w-full h-full no-underline hover:no-underline" aria-label="View ${product.name}">
         ${
           firstImage
-            ? `<img src="${firstImage}" alt="${product.name}" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300 rounded-none" loading="lazy" onerror="this.parentElement.innerHTML='${makePlaceholderSVG(product.name, product.mode).replace(/'/g, "\\'")}'" />`
+            ? `<img src="${firstImage}" alt="${product.name}" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300 rounded-lg sm:rounded-xl" loading="lazy" onerror="this.parentElement.innerHTML='${makePlaceholderSVG(product.name, product.mode).replace(/'/g, "\\'")}'" />`
             : makePlaceholderSVG(product.name, product.mode)
         }
       </a>
 
       <!-- Badges: Top Left -->
       <div class="absolute top-2 left-2 flex flex-col gap-1 z-10 pointer-events-none">
-        ${product.new ? '<span class="px-2 py-0.5 rounded-none bg-black text-white font-headline text-[9px] uppercase font-bold tracking-wider shadow-xs">New</span>' : ''}
-        ${product.bestseller ? '<span class="px-2 py-0.5 rounded-none bg-amber-500 text-white font-headline text-[9px] uppercase font-bold tracking-wider shadow-xs">Top Seller</span>' : ''}
+        ${product.new ? '<span class="px-2 py-0.5 rounded-full bg-black text-white font-headline text-[9px] uppercase font-bold tracking-wider shadow-xs">New</span>' : ''}
+        ${product.bestseller ? '<span class="px-2 py-0.5 rounded-full bg-amber-500 text-white font-headline text-[9px] uppercase font-bold tracking-wider shadow-xs">Top Seller</span>' : ''}
       </div>
 
       <!-- Wishlist Heart Button: Top Right -->
       <button class="wishlist-btn absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-xs flex items-center justify-center text-zinc-700 hover:text-red-500 transition shadow-xs z-10 ${wishlisted ? 'text-red-500' : ''}" aria-label="${wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}" aria-pressed="${wishlisted}">
-        <svg class="w-4 h-4 stroke-[2]" fill="${wishlisted ? 'currentColor' : 'none'}" stroke="currentColor" viewbox="0 0 24 24">
+        <svg class="w-4 h-4 stroke-[2]" fill="${wishlisted ? 'currentColor' : 'none'}" stroke="currentColor" viewBox="0 0 24 24">
           <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke-linecap="round" stroke-linejoin="round"></path>
         </svg>
       </button>
 
       <!-- Rating chip: Bottom Left -->
-      <div class="absolute bottom-2 left-2 px-1.5 py-0.5 rounded-none bg-black/75 backdrop-blur-xs text-white font-headline text-[10px] font-bold flex items-center gap-1 shadow-xs">
-        <span class="text-amber-400 text-xs">★</span>
+      <div class="absolute bottom-2 left-2 px-1.5 py-0.5 rounded-full bg-black/75 backdrop-blur-xs text-white font-headline text-[10px] font-bold flex items-center gap-1 shadow-xs">
+        <span class="material-symbols-outlined text-[12px] text-amber-400">star</span>
         <span>${product.rating || '4.8'}</span>
       </div>
     </div>
@@ -257,7 +265,7 @@ export function createProductCard(product) {
       <div class="flex items-baseline gap-1.5 mt-1 flex-wrap">
         <span class="text-xs sm:text-sm font-bold text-zinc-950 font-headline">₹${product.price.toLocaleString('en-IN')}</span>
         ${product.compareAtPrice ? `<span class="text-[10px] text-zinc-400 line-through">₹${product.compareAtPrice.toLocaleString('en-IN')}</span>` : ''}
-        ${discountPercent ? `<span class="text-[10px] font-bold text-green-700">${discountPercent}% off</span>` : ''}
+        ${discountPercent ? `<span class="text-[10px] font-bold ${product.mode === 'sow' ? 'text-[#80534C]' : 'text-zinc-600'}">${discountPercent}% off</span>` : ''}
       </div>
 
       <!-- Color Swatches & Quick Add Button Row -->
@@ -266,7 +274,7 @@ export function createProductCard(product) {
           ${displayColours
             .map(
               (c, i) =>
-                `<span class="w-2.5 h-2.5 rounded-full border border-black/10 ${i === 0 ? 'ring-1 ring-offset-1 ring-zinc-400' : ''}" style="background-color:${c.hex}" title="${c.name}"></span>`
+                `<span class="w-2.5 h-2.5 rounded-full border border-black/10 ${i === 0 ? 'ring-1 ring-offset-1 ring-zinc-400' : ''}" style="background-color:${c.hex}" title="${c.name}" aria-label="Select ${c.name} colour"></span>`
             )
             .join('')}
           ${extraColours > 0 ? `<span class="text-[9px] text-zinc-400 font-bold">+${extraColours}</span>` : ''}

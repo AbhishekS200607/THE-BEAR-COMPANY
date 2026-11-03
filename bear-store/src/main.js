@@ -10,6 +10,7 @@ import { mount as mountFooter } from './components/footer.js';
 import { mount as mountCartDrawer } from './components/cartDrawer.js';
 import { mount as mountSearchOverlay } from './components/searchOverlay.js';
 import { mount as mountToast } from './components/toast.js';
+import { mount as mountCookieBanner } from './components/cookieBanner.js';
 
 // Pages
 import { render as renderHome } from './pages/home.js';
@@ -39,6 +40,7 @@ const footerContainer = document.getElementById('site-footer');
 const cartDrawerContainer = document.getElementById('cart-drawer-root');
 const searchOverlayContainer = document.getElementById('search-overlay-root');
 const toastContainer = document.getElementById('toast-root');
+const cookieBannerContainer = document.getElementById('cookie-banner-root');
 
 // Current route teardown/cleanups
 let currentRouteCleanup = null;
@@ -156,6 +158,7 @@ function init() {
   if (cartDrawerContainer) mountCartDrawer(cartDrawerContainer);
   if (searchOverlayContainer) mountSearchOverlay(searchOverlayContainer);
   if (toastContainer) mountToast(toastContainer);
+  if (cookieBannerContainer) mountCookieBanner(cookieBannerContainer);
 
   // 3. Listen for hash changes
   window.addEventListener('hashchange', () => router());

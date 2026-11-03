@@ -36,3 +36,4 @@ export async function logAdminAction({ adminId, action, targetEntity, targetId, 
     ip_address: ipAddress || null,
   });
 }
+

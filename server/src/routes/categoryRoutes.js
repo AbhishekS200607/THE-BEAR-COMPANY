@@ -8,3 +8,4 @@ const router = Router();
 router.get('/', publicRateLimiter, handleGetCategories);
 
 export default router;
+

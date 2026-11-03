@@ -34,7 +34,7 @@ export async function render(container, slug) {
   ];
 
   const page = document.createElement('div');
-  page.className = 'w-full flex flex-col pt-16 md:pt-20 pb-24 md:pb-12';
+  page.className = 'w-full flex flex-col pt-20 md:pt-24 pb-24 md:pb-12';
 
   page.innerHTML = `
     <div class="max-w-[1360px] mx-auto w-full px-4 sm:px-6 md:px-gutter-desktop pt-4 pb-space-xl">
@@ -153,7 +153,7 @@ export async function render(container, slug) {
                   (c, idx) => `
                   <button class="w-8 h-8 rounded-full border border-black/20 transition-all ${
                     idx === 0 ? 'ring-2 ring-primary ring-offset-2' : ''
-                  }" style="background-color:${c.hex}" title="${c.name}" data-color="${c.name}" type="button"></button>
+                  }" style="background-color:${c.hex}" title="${c.name}" data-color="${c.name}" aria-label="Select ${c.name} colour" type="button"></button>
                 `
                 )
                 .join('')}
@@ -190,11 +190,11 @@ export async function render(container, slug) {
           <!-- Quantity & Add to Bag -->
           <div class="flex items-center gap-space-md mb-space-xl">
             <div class="flex items-center border border-outline-variant rounded-full bg-surface-container-low px-2 py-1">
-              <button id="qty-minus-btn" class="w-8 h-8 rounded-full flex items-center justify-center text-primary hover:bg-surface-container transition-colors" type="button">
+              <button id="qty-minus-btn" class="w-8 h-8 rounded-full flex items-center justify-center text-primary hover:bg-surface-container transition-colors" type="button" aria-label="Decrease quantity">
                 <span class="material-symbols-outlined text-[16px]">remove</span>
               </button>
-              <span id="qty-display" class="w-8 text-center font-headline-sm text-sm font-bold font-headline">1</span>
-              <button id="qty-plus-btn" class="w-8 h-8 rounded-full flex items-center justify-center text-primary hover:bg-surface-container transition-colors" type="button">
+              <span id="qty-display" class="w-8 text-center font-headline-sm text-sm font-bold font-headline" aria-live="polite">1</span>
+              <button id="qty-plus-btn" class="w-8 h-8 rounded-full flex items-center justify-center text-primary hover:bg-surface-container transition-colors" type="button" aria-label="Increase quantity">
                 <span class="material-symbols-outlined text-[16px]">add</span>
               </button>
             </div>
@@ -208,7 +208,7 @@ export async function render(container, slug) {
           <!-- Product Accordions -->
           <div class="flex flex-col border-t border-outline-variant/30 divide-y divide-outline-variant/30">
             <details class="py-space-md group cursor-pointer" open>
-              <summary class="flex items-center justify-between list-none font-headline-sm text-sm uppercase text-primary font-bold font-headline">
+              <summary class="flex items-center justify-between list-none font-headline-sm text-sm uppercase text-primary font-bold font-headline" aria-expanded="true">
                 <span>Fit & Specifications</span>
                 <span class="material-symbols-outlined text-[20px] text-on-surface-variant transition-transform duration-200 group-open:rotate-180">expand_more</span>
               </summary>
@@ -218,7 +218,7 @@ export async function render(container, slug) {
             </details>
 
             <details class="py-space-md group cursor-pointer">
-              <summary class="flex items-center justify-between list-none font-headline-sm text-sm uppercase text-primary font-bold font-headline">
+              <summary class="flex items-center justify-between list-none font-headline-sm text-sm uppercase text-primary font-bold font-headline" aria-expanded="false">
                 <span>Fabric & Care Instructions</span>
                 <span class="material-symbols-outlined text-[20px] text-on-surface-variant transition-transform duration-200 group-open:rotate-180">expand_more</span>
               </summary>
@@ -229,7 +229,7 @@ export async function render(container, slug) {
             </details>
 
             <details class="py-space-md group cursor-pointer">
-              <summary class="flex items-center justify-between list-none font-headline-sm text-sm uppercase text-primary font-bold font-headline">
+              <summary class="flex items-center justify-between list-none font-headline-sm text-sm uppercase text-primary font-bold font-headline" aria-expanded="false">
                 <span>Domestic Delivery & 7-Day Doorstep Swaps</span>
                 <span class="material-symbols-outlined text-[20px] text-on-surface-variant transition-transform duration-200 group-open:rotate-180">expand_more</span>
               </summary>
@@ -294,7 +294,7 @@ export async function render(container, slug) {
     });
   });
 
-  // Quantity controls
+  // Quantity controls (Capped at 10 units maximum)
   const qtyDisplay = page.querySelector('#qty-display');
   page.querySelector('#qty-minus-btn')?.addEventListener('click', () => {
     if (quantity > 1) {
@@ -304,8 +304,22 @@ export async function render(container, slug) {
   });
 
   page.querySelector('#qty-plus-btn')?.addEventListener('click', () => {
-    quantity++;
-    qtyDisplay.textContent = quantity;
+    if (quantity < 10) {
+      quantity++;
+      qtyDisplay.textContent = quantity;
+    } else {
+      showToast('Maximum 10 units per order item', 'info');
+    }
+  });
+
+  // Accordion details a11y synchronization
+  page.querySelectorAll('details').forEach((d) => {
+    const summary = d.querySelector('summary');
+    d.addEventListener('toggle', () => {
+      if (summary) {
+        summary.setAttribute('aria-expanded', d.open ? 'true' : 'false');
+      }
+    });
   });
 
   // Add to Bag CTA
