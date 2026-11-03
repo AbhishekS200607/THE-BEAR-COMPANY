@@ -40,3 +40,4 @@ export function mountFloatingWhatsApp() {
 }
 
 export default { mountFloatingWhatsApp };
+

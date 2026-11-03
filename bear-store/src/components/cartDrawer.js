@@ -1,7 +1,10 @@
-import { getCart, getCartTotal, removeFromCart, updateCartQty, subscribe, setState } from '../state/store.js';
+import { getCart, getCartTotal, removeFromCart, updateCartQty, subscribe, setState, getMode } from '../state/store.js';
 import { formatCurrency } from '../utils/formatCurrency.js';
 import { trapFocus, releaseFocus } from '../utils/accessibility.js';
 import { renderEmptyIllustration } from './emptyState.js';
+import { products } from '../data/products.js';
+import { addItem } from '../services/cartService.js';
+import { showToast } from './toast.js';
 
 let drawer = null;
 let overlay = null;
@@ -40,10 +43,19 @@ export function mount(container) {
   function render() {
     const cart = getCart();
     const total = getCartTotal();
+    const mode = getMode();
     const itemCount = cart.reduce((s, i) => s + (i.quantity || 1), 0);
 
     const progressPct = Math.min(100, Math.round((total / FREE_SHIPPING_THRESHOLD) * 100));
     const amountAway = FREE_SHIPPING_THRESHOLD - total;
+
+    // Filter recommended products (products matching current mode not in cart)
+    const cartProductIds = new Set(cart.map((i) => i.id));
+    let recommendations = products.filter((p) => p.mode === mode && !cartProductIds.has(p.id));
+    if (recommendations.length < 3) {
+      recommendations = products.filter((p) => !cartProductIds.has(p.id));
+    }
+    const displayedRecommendations = recommendations.slice(0, 3);
 
     drawer.innerHTML = `
       <!-- Drawer Header -->
@@ -86,7 +98,7 @@ export function mount(container) {
       <div class="flex-1 overflow-y-auto p-4 sm:p-5 no-scrollbar">
         ${
           cart.length === 0
-            ? `<div class="py-16 text-center">
+            ? `<div class="py-12 text-center">
                 ${renderEmptyIllustration('bag')}
                 <h3 class="font-headline text-base font-extrabold uppercase text-zinc-950 mb-1">Your Bag Is Empty</h3>
                 <p class="text-xs text-zinc-500 mb-6 max-w-xs mx-auto">Explore high-performance garments engineered for discipline and daily training.</p>
@@ -123,6 +135,41 @@ export function mount(container) {
                   })
                   .join('')}
               </div>`
+        }
+
+        <!-- Compact "You May Also Like" Strip in Cart Drawer -->
+        ${
+          displayedRecommendations.length > 0
+            ? `
+            <div class="mt-6 pt-5 border-t border-zinc-100">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-500 font-headline">You May Also Like</span>
+                <span class="text-[10px] text-zinc-400 font-medium">Quick Add</span>
+              </div>
+              <div class="grid grid-cols-3 gap-2">
+                ${displayedRecommendations
+                  .map((p) => {
+                    const img = p.images?.[0] || p.image || '';
+                    return `
+                    <div class="p-2 rounded-xl bg-zinc-50 border border-zinc-200/80 flex flex-col justify-between">
+                      <div>
+                        <div class="aspect-[4/5] rounded-lg overflow-hidden bg-zinc-100 mb-1.5 border border-zinc-200">
+                          ${img ? `<img src="${img}" alt="${p.name}" class="w-full h-full object-cover" />` : ''}
+                        </div>
+                        <p class="text-[10px] font-bold text-zinc-950 truncate font-headline leading-tight">${p.name}</p>
+                        <p class="text-[10px] font-bold text-zinc-600 font-headline mb-2">${formatCurrency(p.price)}</p>
+                      </div>
+                      <button class="drawer-rec-add-btn w-full py-1 rounded-md bg-black text-white text-[9px] font-bold uppercase font-headline tracking-wider hover:bg-zinc-800 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-0.5" data-id="${p.id}">
+                        <span>+ Add</span>
+                      </button>
+                    </div>
+                  `;
+                  })
+                  .join('')}
+              </div>
+            </div>
+          `
+            : ''
         }
       </div>
 
@@ -175,6 +222,21 @@ export function mount(container) {
         const size = btn.dataset.size;
         const color = btn.dataset.color;
         removeFromCart(id, size, color);
+      });
+    });
+
+    // Quick add from drawer recommendations
+    drawer.querySelectorAll('.drawer-rec-add-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const pId = btn.dataset.id;
+        const targetProduct = products.find((p) => p.id === pId);
+        if (targetProduct) {
+          const colour = targetProduct.colours?.[0]?.name || 'Standard';
+          const sizeObj = targetProduct.sizes?.find((s) => s.available) || targetProduct.sizes?.[0];
+          const size = sizeObj?.size || 'M';
+          addItem(targetProduct, colour, size, 1);
+          showToast(`Added ${targetProduct.name} to bag!`, 'success');
+        }
       });
     });
   }

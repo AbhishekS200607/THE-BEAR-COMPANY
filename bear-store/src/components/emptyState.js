@@ -48,3 +48,4 @@ export function renderEmptyIllustration(type = 'bag') {
 }
 
 export default { renderEmptyIllustration };
+

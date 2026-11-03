@@ -45,3 +45,4 @@ export function setPageMeta({ title, description, image, url } = {}) {
 }
 
 export default { setPageMeta };
+

@@ -1,6 +1,8 @@
-import { getCart, getCartTotal, removeFromCart, updateCartQty, subscribe } from '../state/store.js';
+import { getCart, getCartTotal, removeFromCart, updateCartQty, subscribe, getMode } from '../state/store.js';
 import { formatCurrency } from '../utils/formatCurrency.js';
 import { renderEmptyIllustration } from '../components/emptyState.js';
+import { products } from '../data/products.js';
+import { createProductCard } from '../components/productCard.js';
 
 const FREE_SHIPPING_THRESHOLD = 1999;
 
@@ -18,8 +20,17 @@ export function render(container) {
   function buildPage() {
     const cart = getCart();
     const total = getCartTotal();
+    const mode = getMode();
     const progressPct = Math.min(100, Math.round((total / FREE_SHIPPING_THRESHOLD) * 100));
     const amountAway = FREE_SHIPPING_THRESHOLD - total;
+
+    // Filter recommended products (products from the same mode not currently in cart)
+    const cartProductIds = new Set(cart.map((i) => i.id));
+    let recommendations = products.filter((p) => p.mode === mode && !cartProductIds.has(p.id));
+    if (recommendations.length < 4) {
+      recommendations = products.filter((p) => !cartProductIds.has(p.id));
+    }
+    const displayedRecommendations = recommendations.slice(0, 4);
 
     page.innerHTML = `
       <div class="mb-6">
@@ -117,7 +128,27 @@ export function render(container) {
             </div>
           `
       }
+
+      <!-- PRODUCTS YOU MAY LIKE SECTION IN CART -->
+      <section class="mt-16 pt-12 border-t border-zinc-200">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <p class="text-[11px] font-bold uppercase tracking-widest text-zinc-400 font-headline mb-0.5">COMPLETE YOUR DROP</p>
+            <h2 class="font-headline text-2xl font-extrabold uppercase text-zinc-950 tracking-tight">You May Also Like</h2>
+          </div>
+          <a href="#collection" class="text-xs font-bold uppercase tracking-wider text-black underline font-headline hover:text-zinc-600">View All</a>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4" id="cart-recommendations-grid"></div>
+      </section>
     `;
+
+    // Populate Recommendations
+    const recGrid = page.querySelector('#cart-recommendations-grid');
+    if (recGrid) {
+      displayedRecommendations.forEach((p) => {
+        recGrid.appendChild(createProductCard(p));
+      });
+    }
 
     // Events
     page.querySelectorAll('.cart-qty-minus').forEach((btn) => {

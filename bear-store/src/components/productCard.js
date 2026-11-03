@@ -205,7 +205,7 @@ export function openQuickAddSheet(product) {
  */
 export function createProductCard(product) {
   const card = document.createElement('article');
-  card.className = 'group flex flex-col cursor-pointer bg-white rounded-xl sm:rounded-2xl overflow-hidden hover:shadow-md transition-shadow duration-200 border border-zinc-200/80 p-2 sm:p-2.5';
+  card.className = 'group flex flex-col cursor-pointer bg-white hover:shadow-md transition-shadow duration-200 border border-zinc-200/80 p-2 sm:p-2.5';
   card.setAttribute('data-purpose', 'product-card');
   card.setAttribute('data-product-id', product.id);
 
@@ -221,11 +221,11 @@ export function createProductCard(product) {
 
   card.innerHTML = `
     <!-- Thumbnail Container with 4:5 aspect ratio -->
-    <div class="relative bg-zinc-100 rounded-lg sm:rounded-xl overflow-hidden aspect-[4/5] mb-2">
+    <div class="relative bg-zinc-100 overflow-hidden aspect-square mb-2 flex-shrink-0">
       <a href="#product/${product.slug}" class="block w-full h-full no-underline hover:no-underline" aria-label="View ${product.name}">
         ${
           firstImage
-            ? `<img src="${firstImage}" alt="${product.name}" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300 rounded-lg sm:rounded-xl" loading="lazy" onerror="this.parentElement.innerHTML='${makePlaceholderSVG(product.name, product.mode).replace(/'/g, "\\'")}'" />`
+            ? `<img src="${firstImage}" alt="${product.name}" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300" loading="lazy" onerror="this.parentElement.innerHTML='${makePlaceholderSVG(product.name, product.mode).replace(/'/g, "\\'")}'" />`
             : makePlaceholderSVG(product.name, product.mode)
         }
       </a>
@@ -251,40 +251,39 @@ export function createProductCard(product) {
     </div>
 
     <!-- Product Details -->
-    <div class="px-0.5 flex flex-col flex-1">
+    <div class="px-0.5 flex flex-col flex-1 min-w-0">
       <div class="flex items-center justify-between mb-0.5">
         <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400 font-headline">${product.mode === 'sow' ? 'SOW' : 'BEAR'}</span>
         <span class="text-[10px] text-zinc-400 font-medium">${product.category}</span>
       </div>
 
-      <h2 class="text-xs sm:text-sm font-semibold text-zinc-900 line-clamp-1 hover:text-black">
+      <h2 class="text-xs sm:text-sm font-semibold text-zinc-900 line-clamp-1 hover:text-black min-w-0">
         <a href="#product/${product.slug}" class="no-underline hover:no-underline text-zinc-900 hover:text-black block truncate">${product.name}</a>
       </h2>
 
       <!-- Price Row -->
-      <div class="flex items-baseline gap-1.5 mt-1 flex-wrap">
-        <span class="text-xs sm:text-sm font-bold text-zinc-950 font-headline">₹${product.price.toLocaleString('en-IN')}</span>
-        ${product.compareAtPrice ? `<span class="text-[10px] text-zinc-400 line-through">₹${product.compareAtPrice.toLocaleString('en-IN')}</span>` : ''}
-        ${discountPercent ? `<span class="text-[10px] font-bold ${product.mode === 'sow' ? 'text-[#80534C]' : 'text-zinc-600'}">${discountPercent}% off</span>` : ''}
+      <div class="flex items-baseline gap-1.5 mt-1 overflow-hidden">
+        <span class="text-xs sm:text-sm font-bold text-zinc-950 font-headline shrink-0">₹${product.price.toLocaleString('en-IN')}</span>
+        ${product.compareAtPrice ? `<span class="text-[10px] text-zinc-400 line-through shrink-0">₹${product.compareAtPrice.toLocaleString('en-IN')}</span>` : ''}
+        ${discountPercent ? `<span class="text-[10px] font-bold shrink-0 ${product.mode === 'sow' ? 'text-[#80534C]' : 'text-green-700'}">${discountPercent}% off</span>` : ''}
       </div>
 
       <!-- Color Swatches & Quick Add Button Row -->
-      <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-zinc-100">
-        <div class="flex items-center space-x-1">
+      <div class="flex items-center justify-between mt-auto pt-2 border-t border-zinc-100 overflow-hidden">
+        <div class="flex items-center gap-1.5 overflow-hidden">
           ${displayColours
             .map(
               (c, i) =>
-                `<span class="w-2.5 h-2.5 rounded-full border border-black/10 ${i === 0 ? 'ring-1 ring-offset-1 ring-zinc-400' : ''}" style="background-color:${c.hex}" title="${c.name}" aria-label="Select ${c.name} colour"></span>`
+                `<span class="w-3 h-3 rounded-full border-2 shrink-0 ${i === 0 ? 'border-zinc-500' : 'border-transparent'}" style="background-color:${c.hex}" title="${c.name}"></span>`
             )
             .join('')}
-          ${extraColours > 0 ? `<span class="text-[9px] text-zinc-400 font-bold">+${extraColours}</span>` : ''}
+          ${extraColours > 0 ? `<span class="text-[9px] text-zinc-400 font-bold shrink-0">+${extraColours}</span>` : ''}
         </div>
 
-        <button class="card-add-btn px-2.5 py-1 rounded-full ${
+        <button class="card-add-btn shrink-0 px-2.5 py-1 rounded-full ${
           product.mode === 'sow' ? 'bg-[#80534C]' : 'bg-black'
-        } text-white text-[10px] font-bold uppercase tracking-wider hover:opacity-90 active:scale-95 transition-all flex items-center gap-0.5 shadow-xs cursor-pointer" type="button">
-          <span>+</span>
-          <span>ADD</span>
+        } text-white text-[10px] font-bold uppercase tracking-wider hover:opacity-90 active:scale-95 transition-all shadow-xs cursor-pointer" type="button">
+          + ADD
         </button>
       </div>
     </div>

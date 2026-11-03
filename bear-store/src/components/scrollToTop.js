@@ -42,3 +42,4 @@ export function mountScrollToTop() {
 }
 
 export default { mountScrollToTop };
+

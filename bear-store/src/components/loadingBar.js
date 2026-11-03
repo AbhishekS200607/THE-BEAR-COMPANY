@@ -63,3 +63,4 @@ export function completeLoading() {
 }
 
 export default { initLoadingBar, startLoading, completeLoading };
+
