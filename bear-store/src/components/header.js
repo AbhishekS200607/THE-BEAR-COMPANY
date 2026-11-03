@@ -108,8 +108,10 @@ export function mount(container) {
                 ${cartCount > 0 ? `<span class="absolute top-1 right-1 w-4 h-4 rounded-full bg-primary text-on-primary font-label-caps text-[9px] flex items-center justify-center font-bold">${cartCount > 9 ? '9+' : cartCount}</span>` : ''}
               </button>
 
-              <a href="#account" class="w-8 h-8 rounded-full bg-primary flex items-center justify-center ml-space-xs text-on-primary hover:opacity-90 transition-opacity" title="My Account">
-                <span class="material-symbols-outlined text-[18px]">person</span>
+              <a href="#account" class="w-8 h-8 rounded-full bg-primary flex items-center justify-center ml-space-xs text-on-primary hover:opacity-90 transition-opacity" title="My Account" aria-label="My Account">
+                <svg class="w-4 h-4 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
               </a>
             </div>
           </div>

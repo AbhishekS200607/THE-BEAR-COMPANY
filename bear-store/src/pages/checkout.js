@@ -13,12 +13,22 @@ const INDIAN_STATES = [
   'Chandigarh', 'Puducherry'
 ];
 
+// Available coupon dictionary (Item 13)
+const COUPONS = {
+  BEAR10: { type: 'pct', value: 0.1, label: '10% Off Your Drop' },
+  WELCOME500: { type: 'flat', value: 500, minOrder: 1500, label: '₹500 Off (Min ₹1,500)' },
+  DROP20: { type: 'pct', value: 0.2, label: '20% Athlete VIP Access' },
+};
+
 export function render(container) {
   const cart = getCart();
-  const total = getCartTotal();
+  const subtotal = getCartTotal();
   const shipping = 0; // Pan-India Air Express Delivery is always Free (₹0)
-  const grandTotal = total;
   const mode = getMode();
+
+  let activeCoupon = null;
+  let discountAmount = 0;
+  let grandTotal = subtotal;
 
   const page = document.createElement('div');
   page.className = 'w-full flex flex-col pt-20 md:pt-24 pb-32 md:pb-16';
@@ -26,9 +36,9 @@ export function render(container) {
   if (cart.length === 0) {
     page.innerHTML = `
       <div class="max-w-[1360px] mx-auto px-4 md:px-gutter-desktop py-24 text-center">
-        <span class="material-symbols-outlined text-6xl text-on-surface-variant mb-4">shopping_bag</span>
-        <h1 class="font-headline text-2xl md:text-3xl font-bold uppercase text-primary mb-2">Your Bag Is Empty</h1>
-        <p class="text-sm text-on-surface-variant mb-6">Add pieces to your bag before proceeding to checkout.</p>
+        <span class="material-symbols-outlined text-6xl text-zinc-300 mb-4">shopping_bag</span>
+        <h1 class="font-headline text-2xl md:text-3xl font-extrabold uppercase text-zinc-950 mb-2">Your Bag Is Empty</h1>
+        <p class="text-sm text-zinc-500 mb-6">Add pieces to your bag before proceeding to checkout.</p>
         <a href="#collection" class="inline-block px-8 py-3 rounded-full bg-black text-white text-xs uppercase font-bold font-headline no-underline shadow-sm">
           Explore Collection
         </a>
@@ -51,21 +61,21 @@ export function render(container) {
 
       <div class="mb-6 md:mb-8">
         <p class="font-headline text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1">FINAL STEP</p>
-        <h1 class="font-headline text-2xl md:text-3xl font-bold uppercase text-primary tracking-tight">Express Checkout</h1>
+        <h1 class="font-headline text-2xl md:text-3xl font-extrabold uppercase text-zinc-950 tracking-tight">Express Checkout</h1>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <!-- LEFT: Delivery Details Form (7 Cols) -->
         <div class="lg:col-span-7 bg-white p-5 sm:p-space-lg rounded-xl border border-zinc-200/80 shadow-xs">
-          <h2 class="font-headline text-sm uppercase tracking-wider font-bold text-primary mb-4 pb-2 border-b border-zinc-100 flex items-center gap-2">
+          <h2 class="font-headline text-sm uppercase tracking-wider font-bold text-zinc-950 mb-4 pb-2 border-b border-zinc-100 flex items-center gap-2">
             <span class="material-symbols-outlined text-[18px]">local_shipping</span>
             <span>Pan-India Delivery Address</span>
           </h2>
 
-          <form id="checkout-address-form" class="flex flex-col gap-4">
+          <form id="checkout-address-form" class="flex flex-col gap-4" novalidate>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1 font-headline">Full Legal Name *</label>
+                <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-600 mb-1 font-headline">Full Legal Name *</label>
                 <input 
                   type="text" 
                   id="full-name" 
@@ -74,24 +84,27 @@ export function render(container) {
                   value=""
                   class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black transition-colors"
                 />
+                <p id="full-name-error" class="text-[11px] text-red-600 font-medium mt-1 hidden"></p>
               </div>
 
               <div>
-                <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1 font-headline">Mobile / WhatsApp Number *</label>
+                <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-600 mb-1 font-headline">Mobile / WhatsApp Number *</label>
                 <input 
                   type="tel" 
                   id="mobile-number" 
                   required 
+                  maxlength="10"
                   placeholder="10-digit mobile number" 
                   value=""
                   class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black font-mono transition-colors"
                 />
+                <p id="mobile-error" class="text-[11px] text-red-600 font-medium mt-1 hidden"></p>
               </div>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1 font-headline">PIN Code (Pan-India) *</label>
+                <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-600 mb-1 font-headline">PIN Code (Pan-India) *</label>
                 <input 
                   type="text" 
                   id="pin-code" 
@@ -101,18 +114,19 @@ export function render(container) {
                   value=""
                   class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black font-mono transition-colors"
                 />
+                <p id="pincode-error" class="text-[11px] text-red-600 font-medium mt-1 hidden"></p>
               </div>
 
               <div>
-                <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1 font-headline">State *</label>
-                <select id="state" class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black bg-white">
+                <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-600 mb-1 font-headline">State *</label>
+                <select id="state" class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black bg-white cursor-pointer">
                   ${INDIAN_STATES.map((s) => `<option value="${s}" ${s === 'Karnataka' ? 'selected' : ''}>${s}</option>`).join('')}
                 </select>
               </div>
             </div>
 
             <div>
-              <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1 font-headline">Street Address / Landmark *</label>
+              <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-600 mb-1 font-headline">Street Address / Landmark *</label>
               <textarea 
                 id="address" 
                 required 
@@ -120,10 +134,11 @@ export function render(container) {
                 placeholder="Flat/House no., building, street address" 
                 class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black transition-colors"
               ></textarea>
+              <p id="address-error" class="text-[11px] text-red-600 font-medium mt-1 hidden"></p>
             </div>
 
             <div>
-              <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1 font-headline">City / District *</label>
+              <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-600 mb-1 font-headline">City / District *</label>
               <input 
                 type="text" 
                 id="city" 
@@ -132,19 +147,20 @@ export function render(container) {
                 value=""
                 class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black transition-colors"
               />
+              <p id="city-error" class="text-[11px] text-red-600 font-medium mt-1 hidden"></p>
             </div>
           </form>
 
           <div class="mt-6 pt-4 border-t border-zinc-100 flex items-center gap-2 text-xs text-zinc-500">
-            <span class="material-symbols-outlined text-green-700 text-base">verified</span>
+            <span class="material-symbols-outlined text-emerald-700 text-base">verified</span>
             <span>BlueDart Air Express priority dispatch is confirmed for this destination.</span>
           </div>
         </div>
 
-        <!-- RIGHT: Order Summary & Interactive Slide to Confirm (5 Cols) -->
+        <!-- RIGHT: Order Summary & Coupon Code & Slide to Confirm (5 Cols) -->
         <aside class="lg:col-span-5 flex flex-col gap-4">
           <div class="bg-white p-5 sm:p-space-lg rounded-xl border border-zinc-200/80 shadow-xs">
-            <h2 class="font-headline text-sm uppercase tracking-wider font-bold text-primary mb-4 pb-2 border-b border-zinc-100">
+            <h2 class="font-headline text-sm uppercase tracking-wider font-bold text-zinc-950 mb-4 pb-2 border-b border-zinc-100">
               Cart Summary (${cart.reduce((s, i) => s + (i.quantity || 1), 0)} items)
             </h2>
 
@@ -171,22 +187,50 @@ export function render(container) {
                 .join('')}
             </div>
 
+            <!-- Promo Code / Coupon Box (Item 13) -->
+            <div class="pt-3 pb-4 border-t border-zinc-100">
+              <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5 font-headline">Promo Code</label>
+              <div class="flex gap-2">
+                <input 
+                  type="text" 
+                  id="coupon-code-input" 
+                  placeholder="e.g. BEAR10" 
+                  class="flex-1 px-3.5 py-2 rounded-lg border border-zinc-200 text-xs font-mono uppercase focus:outline-none focus:border-black tracking-wider transition-colors"
+                />
+                <button 
+                  id="apply-coupon-btn" 
+                  type="button" 
+                  class="px-4 py-2 rounded-lg bg-black text-white text-xs font-bold uppercase font-headline hover:bg-zinc-800 transition-colors cursor-pointer shrink-0"
+                >
+                  Apply
+                </button>
+              </div>
+              <div id="coupon-feedback" class="mt-2 text-[11px] font-semibold hidden"></div>
+            </div>
+
             <!-- Cost Calculations -->
             <div class="flex flex-col gap-2 pt-3 border-t border-zinc-100 text-xs">
               <div class="flex justify-between text-zinc-600">
                 <span>Items Subtotal</span>
-                <span class="text-zinc-950 font-bold font-headline">${formatCurrency(total)}</span>
+                <span class="text-zinc-950 font-bold font-headline">${formatCurrency(subtotal)}</span>
               </div>
+              
+              <div id="discount-row" class="hidden flex justify-between text-emerald-700 font-medium">
+                <span id="discount-label">Coupon Discount</span>
+                <span id="discount-val" class="font-bold font-headline">-₹0</span>
+              </div>
+
               <div class="flex justify-between text-zinc-600">
                 <span>Pan-India Air Express Delivery</span>
-                <span class="text-green-700 font-bold uppercase text-[11px]">FREE (₹0)</span>
+                <span class="text-emerald-700 font-bold uppercase text-[11px]">FREE (₹0)</span>
               </div>
+
               <div class="flex justify-between items-baseline pt-3 mt-1 border-t border-zinc-200">
                 <div>
                   <span class="font-headline text-sm uppercase font-bold text-zinc-950">Total Amount</span>
                   <p class="text-[10px] text-zinc-400">All taxes &amp; duties included</p>
                 </div>
-                <span class="font-headline text-xl font-bold text-zinc-950">${formatCurrency(grandTotal)}</span>
+                <span class="font-headline text-xl font-bold text-zinc-950" id="grand-total-display">${formatCurrency(grandTotal)}</span>
               </div>
             </div>
 
@@ -223,35 +267,168 @@ export function render(container) {
     </div>
   `;
 
-  // Validation function
-  function validateDeliveryInputs() {
-    const fullName = page.querySelector('#full-name')?.value.trim();
-    const mobile = page.querySelector('#mobile-number')?.value.trim();
-    const pincode = page.querySelector('#pin-code')?.value.trim();
-    const address = page.querySelector('#address')?.value.trim();
+  // Coupon Application Logic (Item 13)
+  const couponInput = page.querySelector('#coupon-code-input');
+  const applyCouponBtn = page.querySelector('#apply-coupon-btn');
+  const couponFeedback = page.querySelector('#coupon-feedback');
+  const discountRow = page.querySelector('#discount-row');
+  const discountLabel = page.querySelector('#discount-label');
+  const discountVal = page.querySelector('#discount-val');
+  const grandTotalDisplay = page.querySelector('#grand-total-display');
 
-    if (!fullName || !mobile || !pincode || !address) {
-      showToast('Please fill in your delivery details before sliding', 'error');
-      if (!fullName) page.querySelector('#full-name')?.focus();
-      else if (!mobile) page.querySelector('#mobile-number')?.focus();
-      else if (!address) page.querySelector('#address')?.focus();
-      else if (!pincode) page.querySelector('#pin-code')?.focus();
+  function applyCoupon(code) {
+    const cleanCode = (code || '').toUpperCase().trim();
+    const coupon = COUPONS[cleanCode];
+
+    if (!coupon) {
+      couponFeedback.className = 'mt-2 text-[11px] font-semibold text-red-600 block';
+      couponFeedback.textContent = '✕ Invalid promo code. Try BEAR10 for 10% off.';
+      return;
+    }
+
+    if (coupon.minOrder && subtotal < coupon.minOrder) {
+      couponFeedback.className = 'mt-2 text-[11px] font-semibold text-amber-700 block';
+      couponFeedback.textContent = `✕ Code ${cleanCode} requires a minimum subtotal of ${formatCurrency(coupon.minOrder)}.`;
+      return;
+    }
+
+    activeCoupon = { code: cleanCode, ...coupon };
+    if (coupon.type === 'pct') {
+      discountAmount = Math.round(subtotal * coupon.value);
+    } else {
+      discountAmount = coupon.value;
+    }
+
+    grandTotal = Math.max(0, subtotal - discountAmount);
+
+    couponFeedback.className = 'mt-2 text-[11px] font-semibold text-emerald-700 flex items-center justify-between';
+    couponFeedback.innerHTML = `
+      <span>✓ Applied ${cleanCode}: ${coupon.label}</span>
+      <button id="remove-coupon-btn" class="text-zinc-400 hover:text-black font-bold uppercase underline cursor-pointer ml-2">Remove</button>
+    `;
+
+    discountLabel.textContent = `Coupon (${cleanCode})`;
+    discountVal.textContent = `-${formatCurrency(discountAmount)}`;
+    discountRow.classList.remove('hidden');
+    discountRow.classList.add('flex');
+    grandTotalDisplay.textContent = formatCurrency(grandTotal);
+
+    couponFeedback.querySelector('#remove-coupon-btn')?.addEventListener('click', () => {
+      activeCoupon = null;
+      discountAmount = 0;
+      grandTotal = subtotal;
+      discountRow.classList.add('hidden');
+      discountRow.classList.remove('flex');
+      grandTotalDisplay.textContent = formatCurrency(grandTotal);
+      couponFeedback.className = 'hidden';
+      couponInput.value = '';
+      showToast('Coupon removed', 'info');
+    });
+
+    showToast(`Coupon ${cleanCode} applied! Saved ${formatCurrency(discountAmount)}`, 'success');
+  }
+
+  applyCouponBtn?.addEventListener('click', () => {
+    applyCoupon(couponInput?.value);
+  });
+
+  // Real-Time Inline Form Validation (Item 20)
+  const fullNameInput = page.querySelector('#full-name');
+  const mobileInput = page.querySelector('#mobile-number');
+  const pincodeInput = page.querySelector('#pin-code');
+  const addressInput = page.querySelector('#address');
+  const cityInput = page.querySelector('#city');
+
+  const fullNameErr = page.querySelector('#full-name-error');
+  const mobileErr = page.querySelector('#mobile-error');
+  const pincodeErr = page.querySelector('#pincode-error');
+  const addressErr = page.querySelector('#address-error');
+  const cityErr = page.querySelector('#city-error');
+
+  function validateField(input, errEl, validator, errorMsg) {
+    const val = input.value.trim();
+    const isValid = validator(val);
+    if (!isValid) {
+      input.classList.add('border-red-500', 'bg-red-50/20');
+      input.classList.remove('border-zinc-200');
+      errEl.textContent = errorMsg;
+      errEl.classList.remove('hidden');
+      return false;
+    } else {
+      input.classList.remove('border-red-500', 'bg-red-50/20');
+      input.classList.add('border-zinc-200');
+      errEl.classList.add('hidden');
+      return true;
+    }
+  }
+
+  fullNameInput?.addEventListener('blur', () => {
+    validateField(fullNameInput, fullNameErr, (v) => v.length >= 2, 'Please enter your full legal name');
+  });
+
+  mobileInput?.addEventListener('blur', () => {
+    validateField(mobileInput, mobileErr, (v) => /^[6-9]\d{9}$/.test(v), 'Please enter a valid 10-digit Indian mobile number');
+  });
+
+  pincodeInput?.addEventListener('blur', () => {
+    validateField(pincodeInput, pincodeErr, (v) => /^\d{6}$/.test(v), 'Please enter a valid 6-digit Indian PIN code');
+  });
+
+  addressInput?.addEventListener('blur', () => {
+    validateField(addressInput, addressErr, (v) => v.length >= 5, 'Please enter a complete street address');
+  });
+
+  cityInput?.addEventListener('blur', () => {
+    validateField(cityInput, cityErr, (v) => v.length >= 2, 'Please enter your city / district');
+  });
+
+  function validateAllDeliveryInputs() {
+    const isNameValid = validateField(fullNameInput, fullNameErr, (v) => v.length >= 2, 'Please enter your full legal name');
+    const isMobileValid = validateField(mobileInput, mobileErr, (v) => /^[6-9]\d{9}$/.test(v), 'Please enter a valid 10-digit Indian mobile number');
+    const isPinValid = validateField(pincodeInput, pincodeErr, (v) => /^\d{6}$/.test(v), 'Please enter a valid 6-digit Indian PIN code');
+    const isAddrValid = validateField(addressInput, addressErr, (v) => v.length >= 5, 'Please enter a complete street address');
+    const isCityValid = validateField(cityInput, cityErr, (v) => v.length >= 2, 'Please enter your city / district');
+
+    if (!isNameValid) fullNameInput.focus();
+    else if (!isMobileValid) mobileInput.focus();
+    else if (!isPinValid) pincodeInput.focus();
+    else if (!isAddrValid) addressInput.focus();
+    else if (!isCityValid) cityInput.focus();
+
+    if (!(isNameValid && isMobileValid && isPinValid && isAddrValid && isCityValid)) {
+      showToast('Please fix the highlighted fields before placing your order', 'error');
       return false;
     }
     return true;
   }
 
-  // Unified Order Execution logic with 2-Stage WhatsApp Verification
+  // Unified Order Execution logic with WhatsApp Verification
   async function executeOrderPlacement() {
-    const fullName = page.querySelector('#full-name').value.trim();
-    const mobile = page.querySelector('#mobile-number').value.trim();
-    const pincode = page.querySelector('#pin-code').value.trim();
-    const address = page.querySelector('#address').value.trim();
-    const city = page.querySelector('#city').value.trim();
+    const fullName = fullNameInput.value.trim();
+    const mobile = mobileInput.value.trim();
+    const pincode = pincodeInput.value.trim();
+    const address = addressInput.value.trim();
+    const city = cityInput.value.trim();
     const state = page.querySelector('#state').value.trim();
 
-    const order = await submitOrder(cart, { fullName, mobile, pincode, address, city, state });
-    const waText = generateWhatsAppMessage(order);
+    const order = await submitOrder(cart, {
+      fullName,
+      mobile,
+      pincode,
+      address,
+      city,
+      state,
+      coupon: activeCoupon ? activeCoupon.code : null,
+      discount: discountAmount,
+      grandTotal,
+    });
+
+    const waText = generateWhatsAppMessage({
+      ...order,
+      total: grandTotal,
+      coupon: activeCoupon ? activeCoupon.code : null,
+      discount: discountAmount,
+    });
     const waUrl = `https://wa.me/919605210198?text=${encodeURIComponent(waText)}`;
 
     // Open WhatsApp
@@ -296,6 +473,7 @@ export function render(container) {
             <div class="pt-3 text-xs text-zinc-700 space-y-1">
               <p><strong>Deliver To:</strong> ${fullName} (${mobile})</p>
               <p><strong>Address:</strong> ${address}, ${city}, ${state} — ${pincode}</p>
+              ${activeCoupon ? `<p class="text-emerald-700 font-semibold"><strong>Coupon:</strong> ${activeCoupon.code} (-${formatCurrency(discountAmount)})</p>` : ''}
               <p class="text-sm font-bold text-zinc-950 pt-1">
                 <strong>Total Due:</strong> ${formatCurrency(grandTotal)}
               </p>
@@ -362,6 +540,7 @@ export function render(container) {
             <p class="font-headline text-xs uppercase text-zinc-950 font-bold mb-3 pb-1 border-b border-zinc-200">Shipment Details</p>
             <p class="text-xs text-zinc-700"><strong>Recipient:</strong> ${fullName} (${mobile})</p>
             <p class="text-xs text-zinc-700 mt-1"><strong>Address:</strong> ${address}, ${city}, ${state} — ${pincode}</p>
+            ${activeCoupon ? `<p class="text-xs text-emerald-700 mt-1 font-semibold"><strong>Coupon Applied:</strong> ${activeCoupon.code} (-${formatCurrency(discountAmount)})</p>` : ''}
             <p class="text-xs text-zinc-700 mt-1"><strong>Total Paid / COD:</strong> ${formatCurrency(grandTotal)}</p>
             <p class="text-xs text-green-700 mt-1 font-bold"><strong>Status:</strong> Processing (Standard dispatch via BlueDart Air Express)</p>
           </div>
@@ -373,9 +552,6 @@ export function render(container) {
             <a href="#track-order" class="px-6 py-3 rounded-full border border-zinc-200 text-zinc-800 hover:bg-zinc-100 text-xs font-bold uppercase font-headline no-underline">
               Track Shipment
             </a>
-            <a href="#account" class="px-6 py-3 rounded-full border border-zinc-200 text-zinc-800 hover:bg-zinc-100 text-xs font-bold uppercase font-headline no-underline">
-              View in Orders
-            </a>
           </div>
         </div>
       `;
@@ -384,28 +560,22 @@ export function render(container) {
     renderVerificationPendingScreen();
   }
 
-  // Mount Slide to Confirm Component
-  const sliderMount = page.querySelector('#slide-to-confirm-mount');
-  if (sliderMount) {
+  // Mount Slide to Confirm
+  const slideMount = page.querySelector('#slide-to-confirm-mount');
+  if (slideMount) {
     const slider = createSlideToConfirm({
-      label: `SLIDE TO PAY ${formatCurrency(grandTotal)}`,
-      confirmedLabel: 'CONFIRMED!',
-      mode,
-      validate: validateDeliveryInputs,
-      onConfirm: executeOrderPlacement,
+      onConfirm: async () => {
+        if (!validateAllDeliveryInputs()) return false;
+        await executeOrderPlacement();
+        return true;
+      },
     });
-    sliderMount.appendChild(slider);
+    slideMount.appendChild(slider);
   }
 
-  // Desktop click button handler
-  const desktopBtn = page.querySelector('#place-order-whatsapp-btn');
-  desktopBtn?.addEventListener('click', async () => {
-    if (!validateDeliveryInputs()) return;
-    desktopBtn.disabled = true;
-    desktopBtn.innerHTML = `
-      <span class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
-      <span>PROCESSING...</span>
-    `;
+  // 1-Click WhatsApp CTA fallback button
+  page.querySelector('#place-order-whatsapp-btn')?.addEventListener('click', async () => {
+    if (!validateAllDeliveryInputs()) return;
     await executeOrderPlacement();
   });
 

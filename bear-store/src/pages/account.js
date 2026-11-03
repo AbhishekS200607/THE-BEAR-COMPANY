@@ -14,16 +14,42 @@ import { createProductCard } from '../components/productCard.js';
 import { showToast } from '../components/toast.js';
 
 const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: '⊞' },
-  { id: 'wishlist', label: 'My Wishlist', icon: '♡' },
-  { id: 'orders', label: 'My Orders', icon: '📦' },
-  { id: 'addresses', label: 'My Addresses', icon: '📍' },
-  { id: 'settings', label: 'Settings', icon: '⚙' },
-  { id: 'help', label: 'Help & Support', icon: '?' },
-  { id: 'logout', label: 'Logout', icon: '↩' },
+  { id: 'dashboard', label: 'Dashboard', icon: `<svg class="w-4 h-4 stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-linejoin="round"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-linejoin="round"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-linejoin="round"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-linejoin="round"/></svg>` },
+  { id: 'wishlist', label: 'My Wishlist', icon: `<svg class="w-4 h-4 stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" stroke-linecap="round" stroke-linejoin="round"/></svg>` },
+  { id: 'orders', label: 'My Orders', icon: `<svg class="w-4 h-4 stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 3H8a2 2 0 00-2 2v2h12V5a2 2 0 00-2-2z" stroke-linecap="round" stroke-linejoin="round"/></svg>` },
+  { id: 'addresses', label: 'My Addresses', icon: `<svg class="w-4 h-4 stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="9" r="2.5" stroke-linecap="round"/></svg>` },
+  { id: 'settings', label: 'Settings', icon: `<svg class="w-4 h-4 stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke-linecap="round"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke-linecap="round"/></svg>` },
+  { id: 'help', label: 'Help & Support', icon: `<svg class="w-4 h-4 stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-linecap="round"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg>` },
+  { id: 'logout', label: 'Logout', icon: `<svg class="w-4 h-4 stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" stroke-linecap="round" stroke-linejoin="round"/><polyline points="16 17 21 12 16 7" stroke-linecap="round" stroke-linejoin="round"/><line x1="21" y1="12" x2="9" y2="12" stroke-linecap="round"/></svg>` },
 ];
 
 export async function render(container) {
+  // Render shimmer skeleton during async user & orders fetch (Item 2)
+  container.innerHTML = `
+    <div class="w-full max-w-[1360px] mx-auto px-4 sm:px-6 md:px-gutter-desktop pt-20 md:pt-24 pb-32 animate-pulse">
+      <div class="h-8 bg-zinc-200 rounded w-48 mb-8"></div>
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div class="lg:col-span-3 space-y-2">
+          <div class="h-10 bg-zinc-200 rounded-xl"></div>
+          <div class="h-10 bg-zinc-200 rounded-xl"></div>
+          <div class="h-10 bg-zinc-200 rounded-xl"></div>
+          <div class="h-10 bg-zinc-200 rounded-xl"></div>
+          <div class="h-10 bg-zinc-200 rounded-xl"></div>
+        </div>
+        <div class="lg:col-span-9 space-y-4">
+          <div class="h-24 bg-zinc-200 rounded-xl"></div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="h-20 bg-zinc-200 rounded-xl"></div>
+            <div class="h-20 bg-zinc-200 rounded-xl"></div>
+            <div class="h-20 bg-zinc-200 rounded-xl"></div>
+            <div class="h-20 bg-zinc-200 rounded-xl"></div>
+          </div>
+          <div class="h-64 bg-zinc-200 rounded-xl mt-6"></div>
+        </div>
+      </div>
+    </div>
+  `;
+
   let user = await getDemoUser();
   let orders = await getDemoOrders();
   let addresses = await getDemoAddresses();
@@ -43,7 +69,7 @@ export async function render(container) {
       case 'dashboard':
         return `
           <div class="account-section-title font-headline text-xl font-bold text-zinc-900 mb-4">Account Overview</div>
-          <div class="flex items-center gap-4 bg-white border border-zinc-200 rounded-none sm:rounded-sm p-5 mb-6 shadow-xs">
+          <div class="flex items-center gap-4 bg-white border border-zinc-200 rounded-xl p-5 mb-6 shadow-xs">
             <div class="w-14 h-14 rounded-full bg-black text-white flex items-center justify-center text-xl font-bold flex-shrink-0 font-headline">
               ${user.name.split(' ').map((n) => n[0]).join('').toUpperCase()}
             </div>
@@ -55,26 +81,26 @@ export async function render(container) {
           </div>
 
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-            <div class="bg-zinc-50 rounded-none sm:rounded-sm p-3.5 text-center border border-zinc-200/80 cursor-pointer hover:bg-zinc-100 transition-colors" data-goto="orders">
+            <div class="bg-zinc-50 rounded-xl p-3.5 text-center border border-zinc-200/80 cursor-pointer hover:bg-zinc-100 transition-colors" data-goto="orders">
               <p class="text-2xl font-bold font-headline text-zinc-900">${orders.length}</p>
               <p class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mt-1">Orders</p>
             </div>
-            <div class="bg-zinc-50 rounded-none sm:rounded-sm p-3.5 text-center border border-zinc-200/80 cursor-pointer hover:bg-zinc-100 transition-colors" data-goto="wishlist">
+            <div class="bg-zinc-50 rounded-xl p-3.5 text-center border border-zinc-200/80 cursor-pointer hover:bg-zinc-100 transition-colors" data-goto="wishlist">
               <p class="text-2xl font-bold font-headline text-zinc-900">${wishlistIds.length}</p>
               <p class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mt-1">Wishlist</p>
             </div>
-            <div class="bg-zinc-50 rounded-none sm:rounded-sm p-3.5 text-center border border-zinc-200/80 cursor-pointer hover:bg-zinc-100 transition-colors" data-goto="addresses">
+            <div class="bg-zinc-50 rounded-xl p-3.5 text-center border border-zinc-200/80 cursor-pointer hover:bg-zinc-100 transition-colors" data-goto="addresses">
               <p class="text-2xl font-bold font-headline text-zinc-900">${addresses.length}</p>
               <p class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mt-1">Addresses</p>
             </div>
-            <div class="bg-zinc-50 rounded-none sm:rounded-sm p-3.5 text-center border border-zinc-200/80">
+            <div class="bg-zinc-50 rounded-xl p-3.5 text-center border border-zinc-200/80">
               <p class="text-2xl font-bold font-headline text-zinc-900">${user.bearPoints}</p>
               <p class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mt-1">BEAR Points</p>
             </div>
           </div>
 
           <!-- Quick Wishlist Preview Section -->
-          <div class="bg-white border border-zinc-200 rounded-none sm:rounded-sm p-5 mb-6 shadow-xs">
+          <div class="bg-white border border-zinc-200 rounded-xl p-5 mb-6 shadow-xs">
             <div class="flex items-center justify-between mb-3">
               <div class="flex items-center gap-2">
                 <span class="text-red-500 text-lg">♥</span>
@@ -273,7 +299,10 @@ export async function render(container) {
                   <p class="text-xs font-bold text-zinc-900">${addr.fullName}</p>
                   <p class="text-xs text-zinc-500">${addr.line1}</p>
                   <p class="text-xs text-zinc-500">${addr.city}, ${addr.state} — ${addr.pincode}</p>
-                  <p class="text-xs text-zinc-500 mt-1">📞 ${addr.phone}</p>
+                  <p class="text-xs text-zinc-500 mt-1 flex items-center gap-1">
+                    <svg class="w-3 h-3 stroke-[2] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.01 1.18 2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92v2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    ${addr.phone}
+                  </p>
                 </div>
               `
                     )
@@ -333,7 +362,7 @@ export async function render(container) {
         <!-- Breadcrumb / Back Navigation -->
         <div class="mb-3 flex items-center gap-2">
           <a href="#" class="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-500 hover:text-black transition-colors no-underline">
-            <span class="material-symbols-outlined text-[16px]">arrow_back</span>
+            <svg class="w-3.5 h-3.5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span>Back to Store</span>
           </a>
         </div>
@@ -353,7 +382,7 @@ export async function render(container) {
                 `<button class="w-full text-left px-4 py-3 rounded-none sm:rounded-sm text-xs font-bold transition-all flex items-center gap-3 cursor-pointer ${
                   activeSection === item.id ? 'bg-black text-white shadow-xs' : 'text-zinc-600 hover:text-black hover:bg-zinc-50'
                 }" data-section="${item.id}">
-                  <span class="text-base">${item.icon}</span>
+                  ${item.icon}
                   <span>${item.label}</span>
                 </button>`
             ).join('')}

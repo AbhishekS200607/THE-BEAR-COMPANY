@@ -1,11 +1,19 @@
 import { getCart, getCartTotal, removeFromCart, updateCartQty, subscribe, setState } from '../state/store.js';
 import { formatCurrency } from '../utils/formatCurrency.js';
 import { trapFocus, releaseFocus } from '../utils/accessibility.js';
+import { renderEmptyIllustration } from './emptyState.js';
 
 let drawer = null;
 let overlay = null;
 let previousFocus = null;
 let releaseTrap = null;
+
+// Touch tracking for swipe-to-close gesture (Item 19)
+let touchStartX = 0;
+let touchStartY = 0;
+let touchCurrentX = 0;
+
+const FREE_SHIPPING_THRESHOLD = 1999;
 
 function makePlaceholderSVG(name, mode = 'bear') {
   const bg = mode === 'sow' ? '#EFE7DF' : '#F0F0EE';
@@ -22,7 +30,7 @@ export function mount(container) {
   overlay.addEventListener('click', close);
 
   drawer = document.createElement('aside');
-  drawer.className = 'fixed top-0 right-0 bottom-0 w-full max-w-md bg-surface-container-lowest z-50 shadow-2xl flex flex-col transform translate-x-full transition-transform duration-300 ease-out border-l border-outline-variant/30';
+  drawer.className = 'fixed top-0 right-0 bottom-0 w-full max-w-md bg-white z-50 shadow-2xl flex flex-col transform translate-x-full transition-transform duration-300 ease-out border-l border-zinc-200 select-none';
   drawer.id = 'cart-drawer';
   drawer.setAttribute('role', 'dialog');
   drawer.setAttribute('aria-modal', 'true');
@@ -34,54 +42,80 @@ export function mount(container) {
     const total = getCartTotal();
     const itemCount = cart.reduce((s, i) => s + (i.quantity || 1), 0);
 
+    const progressPct = Math.min(100, Math.round((total / FREE_SHIPPING_THRESHOLD) * 100));
+    const amountAway = FREE_SHIPPING_THRESHOLD - total;
+
     drawer.innerHTML = `
       <!-- Drawer Header -->
-      <div class="p-space-lg border-b border-outline-variant/30 flex items-center justify-between">
-        <div class="flex items-center gap-space-xs">
-          <span class="material-symbols-outlined text-[22px] text-primary">shopping_bag</span>
-          <h2 class="font-headline-md text-headline-md font-bold uppercase tracking-tight text-primary font-headline" id="cart-drawer-title">
+      <div class="p-4 sm:p-5 border-b border-zinc-100 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[20px] text-zinc-950">shopping_bag</span>
+          <h2 class="font-headline text-base font-extrabold uppercase tracking-tight text-zinc-950" id="cart-drawer-title">
             Your Bag (${itemCount})
           </h2>
         </div>
-        <button class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors cursor-pointer" id="cart-close-btn" aria-label="Close cart">
+        <button class="w-8 h-8 rounded-full flex items-center justify-center text-zinc-400 hover:text-black hover:bg-zinc-100 transition-colors cursor-pointer" id="cart-close-btn" aria-label="Close cart">
           <span class="material-symbols-outlined text-[20px]">close</span>
         </button>
       </div>
 
+      <!-- Free Shipping Upsell Progress Bar (Item 12) -->
+      ${
+        cart.length > 0
+          ? `
+          <div class="px-5 py-3 bg-zinc-50 border-b border-zinc-100 text-xs">
+            <div class="flex items-center justify-between mb-1.5 font-headline">
+              <span class="text-[11px] font-bold text-zinc-700">
+                ${
+                  amountAway > 0
+                    ? `Add <strong class="text-zinc-950 font-black">${formatCurrency(amountAway)}</strong> more for Free Air Express`
+                    : `🎉 <strong class="text-emerald-700 font-bold uppercase">Free Pan-India Air Express Unlocked!</strong>`
+                }
+              </span>
+              <span class="text-[10px] font-bold text-zinc-400 font-mono">${progressPct}%</span>
+            </div>
+            <div class="w-full h-1.5 bg-zinc-200 rounded-full overflow-hidden">
+              <div class="h-full bg-black rounded-full transition-all duration-300" style="width: ${progressPct}%"></div>
+            </div>
+          </div>
+        `
+          : ''
+      }
+
       <!-- Drawer Body -->
-      <div class="flex-1 overflow-y-auto p-space-lg no-scrollbar">
+      <div class="flex-1 overflow-y-auto p-4 sm:p-5 no-scrollbar">
         ${
           cart.length === 0
             ? `<div class="py-16 text-center">
-                <span class="material-symbols-outlined text-5xl text-outline mb-2">shopping_bag</span>
-                <h3 class="font-headline-sm text-headline-sm font-bold uppercase text-primary mb-1 font-headline">Your Bag Is Empty</h3>
-                <p class="text-sm text-on-surface-variant mb-4">Add your favorite athletic pieces to start training in BEAR.</p>
-                <button class="px-space-lg py-space-xs rounded-full bg-primary text-on-primary font-headline-sm uppercase text-xs font-bold font-headline" id="cart-shop-btn">
-                  Shop Now
+                ${renderEmptyIllustration('bag')}
+                <h3 class="font-headline text-base font-extrabold uppercase text-zinc-950 mb-1">Your Bag Is Empty</h3>
+                <p class="text-xs text-zinc-500 mb-6 max-w-xs mx-auto">Explore high-performance garments engineered for discipline and daily training.</p>
+                <button class="px-6 py-2.5 rounded-full bg-black text-white font-headline text-xs uppercase font-bold tracking-wider hover:bg-zinc-800 transition-colors cursor-pointer shadow-sm" id="cart-shop-btn">
+                  Explore Collection
                 </button>
               </div>`
-            : `<div class="flex flex-col divide-y divide-outline-variant/30">
+            : `<div class="flex flex-col divide-y divide-zinc-100">
                 ${cart
                   .map((item) => {
                     const img = item.image || (item.images && item.images[0]) || '';
                     return `
-                    <div class="py-4 flex gap-space-md items-center">
-                      <div class="w-16 h-20 rounded-lg bg-surface-container overflow-hidden shrink-0 border border-outline-variant/30">
+                    <div class="py-3.5 flex gap-3 items-center">
+                      <div class="w-16 h-20 rounded-lg bg-zinc-100 overflow-hidden shrink-0 border border-zinc-200">
                         ${img ? `<img src="${img}" alt="${item.name}" class="w-full h-full object-cover" />` : makePlaceholderSVG(item.name, item.mode)}
                       </div>
                       <div class="flex-1 min-w-0">
-                        <p class="font-headline-sm text-sm uppercase font-bold text-primary truncate font-headline">${item.name}</p>
-                        <p class="text-xs text-on-surface-variant mb-2">${item.colour} • Size ${item.size}</p>
+                        <p class="text-xs font-bold text-zinc-950 truncate font-headline">${item.name}</p>
+                        <p class="text-[11px] text-zinc-400 mb-2">${item.colour} • Size ${item.size}</p>
                         <div class="flex items-center justify-between">
-                          <div class="flex items-center border border-outline-variant rounded-full px-1.5 py-0.5 bg-surface-container-low text-xs">
-                            <button class="cart-qty-btn px-1.5 text-primary hover:text-black font-bold" data-action="dec" data-id="${item.id}" data-size="${item.size}" data-color="${item.colour}">-</button>
+                          <div class="flex items-center border border-zinc-200 rounded-full px-2 py-0.5 bg-zinc-50 text-xs">
+                            <button class="cart-qty-btn px-1 text-zinc-700 hover:text-black font-bold cursor-pointer" data-action="dec" data-id="${item.id}" data-size="${item.size}" data-color="${item.colour}">-</button>
                             <span class="px-2 font-bold font-headline">${item.quantity}</span>
-                            <button class="cart-qty-btn px-1.5 text-primary hover:text-black font-bold" data-action="inc" data-id="${item.id}" data-size="${item.size}" data-color="${item.colour}">+</button>
+                            <button class="cart-qty-btn px-1 text-zinc-700 hover:text-black font-bold cursor-pointer" data-action="inc" data-id="${item.id}" data-size="${item.size}" data-color="${item.colour}">+</button>
                           </div>
-                          <span class="font-price-card text-sm font-bold text-primary font-headline">${formatCurrency(item.price * item.quantity)}</span>
+                          <span class="text-xs font-bold text-zinc-950 font-headline">${formatCurrency(item.price * item.quantity)}</span>
                         </div>
                       </div>
-                      <button class="cart-remove-btn text-on-surface-variant hover:text-error p-1 transition-colors cursor-pointer" data-id="${item.id}" data-size="${item.size}" data-color="${item.colour}" title="Remove item">
+                      <button class="cart-remove-btn text-zinc-300 hover:text-red-600 p-1 transition-colors cursor-pointer" data-id="${item.id}" data-size="${item.size}" data-color="${item.colour}" title="Remove item">
                         <span class="material-symbols-outlined text-[18px]">delete</span>
                       </button>
                     </div>
@@ -95,16 +129,16 @@ export function mount(container) {
       <!-- Drawer Footer -->
       ${
         cart.length > 0
-          ? `<div class="p-space-lg border-t border-outline-variant/30 bg-surface-container-low/50">
-              <div class="flex justify-between font-headline-sm text-sm uppercase text-on-surface-variant mb-1 font-headline">
-                <span>Subtotal</span>
-                <span class="text-primary font-bold">${formatCurrency(total)}</span>
+          ? `<div class="p-4 sm:p-5 border-t border-zinc-100 bg-zinc-50">
+              <div class="flex justify-between text-xs text-zinc-600 mb-1 font-headline">
+                <span>Items Subtotal</span>
+                <span class="text-zinc-950 font-bold font-headline">${formatCurrency(total)}</span>
               </div>
-              <div class="flex justify-between text-xs text-on-surface-variant mb-3">
-                <span>Pan-India Shipping</span>
-                <span class="text-green-700 font-bold uppercase">${total >= 1999 ? 'FREE' : 'Calculated at checkout'}</span>
+              <div class="flex justify-between text-xs text-zinc-600 mb-4">
+                <span>Pan-India Priority Air</span>
+                <span class="text-emerald-700 font-bold uppercase text-[11px]">FREE (₹0)</span>
               </div>
-              <a href="#checkout" id="cart-proceed-btn" class="w-full py-3.5 px-space-xl rounded-full bg-primary hover:opacity-95 text-on-primary font-headline-sm text-sm font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all font-headline cursor-pointer">
+              <a href="#checkout" id="cart-proceed-btn" class="w-full py-3.5 px-6 rounded-full bg-black hover:bg-zinc-800 text-white font-headline text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg active:scale-98 transition-all cursor-pointer no-underline">
                 <span>PROCEED TO CHECKOUT</span>
                 <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
               </a>
@@ -151,6 +185,7 @@ export function mount(container) {
     render();
     overlay.classList.remove('opacity-0', 'pointer-events-none');
     drawer.classList.remove('translate-x-full');
+    drawer.style.transform = '';
     document.body.classList.add('overflow-hidden');
     releaseTrap = trapFocus(drawer);
   }
@@ -158,12 +193,49 @@ export function mount(container) {
   function close() {
     drawer.classList.add('translate-x-full');
     overlay.classList.add('opacity-0', 'pointer-events-none');
+    drawer.style.transform = '';
     document.body.classList.remove('overflow-hidden');
     drawer.setAttribute('aria-hidden', 'true');
     if (releaseTrap) releaseTrap();
     setTimeout(() => releaseFocus(previousFocus), 300);
     setState({ cartOpen: false });
   }
+
+  // Mobile Swipe Gesture Event Listeners (Item 19)
+  drawer.addEventListener(
+    'touchstart',
+    (e) => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      touchCurrentX = touchStartX;
+    },
+    { passive: true }
+  );
+
+  drawer.addEventListener(
+    'touchmove',
+    (e) => {
+      touchCurrentX = e.touches[0].clientX;
+      const deltaX = touchCurrentX - touchStartX;
+      const deltaY = Math.abs(e.touches[0].clientY - touchStartY);
+
+      // Horizontal swipe to right (closing direction)
+      if (deltaX > 0 && deltaX > deltaY) {
+        drawer.style.transform = `translateX(${deltaX}px)`;
+      }
+    },
+    { passive: true }
+  );
+
+  drawer.addEventListener('touchend', () => {
+    const deltaX = touchCurrentX - touchStartX;
+    if (deltaX > 75) {
+      close();
+    } else {
+      // Snap back
+      drawer.style.transform = '';
+    }
+  });
 
   drawer.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') close();

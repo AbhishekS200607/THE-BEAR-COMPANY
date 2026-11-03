@@ -1,16 +1,22 @@
 /**
  * PIN & Live Order Tracking Page
+ * Dynamic BlueDart Air Express logistics tracker & Indian PIN code serviceability checker.
  */
+
+import { getDemoOrders } from '../services/accountService.js';
+import { formatCurrency } from '../utils/formatCurrency.js';
+import { showToast } from '../components/toast.js';
+
 export function render(container) {
   const page = document.createElement('div');
-  page.className = 'w-full max-w-[900px] mx-auto px-4 sm:px-6 md:px-8 pt-20 md:pt-28 pb-32 md:pb-16 text-zinc-900';
+  page.className = 'w-full max-w-[920px] mx-auto px-4 sm:px-6 md:px-8 pt-20 md:pt-28 pb-32 md:pb-16 text-zinc-900';
 
   page.innerHTML = `
     <!-- Header -->
     <div class="text-center max-w-xl mx-auto mb-10">
-      <p class="font-headline text-xs font-bold uppercase tracking-widest text-zinc-400 mb-2">LOGISTICS &amp; TRANSIT</p>
+      <p class="font-headline text-xs font-bold uppercase tracking-widest text-zinc-400 mb-2">LOGISTICS &amp; AIR DISPATCH</p>
       <h1 class="font-headline text-2xl sm:text-4xl font-extrabold uppercase tracking-tight text-zinc-950">Track Your Drop</h1>
-      <p class="text-xs sm:text-sm text-zinc-500 mt-2">Enter your 4-digit order number or check delivery speed for your Indian PIN code.</p>
+      <p class="text-xs sm:text-sm text-zinc-500 mt-2">Enter your BEAR order reference or verify express transit speed for your Indian PIN code.</p>
     </div>
 
     <!-- Dual Tab System: Track by Order OR Check PIN Code -->
@@ -19,98 +25,85 @@ export function render(container) {
         Track Existing Order
       </button>
       <button id="tab-btn-pincode" class="px-5 py-2 rounded-full text-xs font-bold font-headline uppercase tracking-wider bg-zinc-100 text-zinc-600 hover:text-black transition-colors cursor-pointer">
-        Check PIN Transit Time
+        Check PIN Serviceability
       </button>
     </div>
 
     <!-- Panel 1: Order Tracking -->
-    <div id="panel-order" class="bg-white border border-zinc-200 rounded-none sm:rounded-sm p-5 sm:p-8 shadow-xs">
-      <h2 class="font-headline text-sm font-bold uppercase tracking-wider text-zinc-950 mb-4 pb-2 border-b border-zinc-100">Live Order Status</h2>
+    <div id="panel-order" class="bg-white border border-zinc-200 rounded-2xl p-5 sm:p-8 shadow-xs">
+      <h2 class="font-headline text-sm font-bold uppercase tracking-wider text-zinc-950 mb-4 pb-2 border-b border-zinc-100 flex items-center gap-2">
+        <span class="material-symbols-outlined text-[18px]">local_shipping</span>
+        <span>Live Order Tracking</span>
+      </h2>
+
       <form id="track-order-form" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1 font-headline">Order ID</label>
-          <input type="text" id="track-order-id" placeholder="e.g. BEAR-1049 or 1049" required value="BEAR-1049" class="w-full px-3.5 py-2.5 rounded-none sm:rounded-sm border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black font-mono" />
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1 font-headline">Order Reference *</label>
+          <input 
+            type="text" 
+            id="track-order-id" 
+            placeholder="e.g. BEAR-2026-104928" 
+            required 
+            value="" 
+            class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black font-mono transition-colors" 
+          />
         </div>
         <div>
-          <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1 font-headline">Phone / WhatsApp Number</label>
-          <input type="tel" id="track-phone" placeholder="10-digit mobile number" required value="9876543210" class="w-full px-3.5 py-2.5 rounded-none sm:rounded-sm border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black font-mono" />
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1 font-headline">Phone / WhatsApp Number *</label>
+          <input 
+            type="tel" 
+            id="track-phone" 
+            placeholder="10-digit mobile number" 
+            required 
+            maxlength="10"
+            value="" 
+            class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black font-mono transition-colors" 
+          />
         </div>
-        <div class="sm:col-span-2 pt-2">
-          <button type="submit" class="w-full py-3 bg-black text-white rounded-full font-headline text-xs font-bold uppercase tracking-wider hover:bg-zinc-800 transition-colors shadow-sm cursor-pointer">
-            Track Shipment
+        <div class="sm:col-span-2 pt-1">
+          <button type="submit" class="w-full py-3 bg-black text-white rounded-full font-headline text-xs font-bold uppercase tracking-wider hover:bg-zinc-800 transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-[18px]">travel_explore</span>
+            <span>Locate Shipment</span>
           </button>
         </div>
       </form>
 
-      <!-- Live Tracking Result Container -->
-      <div id="tracking-result" class="mt-8 pt-6 border-t border-zinc-100">
-        <div class="flex flex-wrap items-center justify-between gap-3 bg-zinc-50 p-4 rounded-none sm:rounded-sm border border-zinc-200 mb-6">
-          <div>
-            <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400 font-headline">Air Courier AWB</span>
-            <p class="font-mono text-xs font-bold text-zinc-900">BLUEDART AIR • BD8942109IN</p>
-          </div>
-          <div>
-            <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400 font-headline">Estimated Delivery</span>
-            <p class="text-xs font-bold text-green-700">Tomorrow by 8:00 PM</p>
-          </div>
-          <div>
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase font-headline">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>In Transit</span>
-            </span>
-          </div>
-        </div>
-
-        <!-- Stepper -->
-        <div class="relative pl-6 space-y-6 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-zinc-200">
-          <!-- Step 1 -->
-          <div class="relative">
-            <span class="absolute -left-6 top-1 w-4 h-4 rounded-full bg-black text-white flex items-center justify-center text-[10px]">✓</span>
-            <p class="text-xs font-bold text-zinc-900 font-headline">Order Confirmed &amp; Payment Verified</p>
-            <p class="text-[11px] text-zinc-500">BEAR Fulfillment Central — Nov 03, 14:20 IST</p>
-          </div>
-          <!-- Step 2 -->
-          <div class="relative">
-            <span class="absolute -left-6 top-1 w-4 h-4 rounded-full bg-black text-white flex items-center justify-center text-[10px]">✓</span>
-            <p class="text-xs font-bold text-zinc-900 font-headline">Dispatched via BlueDart Express Air</p>
-            <p class="text-[11px] text-zinc-500">Bengaluru Air Freight Hub — Nov 03, 19:45 IST</p>
-          </div>
-          <!-- Step 3 -->
-          <div class="relative">
-            <span class="absolute -left-6 top-1 w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">●</span>
-            <p class="text-xs font-bold text-emerald-700 font-headline">In Transit — Arrived at Regional Gateway</p>
-            <p class="text-[11px] text-zinc-500">Sorting Center — Live Update</p>
-          </div>
-          <!-- Step 4 -->
-          <div class="relative">
-            <span class="absolute -left-6 top-1 w-4 h-4 rounded-full bg-zinc-200 text-zinc-400 flex items-center justify-center text-[10px]">○</span>
-            <p class="text-xs font-bold text-zinc-400 font-headline">Out for Doorstep Delivery</p>
-            <p class="text-[11px] text-zinc-400">Scheduled for Tomorrow</p>
-          </div>
-        </div>
-      </div>
+      <!-- Live Tracking Result Container (Hidden until search) -->
+      <div id="tracking-result-mount" class="mt-8 pt-6 border-t border-zinc-100 hidden"></div>
     </div>
 
     <!-- Panel 2: PIN Code Lookup (Hidden by default) -->
-    <div id="panel-pincode" class="hidden bg-white border border-zinc-200 rounded-none sm:rounded-sm p-5 sm:p-8 shadow-xs">
-      <h2 class="font-headline text-sm font-bold uppercase tracking-wider text-zinc-950 mb-4 pb-2 border-b border-zinc-100">Check PIN Code Serviceability</h2>
+    <div id="panel-pincode" class="hidden bg-white border border-zinc-200 rounded-2xl p-5 sm:p-8 shadow-xs">
+      <h2 class="font-headline text-sm font-bold uppercase tracking-wider text-zinc-950 mb-4 pb-2 border-b border-zinc-100 flex items-center gap-2">
+        <span class="material-symbols-outlined text-[18px]">pin_drop</span>
+        <span>Check PIN Code Serviceability</span>
+      </h2>
+      <p class="text-xs text-zinc-500 mb-4">We deliver across 19,000+ Indian PIN codes via BlueDart Express Air cargo.</p>
+      
       <form id="pincode-form" class="flex flex-col sm:flex-row gap-3">
-        <input type="text" id="pincode-input" maxlength="6" placeholder="Enter 6-digit Indian PIN Code (e.g. 560001)" required class="flex-1 px-4 py-2.5 rounded-none sm:rounded-sm border border-zinc-200 text-xs text-zinc-900 font-mono focus:outline-none focus:border-black" />
+        <input 
+          type="text" 
+          id="pincode-input" 
+          maxlength="6" 
+          placeholder="Enter 6-digit Indian PIN Code (e.g. 560001, 110001)" 
+          required 
+          class="flex-1 px-4 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 font-mono focus:outline-none focus:border-black transition-colors" 
+        />
         <button type="submit" class="px-6 py-2.5 bg-black text-white rounded-full font-headline text-xs font-bold uppercase tracking-wider hover:bg-zinc-800 transition-colors shadow-sm cursor-pointer shrink-0">
           Check Speed
         </button>
       </form>
 
       <div id="pincode-result" class="mt-6 pt-4 border-t border-zinc-100 hidden">
-        <div class="p-4 rounded-none sm:rounded-sm bg-green-50 border border-green-200 flex items-start gap-3">
-          <span class="material-symbols-outlined text-green-700 text-xl">verified</span>
+        <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-3">
+          <span class="material-symbols-outlined text-emerald-700 text-xl">verified</span>
           <div>
-            <p class="font-headline text-xs font-bold text-green-900 uppercase">Express Delivery Available</p>
-            <p class="text-xs text-green-800 mt-0.5" id="pincode-msg">PIN Code 560001 is serviced via BlueDart Air Express. Guaranteed dispatch within 24 hours.</p>
-            <div class="flex items-center gap-4 mt-2 text-[11px] text-green-900 font-medium">
-              <span>⚡ Air Express: 24-48 Hrs</span>
-              <span>💵 Cash on Delivery: Active</span>
-              <span>🔄 7-Day Swaps: Supported</span>
+            <p class="font-headline text-xs font-bold text-emerald-950 uppercase">Express Air Service Active</p>
+            <p class="text-xs text-emerald-800 mt-0.5" id="pincode-msg">PIN Code is serviced directly via BlueDart Air Express.</p>
+            <div class="flex items-center gap-4 mt-2 text-[11px] text-emerald-900 font-medium flex-wrap">
+              <span>⚡ Air Express: 24–48 Hours</span>
+              <span>💵 Cash on Delivery (COD): Active</span>
+              <span>🔄 7-Day Doorstep Swaps: Active</span>
             </div>
           </div>
         </div>
@@ -138,16 +131,104 @@ export function render(container) {
     panelOrder.classList.add('hidden');
   });
 
-  // Track Order form
+  // Track Order Form Execution
   const trackForm = page.querySelector('#track-order-form');
-  const trackResult = page.querySelector('#tracking-result');
-  trackForm?.addEventListener('submit', (e) => {
+  const trackResultMount = page.querySelector('#tracking-result-mount');
+
+  trackForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    trackResult?.classList.remove('hidden');
-    trackResult?.scrollIntoView({ behavior: 'smooth' });
+    const orderIdInput = page.querySelector('#track-order-id')?.value.trim();
+    const phoneInput = page.querySelector('#track-phone')?.value.trim();
+
+    if (!orderIdInput || !phoneInput) {
+      showToast('Please enter both Order ID and Phone Number', 'error');
+      return;
+    }
+
+    // Loading skeleton placeholder
+    trackResultMount.classList.remove('hidden');
+    trackResultMount.innerHTML = `
+      <div class="animate-pulse space-y-4">
+        <div class="h-16 bg-zinc-100 rounded-xl"></div>
+        <div class="h-4 bg-zinc-100 rounded w-1/2"></div>
+        <div class="h-20 bg-zinc-100 rounded-xl"></div>
+      </div>
+    `;
+
+    const allOrders = await getDemoOrders();
+    const cleanId = orderIdInput.toUpperCase();
+    const matched = allOrders.find(
+      (o) =>
+        (o.id && o.id.toUpperCase().includes(cleanId)) ||
+        (o.orderNumber && o.orderNumber.toUpperCase().includes(cleanId)) ||
+        cleanId === 'DEMO' ||
+        cleanId.includes('1049')
+    );
+
+    setTimeout(() => {
+      const orderRef = matched ? matched.orderNumber || matched.id : orderIdInput.toUpperCase();
+      const orderTotal = matched ? matched.total : 2499;
+      const awbNumber = `BD${Math.floor(Math.random() * 8999999) + 1000000}IN`;
+
+      trackResultMount.innerHTML = `
+        <!-- Logistics Banner -->
+        <div class="flex flex-wrap items-center justify-between gap-3 bg-zinc-50 p-4 sm:p-5 rounded-xl border border-zinc-200 mb-6">
+          <div>
+            <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400 font-headline">Order Reference</span>
+            <p class="font-mono text-xs font-bold text-zinc-950">${orderRef}</p>
+          </div>
+          <div>
+            <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400 font-headline">Air Courier AWB</span>
+            <p class="font-mono text-xs font-bold text-zinc-900">BLUEDART AIR • ${awbNumber}</p>
+          </div>
+          <div>
+            <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400 font-headline">Status</span>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase font-headline mt-0.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>In Transit (Air Express)</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- 4-Stage BlueDart Transit Stepper (Item 14) -->
+        <div class="relative pl-6 space-y-6 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-zinc-200 mb-6">
+          <!-- Step 1 -->
+          <div class="relative">
+            <span class="absolute -left-6 top-1 w-4 h-4 rounded-full bg-black text-white flex items-center justify-center text-[10px] font-bold">✓</span>
+            <p class="text-xs font-bold text-zinc-950 font-headline">Order Confirmed &amp; Stock Reserved</p>
+            <p class="text-[11px] text-zinc-500">BEAR Fulfillment Central — Verified via WhatsApp</p>
+          </div>
+          <!-- Step 2 -->
+          <div class="relative">
+            <span class="absolute -left-6 top-1 w-4 h-4 rounded-full bg-black text-white flex items-center justify-center text-[10px] font-bold">✓</span>
+            <p class="text-xs font-bold text-zinc-950 font-headline">Dispatched via BlueDart Express Air</p>
+            <p class="text-[11px] text-zinc-500">Bengaluru Kempegowda Cargo Terminal — Manifest Recorded</p>
+          </div>
+          <!-- Step 3 -->
+          <div class="relative">
+            <span class="absolute -left-6 top-1 w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">●</span>
+            <p class="text-xs font-bold text-emerald-700 font-headline">In Transit — Reached Destination City Gateway</p>
+            <p class="text-[11px] text-zinc-500">Regional Air Hub — Out for Sorting</p>
+          </div>
+          <!-- Step 4 -->
+          <div class="relative">
+            <span class="absolute -left-6 top-1 w-4 h-4 rounded-full bg-zinc-200 text-zinc-400 flex items-center justify-center text-[10px] font-bold">○</span>
+            <p class="text-xs font-bold text-zinc-400 font-headline">Out for Doorstep Delivery</p>
+            <p class="text-[11px] text-zinc-400">Courier assigned for doorstep arrival</p>
+          </div>
+        </div>
+
+        <!-- Support note -->
+        <div class="p-3 bg-zinc-50 rounded-xl border border-zinc-200 text-xs text-zinc-600 flex items-center justify-between">
+          <span>Need to reschedule or update delivery address?</span>
+          <a href="https://wa.me/919605210198?text=Hi%20BEAR!%20Need%20to%20update%20address%20for%20order%20${encodeURIComponent(orderRef)}" target="_blank" class="text-black font-bold uppercase font-headline underline ml-2">Chat on WhatsApp</a>
+        </div>
+      `;
+      trackResultMount.scrollIntoView({ behavior: 'smooth' });
+    }, 350);
   });
 
-  // PIN code form
+  // PIN Code Form Execution
   const pinForm = page.querySelector('#pincode-form');
   const pinResult = page.querySelector('#pincode-result');
   const pinInput = page.querySelector('#pincode-input');
@@ -156,9 +237,11 @@ export function render(container) {
   pinForm?.addEventListener('submit', (e) => {
     e.preventDefault();
     const pin = pinInput.value.trim();
-    if (pin.length === 6) {
-      pinMsg.textContent = `PIN Code ${pin} is fully covered by our Air Express logistics network. Dispatches within 24 hours.`;
+    if (pin.length === 6 && /^\d{6}$/.test(pin)) {
+      pinMsg.textContent = `PIN Code ${pin} is serviced via BlueDart Air Express. Complimentary standard air shipping confirmed.`;
       pinResult?.classList.remove('hidden');
+    } else {
+      showToast('Please enter a valid 6-digit Indian PIN code', 'error');
     }
   });
 
@@ -167,4 +250,3 @@ export function render(container) {
 }
 
 export default { render };
-

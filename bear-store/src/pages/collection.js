@@ -1,6 +1,7 @@
 import { getMode, subscribe } from '../state/store.js';
 import { getProducts } from '../services/productService.js';
 import { createProductCard } from '../components/productCard.js';
+import { renderEmptyIllustration } from '../components/emptyState.js';
 
 export async function render(container) {
   let mode = getMode();
@@ -9,8 +10,14 @@ export async function render(container) {
   let selectedColours = [];
   let sortOrder = 'featured';
 
+  // Pagination / Infinite Scroll State (Item 3)
+  const PAGE_SIZE = 8;
+  let visibleCount = PAGE_SIZE;
+
   const page = document.createElement('div');
   page.className = 'w-full flex flex-col pt-20 md:pt-24 pb-32';
+
+  let currentFilteredProducts = [];
 
   async function updateGrid() {
     const allProducts = await getProducts(mode);
@@ -43,34 +50,131 @@ export async function render(container) {
       filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
     }
 
-    const grid = page.querySelector('#collection-products-grid');
+    currentFilteredProducts = filtered;
+
     const countEl = page.querySelector('#collection-count');
     if (countEl) countEl.textContent = `${filtered.length} Items`;
 
-    if (grid) {
-      grid.innerHTML = '';
-      if (filtered.length === 0) {
-        grid.innerHTML = `
-          <div class="col-span-full py-16 text-center">
-            <span class="material-symbols-outlined text-4xl text-zinc-400 mb-2">inventory_2</span>
-            <p class="font-headline text-base font-bold text-zinc-900">No products match your filters</p>
-            <p class="text-xs text-zinc-500 mt-1">Try resetting size or category filters to view all pieces.</p>
-            <button id="empty-reset-btn" class="mt-4 px-4 py-1.5 rounded-full bg-black text-white text-xs font-bold">Reset Filters</button>
-          </div>
-        `;
-        grid.querySelector('#empty-reset-btn')?.addEventListener('click', () => {
-          selectedCategory = 'all';
-          selectedSizes = [];
-          selectedColours = [];
+    renderActiveFilterChips();
+    renderProductsBatch();
+  }
+
+  // Active Filter Summary Bar (Item 11)
+  function renderActiveFilterChips() {
+    const bar = page.querySelector('#active-filters-bar');
+    const chipsMount = page.querySelector('#active-chips-mount');
+    const badge = page.querySelector('#filter-count-badge');
+    if (!bar || !chipsMount) return;
+
+    const activeFilters = [];
+    if (selectedCategory !== 'all') {
+      activeFilters.push({ type: 'category', label: `Category: ${selectedCategory.toUpperCase()}`, value: selectedCategory });
+    }
+    selectedSizes.forEach((s) => {
+      activeFilters.push({ type: 'size', label: `Size: ${s}`, value: s });
+    });
+    selectedColours.forEach((c) => {
+      activeFilters.push({ type: 'colour', label: `Colour: ${c}`, value: c });
+    });
+
+    if (activeFilters.length > 0) {
+      bar.classList.remove('hidden');
+      if (badge) {
+        badge.textContent = `(${activeFilters.length})`;
+        badge.classList.remove('hidden');
+      }
+
+      chipsMount.innerHTML = activeFilters
+        .map(
+          (f) => `
+          <button class="remove-filter-chip inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 hover:bg-zinc-200 text-xs font-semibold text-zinc-800 transition-colors cursor-pointer" data-type="${f.type}" data-value="${f.value}">
+            <span>${f.label}</span>
+            <span class="text-zinc-400 hover:text-black">✕</span>
+          </button>
+        `
+        )
+        .join('');
+
+      chipsMount.querySelectorAll('.remove-filter-chip').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const type = btn.dataset.type;
+          const val = btn.dataset.value;
+          if (type === 'category') selectedCategory = 'all';
+          else if (type === 'size') selectedSizes = selectedSizes.filter((s) => s !== val);
+          else if (type === 'colour') selectedColours = selectedColours.filter((c) => c !== val);
           syncCategoryButtons();
+          visibleCount = PAGE_SIZE;
           updateGrid();
         });
+      });
+    } else {
+      bar.classList.add('hidden');
+      if (badge) badge.classList.add('hidden');
+      chipsMount.innerHTML = '';
+    }
+  }
+
+  // Render paginated batch
+  function renderProductsBatch() {
+    const grid = page.querySelector('#collection-products-grid');
+    const loadMoreContainer = page.querySelector('#load-more-container');
+    const progressText = page.querySelector('#pagination-progress-text');
+    const progressBar = page.querySelector('#pagination-progress-fill');
+    if (!grid) return;
+
+    grid.innerHTML = '';
+
+    if (currentFilteredProducts.length === 0) {
+      grid.innerHTML = `
+        <div class="col-span-full py-16 text-center">
+          ${renderEmptyIllustration('search')}
+          <p class="font-headline text-base font-bold text-zinc-950">No products match your filters</p>
+          <p class="text-xs text-zinc-500 mt-1">Try resetting size or category filters to view all pieces.</p>
+          <button id="empty-reset-btn" class="mt-4 px-5 py-2 rounded-full bg-black text-white text-xs font-bold uppercase font-headline cursor-pointer">Reset All Filters</button>
+        </div>
+      `;
+      grid.querySelector('#empty-reset-btn')?.addEventListener('click', resetAllFilters);
+      if (loadMoreContainer) loadMoreContainer.classList.add('hidden');
+      return;
+    }
+
+    const itemsToShow = currentFilteredProducts.slice(0, visibleCount);
+    itemsToShow.forEach((p) => {
+      grid.appendChild(createProductCard(p));
+    });
+
+    // Pagination status
+    if (loadMoreContainer) {
+      if (currentFilteredProducts.length > PAGE_SIZE) {
+        loadMoreContainer.classList.remove('hidden');
+        const displayed = Math.min(visibleCount, currentFilteredProducts.length);
+        const total = currentFilteredProducts.length;
+        const pct = Math.round((displayed / total) * 100);
+
+        if (progressText) progressText.textContent = `Showing ${displayed} of ${total} garments`;
+        if (progressBar) progressBar.style.width = `${pct}%`;
+
+        const loadMoreBtn = page.querySelector('#load-more-btn');
+        if (loadMoreBtn) {
+          if (displayed >= total) {
+            loadMoreBtn.classList.add('hidden');
+          } else {
+            loadMoreBtn.classList.remove('hidden');
+          }
+        }
       } else {
-        filtered.forEach((p) => {
-          grid.appendChild(createProductCard(p));
-        });
+        loadMoreContainer.classList.add('hidden');
       }
     }
+  }
+
+  function resetAllFilters() {
+    selectedCategory = 'all';
+    selectedSizes = [];
+    selectedColours = [];
+    visibleCount = PAGE_SIZE;
+    syncCategoryButtons();
+    updateGrid();
   }
 
   function syncCategoryButtons() {
@@ -85,11 +189,10 @@ export async function render(container) {
   }
 
   page.innerHTML = `
-    <!-- Top Container: Constrained or Wide Desktop Layout -->
     <div class="w-full max-w-[1360px] mx-auto">
-      <!-- BEGIN: CollectionTitleSection (Exact Screen 02 Spec) -->
+      <!-- Catalog Header -->
       <section class="px-5 pt-4 pb-1" data-purpose="catalog-heading">
-        <h1 class="font-headline text-2xl md:text-3xl font-bold tracking-tight text-zinc-950">
+        <h1 class="font-headline text-2xl md:text-3xl font-extrabold tracking-tight text-zinc-950">
           ${mode === 'sow' ? "Women's Collection" : "Men's Collection"}
         </h1>
         <p class="text-xs text-zinc-500 font-medium tracking-wide mt-0.5">
@@ -97,7 +200,7 @@ export async function render(container) {
         </p>
       </section>
 
-      <!-- BEGIN: CategoryPills (Horizontal scrollable interaction matching Screen 02) -->
+      <!-- Category Pills -->
       <nav aria-label="Categories" class="pt-3 pb-2 px-5 overflow-x-auto no-scrollbar">
         <div class="flex items-center space-x-2 w-max" id="category-pills-bar">
           <button class="cat-pill ${mode === 'sow' ? 'bg-[#80534C]' : 'bg-black'} text-white px-4 py-1.5 rounded-full text-xs font-semibold shadow-sm transition hover:opacity-90" data-cat="all">
@@ -118,7 +221,7 @@ export async function render(container) {
         </div>
       </nav>
 
-      <!-- BEGIN: SecondaryFilterBar (Size, Colour, Sort) -->
+      <!-- Secondary Filter Bar -->
       <div class="px-5 py-2.5 flex items-center justify-between border-b border-zinc-100 text-xs relative">
         <div class="flex items-center space-x-2">
           <!-- Size Dropdown -->
@@ -135,7 +238,7 @@ export async function render(container) {
                 ${['S', 'M', 'L', 'XL', 'XXL']
                   .map(
                     (s) =>
-                      `<button class="size-opt-btn px-2.5 py-1 text-xs rounded border border-zinc-200 hover:border-black font-semibold transition-colors" data-size="${s}">${s}</button>`
+                      `<button class="size-opt-btn px-2.5 py-1 text-xs rounded border border-zinc-200 hover:border-black font-semibold transition-colors cursor-pointer" data-size="${s}">${s}</button>`
                   )
                   .join('')}
               </div>
@@ -153,26 +256,24 @@ export async function render(container) {
             <div id="colour-dropdown-menu" class="hidden absolute top-full left-0 mt-1 bg-white border border-zinc-200 rounded-lg shadow-xl p-2.5 z-40 w-44">
               <p class="text-[10px] text-zinc-400 font-bold uppercase tracking-wider mb-2 font-headline">Select Colour</p>
               <div class="flex flex-col gap-1">
-                <button class="colour-opt-btn px-2 py-1 text-xs rounded hover:bg-zinc-100 text-left font-medium flex items-center gap-2" data-colour="black">
+                <button class="colour-opt-btn px-2 py-1 text-xs rounded hover:bg-zinc-100 text-left font-medium flex items-center gap-2 cursor-pointer" data-colour="black">
                   <span class="w-3 h-3 rounded-full bg-black"></span> Black
                 </button>
-                <button class="colour-opt-btn px-2 py-1 text-xs rounded hover:bg-zinc-100 text-left font-medium flex items-center gap-2" data-colour="grey">
+                <button class="colour-opt-btn px-2 py-1 text-xs rounded hover:bg-zinc-100 text-left font-medium flex items-center gap-2 cursor-pointer" data-colour="grey">
                   <span class="w-3 h-3 rounded-full bg-zinc-400"></span> Grey
                 </button>
-                <button class="colour-opt-btn px-2 py-1 text-xs rounded hover:bg-zinc-100 text-left font-medium flex items-center gap-2" data-colour="white">
+                <button class="colour-opt-btn px-2 py-1 text-xs rounded hover:bg-zinc-100 text-left font-medium flex items-center gap-2 cursor-pointer" data-colour="white">
                   <span class="w-3 h-3 rounded-full bg-zinc-100 border border-zinc-300"></span> White
                 </button>
               </div>
             </div>
           </div>
 
-          <!-- Reset Filter Button -->
-          <button id="reset-filter-btn" class="text-xs text-zinc-500 hover:text-black underline ml-1 hidden cursor-pointer">Reset</button>
+          <span id="filter-count-badge" class="hidden px-2 py-0.5 rounded-full bg-black text-white text-[10px] font-bold"></span>
         </div>
 
         <div class="flex items-center space-x-2">
           <span class="text-[11px] text-zinc-400 hidden sm:inline" id="collection-count">Loading...</span>
-          <!-- Sort Dropdown -->
           <select id="sort-dropdown" class="px-2.5 py-1.5 rounded-md border border-zinc-200 bg-white text-zinc-800 font-medium text-xs focus:outline-none cursor-pointer">
             <option value="featured">Featured</option>
             <option value="price-low">Price: Low to High</option>
@@ -182,7 +283,15 @@ export async function render(container) {
         </div>
       </div>
 
-      <!-- BEGIN: ProductGrid (Flipkart-Style 2-Column Mobile, 3-Column Tablet, 4-Column Desktop) -->
+      <!-- Active Filter Summary Bar (Item 11) -->
+      <div id="active-filters-bar" class="hidden px-5 py-2.5 bg-zinc-50 border-b border-zinc-200 flex items-center justify-between gap-3 text-xs flex-wrap">
+        <div class="flex items-center gap-1.5 flex-wrap" id="active-chips-mount"></div>
+        <button id="clear-all-filters-btn" class="text-xs font-bold text-zinc-500 hover:text-black underline cursor-pointer shrink-0">
+          Clear All
+        </button>
+      </div>
+
+      <!-- Product Catalog Grid -->
       <main class="px-4 pt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-3.5 md:gap-4 flex-1" data-purpose="product-catalog-grid" id="collection-products-grid">
         ${[1, 2, 3, 4].map(() => `
           <div class="rounded-xl sm:rounded-2xl border border-zinc-200/80 bg-white p-2.5 animate-pulse">
@@ -192,6 +301,19 @@ export async function render(container) {
           </div>
         `).join('')}
       </main>
+
+      <!-- Infinite Scroll / Load More Footer (Item 3) -->
+      <div id="load-more-container" class="hidden mt-12 mb-6 flex flex-col items-center justify-center text-center px-4">
+        <p class="text-xs text-zinc-500 font-medium mb-2 font-headline" id="pagination-progress-text">Showing 8 of 16 garments</p>
+        <div class="w-48 h-1.5 bg-zinc-200 rounded-full overflow-hidden mb-4">
+          <div class="h-full bg-black rounded-full transition-all duration-300" id="pagination-progress-fill" style="width: 50%"></div>
+        </div>
+        <button id="load-more-btn" class="px-8 py-3 rounded-full border border-black text-black hover:bg-black hover:text-white transition-colors text-xs font-bold uppercase font-headline tracking-wider cursor-pointer shadow-xs">
+          Load More Garments
+        </button>
+        <!-- Infinite Scroll Sentinel -->
+        <div id="infinite-scroll-sentinel" class="w-full h-4"></div>
+      </div>
     </div>
   `;
 
@@ -199,6 +321,7 @@ export async function render(container) {
   page.querySelectorAll('.cat-pill').forEach((btn) => {
     btn.addEventListener('click', () => {
       selectedCategory = btn.dataset.cat;
+      visibleCount = PAGE_SIZE;
       syncCategoryButtons();
       updateGrid();
     });
@@ -207,8 +330,9 @@ export async function render(container) {
   // Size Dropdown Handlers
   const sizeBtn = page.querySelector('#size-dropdown-btn');
   const sizeMenu = page.querySelector('#size-dropdown-menu');
-  const sizeLabel = page.querySelector('#size-btn-label');
-  const resetBtn = page.querySelector('#reset-filter-btn');
+  const colourBtn = page.querySelector('#colour-dropdown-btn');
+  const colourMenu = page.querySelector('#colour-dropdown-menu');
+  const clearAllBtn = page.querySelector('#clear-all-filters-btn');
 
   sizeBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -219,24 +343,20 @@ export async function render(container) {
   page.querySelectorAll('.size-opt-btn').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const sz = btn.dataset.size;
-      if (selectedSizes.includes(sz)) {
-        selectedSizes = selectedSizes.filter((s) => s !== sz);
-        btn.classList.remove('bg-black', 'text-white');
+      const s = btn.dataset.size;
+      if (selectedSizes.includes(s)) {
+        selectedSizes = selectedSizes.filter((item) => item !== s);
+        btn.classList.remove('bg-black', 'text-white', 'border-black');
       } else {
-        selectedSizes.push(sz);
-        btn.classList.add('bg-black', 'text-white');
+        selectedSizes.push(s);
+        btn.classList.add('bg-black', 'text-white', 'border-black');
       }
-      sizeLabel.textContent = selectedSizes.length > 0 ? `Size (${selectedSizes.length})` : 'Size';
-      checkResetState();
+      visibleCount = PAGE_SIZE;
       updateGrid();
     });
   });
 
   // Colour Dropdown Handlers
-  const colourBtn = page.querySelector('#colour-dropdown-btn');
-  const colourMenu = page.querySelector('#colour-dropdown-menu');
-
   colourBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
     colourMenu?.classList.toggle('hidden');
@@ -246,18 +366,20 @@ export async function render(container) {
   page.querySelectorAll('.colour-opt-btn').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const clr = btn.dataset.colour;
-      if (selectedColours.includes(clr)) {
-        selectedColours = selectedColours.filter((c) => c !== clr);
+      const c = btn.dataset.colour;
+      if (selectedColours.includes(c)) {
+        selectedColours = selectedColours.filter((item) => item !== c);
         btn.classList.remove('bg-zinc-200');
       } else {
-        selectedColours.push(clr);
+        selectedColours.push(c);
         btn.classList.add('bg-zinc-200');
       }
-      checkResetState();
+      visibleCount = PAGE_SIZE;
       updateGrid();
     });
   });
+
+  clearAllBtn?.addEventListener('click', resetAllFilters);
 
   // Close dropdowns on outside click
   document.addEventListener('click', () => {
@@ -265,38 +387,49 @@ export async function render(container) {
     colourMenu?.classList.add('hidden');
   });
 
-  // Sort change handler
+  // Sort dropdown
   page.querySelector('#sort-dropdown')?.addEventListener('change', (e) => {
     sortOrder = e.target.value;
     updateGrid();
   });
 
-  // Reset Filters Handler
-  function checkResetState() {
-    if (selectedSizes.length > 0 || selectedColours.length > 0 || selectedCategory !== 'all') {
-      resetBtn?.classList.remove('hidden');
-    } else {
-      resetBtn?.classList.add('hidden');
+  // Load More Button & Infinite Scroll Sentinel Observer (Item 3)
+  const loadMoreBtn = page.querySelector('#load-more-btn');
+  const sentinel = page.querySelector('#infinite-scroll-sentinel');
+
+  const handleLoadMore = () => {
+    if (visibleCount < currentFilteredProducts.length) {
+      visibleCount += PAGE_SIZE;
+      renderProductsBatch();
     }
+  };
+
+  loadMoreBtn?.addEventListener('click', handleLoadMore);
+
+  if (sentinel) {
+    const sentinelObserver = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && visibleCount < currentFilteredProducts.length) {
+        handleLoadMore();
+      }
+    }, { rootMargin: '200px' });
+    sentinelObserver.observe(sentinel);
   }
 
-  resetBtn?.addEventListener('click', () => {
-    selectedCategory = 'all';
-    selectedSizes = [];
-    selectedColours = [];
-    sizeLabel.textContent = 'Size';
-    page.querySelectorAll('.size-opt-btn').forEach((b) => b.classList.remove('bg-black', 'text-white'));
-    page.querySelectorAll('.colour-opt-btn').forEach((b) => b.classList.remove('bg-zinc-200'));
-    resetBtn.classList.add('hidden');
-    syncCategoryButtons();
-    updateGrid();
+  // Subscribe to mode change
+  const unsub = subscribe((state) => {
+    if (state.mode !== mode) {
+      mode = state.mode;
+      visibleCount = PAGE_SIZE;
+      updateGrid();
+    }
   });
+  window.addEventListener('hashchange', () => unsub(), { once: true });
 
   container.innerHTML = '';
   container.appendChild(page);
 
-  // Initial load of products
-  await updateGrid();
+  // Initial grid population
+  updateGrid();
 }
 
 export default { render };

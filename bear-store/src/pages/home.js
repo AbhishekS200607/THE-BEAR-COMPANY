@@ -1,6 +1,8 @@
 import { getMode, setMode, subscribe } from '../state/store.js';
 import { getFeatured, getProducts } from '../services/productService.js';
 import { createProductCard } from '../components/productCard.js';
+import { getRecentlyViewedIds } from '../services/recentlyViewedService.js';
+import { products } from '../data/products.js';
 
 export async function render(container) {
   const currentMode = getMode();
@@ -231,6 +233,18 @@ export async function render(container) {
       </div>
     </section>
 
+    <!-- Recently Viewed Section (Item 4) -->
+    <section class="w-full max-w-[1360px] mx-auto px-4 md:px-gutter-desktop mb-12 md:mb-space-2xl hidden" id="home-recent-section">
+      <div class="mb-6 flex items-center justify-between">
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-widest text-zinc-400 font-headline mb-0.5">CONTINUE BROWSING</p>
+          <h2 class="font-headline text-2xl font-extrabold uppercase text-zinc-950 tracking-tight">Recently Viewed</h2>
+        </div>
+        <a href="#collection" class="text-xs font-bold uppercase tracking-wider text-black underline font-headline hover:text-zinc-600">Browse All</a>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4" id="home-recent-grid"></div>
+    </section>
+
     <!-- Priority Release Newsletter -->
     <section class="w-full max-w-[1360px] mx-auto px-4 md:px-gutter-desktop mb-12 md:mb-space-2xl">
       <div class="w-full bg-white p-5 md:p-space-xl rounded-xl shadow-xs flex flex-col lg:flex-row items-center justify-between gap-4 border border-zinc-200/80">
@@ -263,6 +277,21 @@ export async function render(container) {
     activeProducts.slice(0, 8).forEach((p) => {
       primaryGrid.appendChild(createProductCard(p));
     });
+  }
+
+  // Populate Recently Viewed Products (Item 4)
+  const recentSection = page.querySelector('#home-recent-section');
+  const recentGrid = page.querySelector('#home-recent-grid');
+  const recentIds = getRecentlyViewedIds();
+
+  if (recentSection && recentGrid && recentIds.length > 0) {
+    const recentProducts = products.filter((p) => recentIds.includes(p.id)).slice(0, 4);
+    if (recentProducts.length > 0) {
+      recentSection.classList.remove('hidden');
+      recentProducts.forEach((p) => {
+        recentGrid.appendChild(createProductCard(p));
+      });
+    }
   }
 
   // Newsletter submission
