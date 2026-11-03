@@ -227,7 +227,7 @@ DECLARE
     var_id UUID;
     sku_val TEXT;
 BEGIN
-    FOR prod IN SELECT id, slug, mode, name FROM public.products LOOP
+    FOR prod IN SELECT id, slug, mode::text AS mode, name FROM public.products LOOP
         FOREACH sz IN ARRAY ARRAY['S', 'M', 'L', 'XL', 'XXL'] LOOP
             sku_val := UPPER(SUBSTRING(prod.mode, 1, 1) || '-' || SUBSTRING(REGEXP_REPLACE(prod.slug, '[^a-zA-Z0-9]', '', 'g'), 1, 6) || '-' || sz);
             
