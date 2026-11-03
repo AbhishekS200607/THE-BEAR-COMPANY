@@ -52,68 +52,58 @@ export function mount(container) {
         </div>
       </div>
 
-      <!-- Desktop Floating Pill Navigation (Hidden on Mobile < 768px) -->
-      <div class="hidden md:flex h-20 max-w-[1360px] mx-auto px-gutter-desktop items-center justify-center">
-        <div class="w-full max-w-5xl bg-surface-container-lowest/95 backdrop-blur-xl shadow-[0_8px_24px_rgba(0,0,0,0.06)] rounded-full px-space-md py-space-xs flex items-center justify-between border border-outline-variant/30">
-          <nav class="flex items-center gap-space-xs">
+      <div class="hidden md:flex h-16 max-w-[1360px] mx-auto px-gutter-desktop items-center justify-center">
+        <div class="w-full max-w-2xl bg-surface-container-lowest/95 backdrop-blur-xl shadow-[0_8px_24px_rgba(0,0,0,0.06)] rounded-full px-3 py-1 flex items-center justify-between border border-outline-variant/30">
+          <nav class="flex items-center gap-10">
             <a 
               href="#" 
-              class="px-space-md py-space-xs rounded-full font-label-pill text-label-pill font-semibold transition-all ${
+              class="px-3 py-1.5 rounded-full font-label-pill text-label-pill font-semibold transition-all ${
                 isHome ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
               }"
               ${isHome ? 'aria-current="page"' : ''}
             >HOME</a>
             <a 
               href="#collection" 
-              class="px-space-md py-space-xs rounded-full font-label-pill text-label-pill font-semibold transition-all ${
+              class="px-3 py-1.5 rounded-full font-label-pill text-label-pill font-semibold transition-all ${
                 isCollection ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
               }"
               ${isCollection ? 'aria-current="page"' : ''}
             >COLLECTION</a>
           </nav>
 
-          <div class="flex items-center justify-center">
-            <a href="#" class="font-headline-lg text-headline-lg tracking-tighter font-bold uppercase text-primary px-space-md font-headline">
-              BEAR<span class="${mode === 'sow' ? 'text-[#80534C]' : 'text-black'}">.</span>
-            </a>
-          </div>
+          <a href="#" class="font-headline tracking-tighter font-bold uppercase text-black px-2 text-base">
+            BEAR<span class="${mode === 'sow' ? 'text-[#80534C]' : 'text-black'}">.</span>
+          </a>
 
-          <div class="flex items-center gap-space-md">
-            <!-- Mode Switcher (Desktop Only) -->
-            <div class="bg-surface-container p-space-xs rounded-full flex items-center border border-outline-variant/20">
+          <div class="flex items-center gap-3">
+            <div class="bg-surface-container p-1 rounded-full flex items-center border border-outline-variant/20">
               <button 
                 id="header-bear-btn" 
-                class="px-space-md py-space-xs rounded-full font-label-caps text-label-caps uppercase transition-all font-bold ${
+                class="px-3 py-1 rounded-full font-label-caps text-label-caps uppercase transition-all font-bold ${
                   mode === 'bear' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
                 }" 
                 type="button"
               >BEAR</button>
               <button 
                 id="header-sow-btn" 
-                class="px-space-md py-space-xs rounded-full font-label-caps text-label-caps uppercase transition-all font-bold ${
+                class="px-3 py-1 rounded-full font-label-caps text-label-caps uppercase transition-all font-bold ${
                   mode === 'sow' ? 'bg-[#80534C] text-white shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
                 }" 
                 type="button"
               >SOW</button>
             </div>
-
-            <!-- Utility Buttons -->
-            <div class="flex items-center gap-space-xs">
-              <button id="header-search-btn" aria-label="Search" class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all cursor-pointer" type="button">
-                <span class="material-symbols-outlined text-[20px]">search</span>
-              </button>
-
-              <button id="header-cart-btn" aria-label="Cart" class="relative w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all cursor-pointer" type="button">
-                <span class="material-symbols-outlined text-[20px]">shopping_bag</span>
-                ${cartCount > 0 ? `<span class="absolute top-1 right-1 w-4 h-4 rounded-full bg-primary text-on-primary font-label-caps text-[9px] flex items-center justify-center font-bold">${cartCount > 9 ? '9+' : cartCount}</span>` : ''}
-              </button>
-
-              <a href="#account" class="w-8 h-8 rounded-full bg-primary flex items-center justify-center ml-space-xs text-on-primary hover:opacity-90 transition-opacity" title="My Account" aria-label="My Account">
-                <svg class="w-4 h-4 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </a>
-            </div>
+            <button id="header-search-btn" aria-label="Search" class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all cursor-pointer" type="button">
+              <span class="material-symbols-outlined text-[18px]">search</span>
+            </button>
+            <button id="header-cart-btn" aria-label="Cart" class="relative w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all cursor-pointer" type="button">
+              <span class="material-symbols-outlined text-[18px]">shopping_bag</span>
+              ${cartCount > 0 ? `<span class="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-primary text-on-primary font-label-caps text-[8px] flex items-center justify-center font-bold">${cartCount > 9 ? '9+' : cartCount}</span>` : ''}
+            </button>
+            <a href="#account" class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary hover:opacity-90 transition-opacity" title="My Account" aria-label="My Account">
+              <svg class="w-4 h-4 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </a>
           </div>
         </div>
       </div>
