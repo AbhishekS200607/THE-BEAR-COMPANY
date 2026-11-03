@@ -44,7 +44,7 @@ d:\bear\
 │   │   │   └── products.js        ← Static product catalog & specifications
 │   │   ├── pages/                 ← Page modules
 │   │   │   ├── account.js         ← Customer account & order history
-│   │   │   ├── admin.js           ← [TARGET TO BUILD] Admin Panel UI
+│   │   │   ├── admin.js           ← [COMPLETED] Admin Panel UI (#admin)
 │   │   │   ├── cart.js            ← Bag page with "You May Also Like" cross-sells
 │   │   │   ├── checkout.js        ← WhatsApp-first checkout with coupon validation
 │   │   │   ├── collection.js      ← Catalog with infinite scroll & active filter chips
@@ -53,9 +53,9 @@ d:\bear\
 │   │   │   ├── trackOrder.js      ← 4-stage BlueDart timeline tracker
 │   │   │   └── wishlist.js        ← Wishlist with "Add All to Bag"
 │   │   ├── services/              ← Client-side services & API wrappers
-│   │   │   ├── adminService.js    ← [TARGET TO BUILD] API client for /api/v1/admin/*
+│   │   │   ├── adminService.js    ← [COMPLETED] API client for /api/v1/admin/* with fallback
 │   │   │   ├── cartService.js
-│   │   │   ├── checkoutService.js
+│   │   │   ├── checkoutService.js ← [COMPLETED] Connected to live /api/v1/orders
 │   │   │   ├── productService.js
 │   │   │   └── recentlyViewedService.js
 │   │   ├── state/
