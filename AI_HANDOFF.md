@@ -20,7 +20,32 @@
 
 ```
 d:\bear\
-├── bear-store/                    ← Frontend (Vanilla JS SPA + Vite)
+├── bear-admin/                    ← Standalone Admin Portal (Vite, Port 5174)
+│   ├── index.html                 ← Admin shell & Tailwind configuration
+│   ├── package.json               ← Independent dependencies
+│   ├── vite.config.js             ← Dedicated dev server on port 5174
+│   └── src/
+│       ├── main.js                ← Executive shell, live IST clock, sidebar router
+│       ├── auth.js                ← Email auth gate (admin@bear.in / bear1980)
+│       ├── helpers.js             ← Formatting, status badges, modal system, toasts
+│       ├── styles.css             ← High-contrast dark industrial theme
+│       ├── services/
+│       │   └── adminService.js    ← API & Mock service layer for all 11 sections
+│       └── sections/              ← Complete 11 sections
+│           ├── dashboard.js       ← KPI stats & recent orders feed
+│           ├── products.js        ← Product catalog matrix & edit drawer
+│           ├── categories.js      ← BEAR/SOW category manager
+│           ├── inventory.js       ← SKU-level stock editor with +/- quick adjust
+│           ├── orders.js          ← Order queue, status filters & dispatch modal
+│           ├── customers.js       ← Customer directory & CRM notes
+│           ├── shipping.js        ← Manual courier tracking & AWB link entry
+│           ├── discounts.js       ← Coupon creator & automatic rule manager
+│           ├── promotions.js      ← Announcement ticker & hero banner editor
+│           ├── notifications.js   ← Store alerts & activity stream
+│           ├── staff.js           ← Staff roles & immutable audit logs
+│           └── settings.js        ← Store parameters & WhatsApp 919605210198
+│
+├── bear-store/                    ← Frontend (Vanilla JS SPA + Vite, Port 5173)
 │   ├── index.html                 ← Application shell, mounts modals & pages
 │   ├── package.json               ← Vite 5.4+ dev dependencies
 │   ├── src/
