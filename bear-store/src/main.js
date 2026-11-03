@@ -35,6 +35,7 @@ import { render as renderEthicalProduction } from './pages/ethicalProduction.js'
 import { render as renderAthletes } from './pages/athletes.js';
 import { render as renderCareers } from './pages/careers.js';
 import { render as renderLegal } from './pages/legal.js';
+import { render as renderAdmin } from './pages/admin.js';
 
 // DOM Containers
 const announcementContainer = document.getElementById('announcement-bar');
@@ -165,6 +166,9 @@ async function router(options = {}) {
     } else if (path === 'legal') {
       setPageMeta({ title: 'BEAR. — Trust & Legal Compliance' });
       renderLegal(pageContainer, 'privacy');
+    } else if (path === 'admin') {
+      setPageMeta({ title: 'BEAR. — Admin Portal' });
+      renderAdmin(pageContainer);
     } else {
       // 404 Not Found fallback
       setPageMeta({ title: 'BEAR. — Page Not Found' });
