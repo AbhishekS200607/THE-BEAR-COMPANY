@@ -1,0 +1,135 @@
+/* ============================================================
+   TYPOGRAPHY
+   ============================================================ */
+
+/* ── Headings ── */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--color-text);
+}
+
+h1 { font-size: var(--text-4xl); font-weight: 900; letter-spacing: var(--tracking-tight); }
+h2 { font-size: var(--text-3xl); font-weight: 700; }
+h3 { font-size: var(--text-2xl); }
+h4 { font-size: var(--text-xl); }
+h5 { font-size: var(--text-lg); }
+h6 { font-size: var(--text-base); }
+
+/* ── Display headings (hero) ── */
+.display-1 {
+  font-size: clamp(var(--text-4xl), 8vw, var(--text-6xl));
+  font-weight: 900;
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
+  text-transform: uppercase;
+}
+.display-2 {
+  font-size: clamp(var(--text-3xl), 5vw, var(--text-5xl));
+  font-weight: 900;
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
+  text-transform: uppercase;
+}
+
+/* ── Body text ── */
+.text-xs   { font-size: var(--text-xs); }
+.text-sm   { font-size: var(--text-sm); }
+.text-base { font-size: var(--text-base); }
+.text-lg   { font-size: var(--text-lg); }
+.text-xl   { font-size: var(--text-xl); }
+
+/* ── Labels ── */
+.label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.label-sm {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+/* ── Price display ── */
+.price-display {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: var(--tracking-tight);
+}
+.price-display-lg {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--color-text);
+}
+.price-compare {
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--color-muted);
+  text-decoration: line-through;
+}
+.price-group {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+/* ── Badges ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+.badge-new {
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+}
+.badge-sale {
+  background: var(--color-error);
+  color: #fff;
+}
+.badge-bestseller {
+  background: var(--color-surface);
+  color: var(--color-muted);
+  border: 1px solid var(--color-border);
+}
+
+/* ── Stars ── */
+.stars {
+  display: flex;
+  gap: 1px;
+  color: #F5A623;
+  font-size: var(--text-sm);
+}
+.rating-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.rating-count {
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+}
+
+/* ── Muted / helper text ── */
+.text-muted { color: var(--color-muted); }
+.text-accent { color: var(--color-accent); }
+.text-center { text-align: center; }
+.font-bold { font-weight: 700; }
+.font-medium { font-weight: 500; }
+.uppercase { text-transform: uppercase; }
+.tracking-wide { letter-spacing: var(--tracking-wide); }
+.tracking-wider { letter-spacing: var(--tracking-wider); }
+
