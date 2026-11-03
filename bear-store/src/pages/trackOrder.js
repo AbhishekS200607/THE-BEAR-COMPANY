@@ -155,9 +155,23 @@ export function render(container) {
       </div>
     `;
 
+    // Query live backend API first
+    let liveOrder = null;
+    try {
+      const res = await fetch(`http://localhost:4000/api/v1/orders/track?orderNumber=${encodeURIComponent(orderIdInput)}&phone=${encodeURIComponent(phoneInput)}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          liveOrder = json.data;
+        }
+      }
+    } catch {
+      // Backend offline, fallback to client store
+    }
+
     const allOrders = await getDemoOrders();
     const cleanId = orderIdInput.toUpperCase();
-    const matched = allOrders.find(
+    const matched = liveOrder || allOrders.find(
       (o) =>
         (o.id && o.id.toUpperCase().includes(cleanId)) ||
         (o.orderNumber && o.orderNumber.toUpperCase().includes(cleanId)) ||
@@ -166,9 +180,36 @@ export function render(container) {
     );
 
     setTimeout(() => {
-      const orderRef = matched ? matched.orderNumber || matched.id : orderIdInput.toUpperCase();
-      const orderTotal = matched ? matched.total : 2499;
-      const awbNumber = `BD${Math.floor(Math.random() * 8999999) + 1000000}IN`;
+      const orderRef = liveOrder ? liveOrder.order_number : (matched ? matched.orderNumber || matched.id : orderIdInput.toUpperCase());
+      const orderStatus = liveOrder ? liveOrder.status : (matched?.status || 'shipped');
+      const awbNumber = liveOrder?.tracking_number || (matched?.awbNumber || `BD${Math.floor(Math.random() * 8999999) + 1000000}IN`);
+      const carrierName = liveOrder?.carrier_name || 'BLUEDART AIR';
+      const trackingUrl = liveOrder?.tracking_url || `https://www.bluedart.com/tracking/${awbNumber}`;
+
+      // Status text & badge
+      let statusBadge = '';
+      if (orderStatus === 'pending_whatsapp') {
+        statusBadge = `
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold uppercase font-headline mt-0.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+            <span>Awaiting WhatsApp Confirmation</span>
+          </span>
+        `;
+      } else if (orderStatus === 'delivered') {
+        statusBadge = `
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase font-headline mt-0.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+            <span>Delivered</span>
+          </span>
+        `;
+      } else {
+        statusBadge = `
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase font-headline mt-0.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>In Transit (Air Express)</span>
+          </span>
+        `;
+      }
 
       trackResultMount.innerHTML = `
         <!-- Logistics Banner -->
@@ -179,14 +220,11 @@ export function render(container) {
           </div>
           <div>
             <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400 font-headline">Air Courier AWB</span>
-            <p class="font-mono text-xs font-bold text-zinc-900">BLUEDART AIR • ${awbNumber}</p>
+            <p class="font-mono text-xs font-bold text-zinc-900">${carrierName} • <a href="${trackingUrl}" target="_blank" rel="noopener" class="underline text-black hover:text-zinc-600">${awbNumber}</a></p>
           </div>
           <div>
             <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400 font-headline">Status</span>
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase font-headline mt-0.5">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>In Transit (Air Express)</span>
-            </span>
+            ${statusBadge}
           </div>
         </div>
 
@@ -194,27 +232,27 @@ export function render(container) {
         <div class="relative pl-6 space-y-6 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-zinc-200 mb-6">
           <!-- Step 1 -->
           <div class="relative">
-            <span class="absolute -left-6 top-1 w-4 h-4 rounded-full bg-black text-white flex items-center justify-center text-[10px] font-bold">✓</span>
-            <p class="text-xs font-bold text-zinc-950 font-headline">Order Confirmed &amp; Stock Reserved</p>
-            <p class="text-[11px] text-zinc-500">BEAR Fulfillment Central — Verified via WhatsApp</p>
+            <span class="absolute -left-6 top-1 w-4 h-4 rounded-full ${orderStatus === 'pending_whatsapp' ? 'bg-amber-500 text-white' : 'bg-black text-white'} flex items-center justify-center text-[10px] font-bold">✓</span>
+            <p class="text-xs font-bold text-zinc-950 font-headline">Order Placed &amp; Stock Reserved</p>
+            <p class="text-[11px] text-zinc-500">BEAR Fulfillment Central — WhatsApp verification synced</p>
           </div>
           <!-- Step 2 -->
           <div class="relative">
-            <span class="absolute -left-6 top-1 w-4 h-4 rounded-full bg-black text-white flex items-center justify-center text-[10px] font-bold">✓</span>
+            <span class="absolute -left-6 top-1 w-4 h-4 rounded-full ${orderStatus === 'pending_whatsapp' ? 'bg-zinc-200 text-zinc-400' : 'bg-black text-white'} flex items-center justify-center text-[10px] font-bold">✓</span>
             <p class="text-xs font-bold text-zinc-950 font-headline">Dispatched via BlueDart Express Air</p>
-            <p class="text-[11px] text-zinc-500">Bengaluru Kempegowda Cargo Terminal — Manifest Recorded</p>
+            <p class="text-[11px] text-zinc-500">Kempegowda Air Cargo Terminal — Airway Bill Generated</p>
           </div>
           <!-- Step 3 -->
           <div class="relative">
-            <span class="absolute -left-6 top-1 w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">●</span>
-            <p class="text-xs font-bold text-emerald-700 font-headline">In Transit — Reached Destination City Gateway</p>
-            <p class="text-[11px] text-zinc-500">Regional Air Hub — Out for Sorting</p>
+            <span class="absolute -left-6 top-1 w-4 h-4 rounded-full ${['shipped', 'delivered'].includes(orderStatus) ? 'bg-emerald-600 text-white' : 'bg-zinc-200 text-zinc-400'} flex items-center justify-center text-[10px] font-bold">●</span>
+            <p class="text-xs font-bold ${['shipped', 'delivered'].includes(orderStatus) ? 'text-emerald-700' : 'text-zinc-500'} font-headline">In Transit — Reached Destination City Hub</p>
+            <p class="text-[11px] text-zinc-500">Sorted for express doorstep delivery</p>
           </div>
           <!-- Step 4 -->
           <div class="relative">
-            <span class="absolute -left-6 top-1 w-4 h-4 rounded-full bg-zinc-200 text-zinc-400 flex items-center justify-center text-[10px] font-bold">○</span>
-            <p class="text-xs font-bold text-zinc-400 font-headline">Out for Doorstep Delivery</p>
-            <p class="text-[11px] text-zinc-400">Courier assigned for doorstep arrival</p>
+            <span class="absolute -left-6 top-1 w-4 h-4 rounded-full ${orderStatus === 'delivered' ? 'bg-emerald-600 text-white' : 'bg-zinc-200 text-zinc-400'} flex items-center justify-center text-[10px] font-bold">${orderStatus === 'delivered' ? '✓' : '○'}</span>
+            <p class="text-xs font-bold ${orderStatus === 'delivered' ? 'text-emerald-700' : 'text-zinc-400'} font-headline">Out for Doorstep Delivery</p>
+            <p class="text-[11px] text-zinc-400">${orderStatus === 'delivered' ? 'Successfully handed over to customer' : 'BlueDart delivery agent out for final mile'}</p>
           </div>
         </div>
 
