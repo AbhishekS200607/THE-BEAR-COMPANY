@@ -106,5 +106,18 @@ describe('BEAR REST API Server Tests', () => {
     assert.ok(res.status === 401 || res.status === 403);
     const data = await res.json();
     assert.strictEqual(data.success, false);
+
+    const custRes = await fetch(`${baseUrl}/admin/customers`);
+    assert.ok(custRes.status === 401 || custRes.status === 403);
+
+    const discRes = await fetch(`${baseUrl}/admin/discounts`);
+    assert.ok(discRes.status === 401 || discRes.status === 403);
+
+    const prodRes = await fetch(`${baseUrl}/admin/products`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Test' }),
+    });
+    assert.ok(prodRes.status === 401 || prodRes.status === 403);
   });
 });

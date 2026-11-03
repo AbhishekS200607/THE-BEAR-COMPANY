@@ -181,3 +181,118 @@ export async function handleUpdateInventory(req, res, next) {
   }
 }
 
+export async function handleCreateProduct(req, res, next) {
+  try {
+    const { name, mode, categoryName, price, compareAtPrice, description, isFeatured, isBestseller, isNew } = req.body;
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+    const { data, error } = await supabaseAdmin
+      .from('products')
+      .insert({
+        name,
+        slug,
+        mode,
+        category_name: categoryName,
+        price_paise: Math.round(price * 100),
+        compare_at_price_paise: compareAtPrice ? Math.round(compareAtPrice * 100) : null,
+        description,
+        is_featured: !!isFeatured,
+        is_bestseller: !!isBestseller,
+        is_new: isNew ?? true,
+        is_active: true,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    await logAdminAction({
+      adminId: req.user.id,
+      action: 'CREATE_PRODUCT',
+      targetEntity: 'products',
+      targetId: data.id,
+      changes: data,
+      ipAddress: req.ip,
+    });
+
+    return successResponse(res, data, 201, 'Product created successfully');
+  } catch (err) {
+    return next(err);
+  }
+}
+
+export async function handleUpdateProduct(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { name, categoryName, price, compareAtPrice, description, isFeatured, isBestseller, isNew, isActive } = req.body;
+
+    const updates = { updated_at: new Date().toISOString() };
+    if (name) updates.name = name;
+    if (categoryName) updates.category_name = categoryName;
+    if (typeof price === 'number') updates.price_paise = Math.round(price * 100);
+    if (typeof compareAtPrice === 'number') updates.compare_at_price_paise = Math.round(compareAtPrice * 100);
+    if (description) updates.description = description;
+    if (typeof isFeatured === 'boolean') updates.is_featured = isFeatured;
+    if (typeof isBestseller === 'boolean') updates.is_bestseller = isBestseller;
+    if (typeof isNew === 'boolean') updates.is_new = isNew;
+    if (typeof isActive === 'boolean') updates.is_active = isActive;
+
+    const { data, error } = await supabaseAdmin
+      .from('products')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    await logAdminAction({
+      adminId: req.user.id,
+      action: 'UPDATE_PRODUCT',
+      targetEntity: 'products',
+      targetId: id,
+      changes: updates,
+      ipAddress: req.ip,
+    });
+
+    return successResponse(res, data, 200, 'Product updated successfully');
+  } catch (err) {
+    return next(err);
+  }
+}
+
+export async function handleGetCustomers(req, res, next) {
+  try {
+    const { data: profiles, error } = await supabaseAdmin
+      .from('profiles')
+      .select('id, full_name, phone_number, created_at')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const formatted = (profiles || []).map((p) => ({
+      id: p.id,
+      name: p.full_name,
+      phone: p.phone_number,
+      joinedAt: p.created_at,
+    }));
+
+    return successResponse(res, formatted);
+  } catch (err) {
+    return next(err);
+  }
+}
+
+export async function handleGetDiscounts(req, res, next) {
+  try {
+    // Standard system active discount coupons
+    const discounts = [
+      { id: 'disc-1', code: 'BEAR10', type: 'percentage', value: 10, minCartValue: 999, active: true },
+      { id: 'disc-2', code: 'WELCOME500', type: 'fixed', value: 500, minCartValue: 2499, active: true },
+      { id: 'disc-3', code: 'DROP20', type: 'percentage', value: 20, minCartValue: 3999, active: true },
+    ];
+    return successResponse(res, discounts);
+  } catch (err) {
+    return next(err);
+  }
+}

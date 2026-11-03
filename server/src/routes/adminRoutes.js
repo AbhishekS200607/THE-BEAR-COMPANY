@@ -8,6 +8,10 @@ import {
   handleUpdateOrderStatus,
   handleGetInventory,
   handleUpdateInventory,
+  handleCreateProduct,
+  handleUpdateProduct,
+  handleGetCustomers,
+  handleGetDiscounts,
 } from '../controllers/adminController.js';
 
 const router = Router();
@@ -38,6 +42,37 @@ const updateInventorySchema = {
   }),
 };
 
+const createProductSchema = {
+  body: z.object({
+    name: z.string().trim().min(2).max(150),
+    mode: z.enum(['bear', 'sow']),
+    categoryName: z.string().trim().min(2),
+    price: z.number().positive(),
+    compareAtPrice: z.number().positive().optional(),
+    description: z.string().trim().min(5),
+    isFeatured: z.boolean().optional(),
+    isBestseller: z.boolean().optional(),
+    isNew: z.boolean().optional(),
+  }),
+};
+
+const updateProductSchema = {
+  params: z.object({
+    id: z.string().uuid(),
+  }),
+  body: z.object({
+    name: z.string().trim().min(2).max(150).optional(),
+    categoryName: z.string().trim().min(2).optional(),
+    price: z.number().positive().optional(),
+    compareAtPrice: z.number().positive().optional(),
+    description: z.string().trim().min(5).optional(),
+    isFeatured: z.boolean().optional(),
+    isBestseller: z.boolean().optional(),
+    isNew: z.boolean().optional(),
+    isActive: z.boolean().optional(),
+  }),
+};
+
 // Admin Dashboard stats
 router.get('/dashboard', handleGetDashboard);
 
@@ -49,5 +84,14 @@ router.patch('/orders/:id/status', validate(updateOrderStatusSchema), handleUpda
 router.get('/inventory', handleGetInventory);
 router.patch('/inventory/:variantId', validate(updateInventorySchema), handleUpdateInventory);
 
-export default router;
+// Admin Product Management
+router.post('/products', validate(createProductSchema), handleCreateProduct);
+router.patch('/products/:id', validate(updateProductSchema), handleUpdateProduct);
 
+// Admin Customers Directory
+router.get('/customers', handleGetCustomers);
+
+// Admin Discounts & Coupons
+router.get('/discounts', handleGetDiscounts);
+
+export default router;

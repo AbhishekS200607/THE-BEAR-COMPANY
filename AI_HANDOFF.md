@@ -157,6 +157,33 @@ All Admin routes are hosted under `http://localhost:4000/api/v1/admin` and guard
   }
   ```
 
+### 3.4. Product Management
+* **Create Product:** `POST /api/v1/admin/products`
+  * **Payload:**
+  ```json
+  {
+    "name": "Oversized Training Tee",
+    "mode": "bear",
+    "categoryName": "T-Shirts",
+    "price": 999,
+    "compareAtPrice": 1499,
+    "description": "260 GSM Heavyweight combed cotton.",
+    "isFeatured": true,
+    "isBestseller": false,
+    "isNew": true
+  }
+  ```
+* **Update Product:** `PATCH /api/v1/admin/products/:id`
+  * **Payload (any fields):** `{ "price": 1099, "isActive": true }`
+
+### 3.5. Customer Management
+* **List Customers:** `GET /api/v1/admin/customers`
+  * Returns: `[{ "id": "...", "name": "...", "phone": "...", "joinedAt": "..." }]`
+
+### 3.6. Discounts & Coupons
+* **List Active Coupons:** `GET /api/v1/admin/discounts`
+  * Returns system active codes: `BEAR10`, `WELCOME500`, `DROP20`.
+
 ---
 
 ## 4. Frontend Standards & Coding Conventions
