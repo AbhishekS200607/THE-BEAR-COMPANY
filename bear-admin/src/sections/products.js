@@ -212,6 +212,9 @@ function openProductDrawer(product, onSave) {
           <p style="font-size:10px;color:#52525b;margin-top:3px;">Alert triggers when stock drops to this level.</p>
         </div>
       </div>
+
+      <div>
+        <label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;text-transform:uppercase;">Colours (comma-separated)</label>
         <input id="p-colours" class="admin-input" value="${(product?.colours || []).join(', ')}" placeholder="Pitch Black, Charcoal" />
       </div>
 
@@ -474,6 +477,8 @@ function openProductDrawer(product, onSave) {
       comparePrice: Number(overlay.querySelector('#p-compare').value) || null,
       colours: overlay.querySelector('#p-colours').value.split(',').map(s => s.trim()).filter(Boolean),
       sizes: overlay.querySelector('#p-sizes').value.split(',').map(s => s.trim()).filter(Boolean),
+      initialStock: parseInt(overlay.querySelector('#p-stock')?.value || '30', 10),
+      lowStockThreshold: parseInt(overlay.querySelector('#p-threshold')?.value || '5', 10),
       description: overlay.querySelector('#p-desc').value.trim(),
       fit: overlay.querySelector('#p-fit').value.trim() || null,
       fabric: overlay.querySelector('#p-fabric').value.trim() || null,
