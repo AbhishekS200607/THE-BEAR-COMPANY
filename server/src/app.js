@@ -16,13 +16,15 @@ export function createApp() {
     })
   );
 
-  // Strict CORS
+  // Flexible Local & Configured Production CORS
   const allowedOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim());
+  const isLocalDevOrigin = (o) => /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o);
+
   app.use(
     cors({
       origin: (origin, callback) => {
-        // Allow requests with no origin (e.g. mobile apps, curl, server-to-server) or matched origins
-        if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+        // Allow requests with no origin (e.g. mobile apps, curl, server-to-server), matched origins, or any localhost dev port
+        if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*') || isLocalDevOrigin(origin)) {
           return callback(null, true);
         }
         return callback(new Error('Blocked by CORS policy'));

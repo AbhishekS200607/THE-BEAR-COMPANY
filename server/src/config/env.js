@@ -10,7 +10,7 @@ dotenv.config();
 const envSchema = z.object({
   PORT: z.string().default('4000').transform((v) => parseInt(v, 10)),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  CORS_ORIGIN: z.string().default('http://localhost:5173,http://localhost:5174'),
+  CORS_ORIGIN: z.string().default('http://localhost:5173,http://localhost:5174,http://localhost:5175'),
   SUPABASE_URL: z.string().url().default('https://placeholder.supabase.co'),
   SUPABASE_ANON_KEY: z.string().default('placeholder-anon-key'),
   SUPABASE_SERVICE_ROLE_KEY: z.string().default('placeholder-service-role-key'),

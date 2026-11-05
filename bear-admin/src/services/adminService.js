@@ -254,6 +254,14 @@ export async function inviteStaff({ email, role = 'admin' }) {
   throw new Error(d?.error?.message || 'Failed to dispatch staff invitation');
 }
 
+export async function revokeStaff(id) {
+  const d = await apiFetch(`/staff/${id}`, {
+    method: 'DELETE',
+  });
+  if (d?.success) return { success: true, ...d.data };
+  throw new Error(d?.error?.message || 'Failed to revoke staff access');
+}
+
 export async function getAuditLogs() {
   const d = await apiFetch('/audit-logs');
   if (d?.success) return { logs: d.data, _error: null };
@@ -303,6 +311,7 @@ export default {
   saveSettings,
   getStaff,
   inviteStaff,
+  revokeStaff,
   getAuditLogs,
   getNotifications,
   markNotificationsRead,

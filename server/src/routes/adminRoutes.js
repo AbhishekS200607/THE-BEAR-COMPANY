@@ -29,6 +29,7 @@ import {
   handleSaveSettings,
   handleGetStaff,
   handleInviteStaff,
+  handleRevokeStaff,
   handleGetAuditLogs,
   handleGetNotifications,
   handleMarkNotificationsRead,
@@ -229,6 +230,7 @@ router.post('/staff/invite', validate({
     role: z.enum(['admin', 'super_admin']).default('admin'),
   }),
 }), handleInviteStaff);
+router.delete('/staff/:id', handleRevokeStaff);
 router.get('/audit-logs', handleGetAuditLogs);
 
 // 10. Notifications

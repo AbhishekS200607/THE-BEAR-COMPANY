@@ -1316,3 +1316,41 @@ export async function handleInviteStaff(req, res, next) {
     return next(err);
   }
 }
+
+export async function handleRevokeStaff(req, res, next) {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return errorResponse(res, 'Staff profile ID is required', 400);
+    }
+
+    // Prevent revoking self
+    if (req.user?.id === id) {
+      return errorResponse(res, 'You cannot revoke your own administrative access', 400);
+    }
+
+    // Demote role to 'customer' in public.profiles so all admin privileges are revoked immediately
+    const { data: profile, error: profErr } = await supabaseAdmin
+      .from('profiles')
+      .update({ role: 'customer' })
+      .eq('id', id)
+      .select('id, full_name, role')
+      .single();
+
+    if (profErr) throw profErr;
+
+    // Log the immutable audit action
+    await logAdminAction({
+      adminId: req.user?.id,
+      action: 'REVOKE_STAFF_ACCESS',
+      targetEntity: 'profiles',
+      targetId: id,
+      changes: { role: 'customer', previous_role: 'admin' },
+      ipAddress: req.ip,
+    });
+
+    return successResponse(res, { id, status: 'revoked' }, 200, 'Staff administrative access revoked successfully');
+  } catch (err) {
+    return next(err);
+  }
+}

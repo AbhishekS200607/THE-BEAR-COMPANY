@@ -1,4 +1,4 @@
-import { getStaff, inviteStaff } from '../services/adminService.js';
+import { getStaff, inviteStaff, revokeStaff } from '../services/adminService.js';
 import { spinner, showToast, openModal } from '../helpers.js';
 
 export async function renderStaff(container) {
@@ -37,11 +37,12 @@ export async function renderStaff(container) {
             <th>Role & Permissions</th>
             <th>Status</th>
             <th>Last Active</th>
+            <th style="text-align:right;">Actions</th>
           </tr>
         </thead>
         <tbody>
           ${staff.length === 0 ? `
-            <tr><td colspan="5" style="text-align:center;color:#52525b;padding:32px;">No admin profiles found.</td></tr>
+            <tr><td colspan="6" style="text-align:center;color:#52525b;padding:32px;">No admin profiles found.</td></tr>
           ` : staff.map(s => `
             <tr>
               <td>
@@ -55,6 +56,15 @@ export async function renderStaff(container) {
               </td>
               <td><span class="badge badge-green">ACTIVE</span></td>
               <td style="font-size:12px;color:#71717a;">${s.lastActive}</td>
+              <td style="text-align:right;">
+                ${s.role === 'Super Admin' ? `
+                  <span style="font-size:10px;color:#52525b;text-transform:uppercase;font-family:'Space Grotesk',sans-serif;">Protected</span>
+                ` : `
+                  <button class="admin-btn danger revoke-staff-btn" data-id="${s.id}" data-name="${s.name}" data-email="${s.email}" style="padding:4px 8px;font-size:11px;">
+                    Revoke Access
+                  </button>
+                `}
+              </td>
             </tr>
           `).join('')}
         </tbody>
@@ -145,6 +155,31 @@ export async function renderStaff(container) {
         showToast(err.message, 'error');
         btn.disabled = false;
         btn.textContent = 'Send Invitation';
+      }
+    });
+  });
+
+  // Wire Revoke Staff Access buttons
+  container.querySelectorAll('.revoke-staff-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      const name = btn.dataset.name;
+      const email = btn.dataset.email;
+
+      const confirmed = window.confirm(`Are you sure you want to revoke administrative access for ${name} (${email})?\n\nThey will immediately lose access to the Admin Portal.`);
+      if (!confirmed) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Revoking...';
+
+      try {
+        await revokeStaff(id);
+        showToast(`Administrative access revoked for ${email}`);
+        renderStaff(container);
+      } catch (err) {
+        showToast(err.message || 'Failed to revoke access', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Revoke Access';
       }
     });
   });
