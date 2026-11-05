@@ -200,8 +200,18 @@ function openProductDrawer(product, onSave) {
         <div id="image-gallery-preview" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(95px, 1fr));gap:8px;margin-top:12px;"></div>
       </div>
 
-      <div>
-        <label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;text-transform:uppercase;">Colours (comma-separated)</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div>
+          <label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;text-transform:uppercase;">Initial Stock per Size</label>
+          <input id="p-stock" type="number" class="admin-input" value="30" placeholder="30" min="0" max="9999" />
+          <p style="font-size:10px;color:#52525b;margin-top:3px;">Applied to each size variant on creation.</p>
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;text-transform:uppercase;">Low Stock Alert Threshold</label>
+          <input id="p-threshold" type="number" class="admin-input" value="5" placeholder="5" min="0" max="999" />
+          <p style="font-size:10px;color:#52525b;margin-top:3px;">Alert triggers when stock drops to this level.</p>
+        </div>
+      </div>
         <input id="p-colours" class="admin-input" value="${(product?.colours || []).join(', ')}" placeholder="Pitch Black, Charcoal" />
       </div>
 
@@ -213,6 +223,26 @@ function openProductDrawer(product, onSave) {
       <div>
         <label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;text-transform:uppercase;">Description</label>
         <textarea id="p-desc" class="admin-input" rows="3" style="resize:none;" placeholder="Crafted with heavyweight cotton, built for discipline..." required>${product?.description || ''}</textarea>
+      </div>
+
+      <div>
+        <label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;text-transform:uppercase;">Fit Details</label>
+        <textarea id="p-fit" class="admin-input" rows="2" style="resize:none;" placeholder="e.g. Boxy drop-shoulder oversized fit. Model is 6'1&quot; wearing size L.">${product?.fit || ''}</textarea>
+      </div>
+
+      <div>
+        <label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;text-transform:uppercase;">Fabric Details</label>
+        <textarea id="p-fabric" class="admin-input" rows="2" style="resize:none;" placeholder="e.g. 100% Combed Compact Cotton, 260 GSM Heavyweight Interlock Knit.">${product?.fabric || ''}</textarea>
+      </div>
+
+      <div>
+        <label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;text-transform:uppercase;">Care Instructions</label>
+        <textarea id="p-care" class="admin-input" rows="2" style="resize:none;" placeholder="e.g. Machine wash cold inside out. Hang dry or tumble dry low.">${product?.care || ''}</textarea>
+      </div>
+
+      <div>
+        <label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;text-transform:uppercase;">Delivery Info</label>
+        <textarea id="p-delivery" class="admin-input" rows="2" style="resize:none;" placeholder="e.g. Free domestic express shipping over ₹1,999. 7-day doorstep exchange.">${product?.delivery || ''}</textarea>
       </div>
 
       <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
@@ -445,6 +475,10 @@ function openProductDrawer(product, onSave) {
       colours: overlay.querySelector('#p-colours').value.split(',').map(s => s.trim()).filter(Boolean),
       sizes: overlay.querySelector('#p-sizes').value.split(',').map(s => s.trim()).filter(Boolean),
       description: overlay.querySelector('#p-desc').value.trim(),
+      fit: overlay.querySelector('#p-fit').value.trim() || null,
+      fabric: overlay.querySelector('#p-fabric').value.trim() || null,
+      care: overlay.querySelector('#p-care').value.trim() || null,
+      delivery: overlay.querySelector('#p-delivery').value.trim() || null,
       images: currentImages,
       isPublished: overlay.querySelector('#p-published').checked,
     };

@@ -477,6 +477,10 @@ export async function handleCreateProduct(req, res, next) {
       comparePrice,
       compareAtPrice,
       description,
+      fit,
+      fabric,
+      care,
+      delivery,
       isPublished,
       isActive,
       colours = [],
@@ -502,6 +506,10 @@ export async function handleCreateProduct(req, res, next) {
         price_paise: Math.round(price * 100),
         compare_at_price_paise: resolvedComparePrice ? Math.round(resolvedComparePrice * 100) : null,
         description,
+        fit_details: fit || null,
+        fabric_details: fabric || null,
+        care_instructions: care || null,
+        delivery_info: delivery || null,
         is_active: resolvedActive,
       })
       .select()
@@ -577,6 +585,10 @@ export async function handleUpdateProduct(req, res, next) {
       comparePrice,
       compareAtPrice,
       description,
+      fit,
+      fabric,
+      care,
+      delivery,
       isPublished,
       isActive,
       isFeatured,
@@ -594,6 +606,10 @@ export async function handleUpdateProduct(req, res, next) {
       updates.compare_at_price_paise = cmp ? Math.round(cmp * 100) : null;
     }
     if (description) updates.description = description;
+    if (fit !== undefined) updates.fit_details = fit || null;
+    if (fabric !== undefined) updates.fabric_details = fabric || null;
+    if (care !== undefined) updates.care_instructions = care || null;
+    if (delivery !== undefined) updates.delivery_info = delivery || null;
     if (isPublished !== undefined) updates.is_active = isPublished;
     if (isActive !== undefined) updates.is_active = isActive;
     if (typeof isFeatured === 'boolean') updates.is_featured = isFeatured;
