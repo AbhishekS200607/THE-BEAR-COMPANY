@@ -38,7 +38,31 @@ export function openQuickAddSheet(product) {
   root.id = 'quick-add-sheet-root';
   root.className = 'fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs transition-opacity duration-200';
 
-  let selectedSize = product.sizes.find((s) => s.available)?.size || 'M';
+  // Deduplicate sizes defensively
+  const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
+  const sizeMap = new Map();
+  (product.sizes || []).forEach((s) => {
+    const sizeName = typeof s === 'string' ? s : s?.size;
+    if (!sizeName) return;
+    const isAvail = s.available !== undefined ? Boolean(s.available) : true;
+    if (!sizeMap.has(sizeName)) {
+      sizeMap.set(sizeName, { size: sizeName, available: isAvail });
+    } else if (isAvail) {
+      sizeMap.get(sizeName).available = true;
+    }
+  });
+  const displaySizes = sizeMap.size > 0
+    ? Array.from(sizeMap.values()).sort((a, b) => {
+        const idxA = SIZE_ORDER.indexOf(a.size);
+        const idxB = SIZE_ORDER.indexOf(b.size);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return a.size.localeCompare(b.size);
+      })
+    : product.sizes || [];
+
+  let selectedSize = displaySizes.find((s) => s.available)?.size || 'M';
   let selectedColour = product.colours[0]?.name || 'Standard';
   const hasRealImage = product.images && product.images[0] && (product.images[0].startsWith('http') || product.images[0].startsWith('/'));
   const firstImage = hasRealImage ? product.images[0] : null;
@@ -101,7 +125,7 @@ export function openQuickAddSheet(product) {
           <span class="text-[11px] text-zinc-400">Regular fit</span>
         </div>
         <div class="grid grid-cols-5 gap-2">
-          ${product.sizes
+          ${displaySizes
             .map(
               (s) => `
             <button class="qa-size-btn h-11 rounded-lg border font-headline text-xs font-bold transition-all cursor-pointer ${

@@ -32,6 +32,35 @@ export async function render(container, slug) {
   // Record this product in recently viewed
   recordView(product.id);
 
+  // Ensure sizes are unique by size name to protect against stale sessionStorage cache or raw payloads
+  const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
+  const sizeMap = new Map();
+  (product.sizes || []).forEach((s) => {
+    const sizeName = typeof s === 'string' ? s : s?.size;
+    if (!sizeName) return;
+    const isAvail = s.available !== undefined ? Boolean(s.available) : true;
+    if (!sizeMap.has(sizeName)) {
+      sizeMap.set(sizeName, {
+        size: sizeName,
+        variantId: s.variantId || null,
+        available: isAvail,
+        sku: s.sku || null,
+      });
+    } else if (isAvail) {
+      sizeMap.get(sizeName).available = true;
+    }
+  });
+  if (sizeMap.size > 0) {
+    product.sizes = Array.from(sizeMap.values()).sort((a, b) => {
+      const idxA = SIZE_ORDER.indexOf(a.size);
+      const idxB = SIZE_ORDER.indexOf(b.size);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.size.localeCompare(b.size);
+    });
+  }
+
   let selectedColour = product.colours[0]?.name || 'Standard';
   let selectedSize = product.sizes.find((s) => s.available)?.size || 'M';
   let quantity = 1;
@@ -44,6 +73,8 @@ export async function render(container, slug) {
   const { reviews: fetchedReviews, metrics: fetchedMetrics } = await fetchProductReviews(product.id);
   let reviews = fetchedReviews;
   let metrics = fetchedMetrics;
+
+  const hasRealId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(product.id);
 
   const page = document.createElement('div');
   page.className = 'w-full flex flex-col pt-20 md:pt-24 pb-24 md:pb-16';
@@ -286,9 +317,15 @@ export async function render(container, slug) {
             <p class="text-[11px] font-bold uppercase tracking-widest text-zinc-400 font-headline mb-1">AUTHENTIC ATHLETE FEEDBACK</p>
             <h2 class="font-headline text-2xl font-extrabold uppercase text-zinc-950 tracking-tight">Customer Reviews</h2>
           </div>
+          ${hasRealId ? `
           <button id="write-review-btn" class="px-5 py-2.5 rounded-full border border-black text-black hover:bg-black hover:text-white transition-colors text-xs font-bold uppercase font-headline self-start cursor-pointer">
             Write a Review
           </button>
+          ` : `
+          <button id="write-review-btn" disabled class="px-5 py-2.5 rounded-full border border-zinc-300 text-zinc-400 disabled opacity-50 cursor-not-allowed text-xs font-bold uppercase font-headline self-start">
+            Live catalog required
+          </button>
+          `}
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-start mb-10 bg-zinc-50 p-6 rounded-2xl border border-zinc-200">
@@ -691,6 +728,12 @@ export async function render(container, slug) {
     const form = document.getElementById('submit-review-form');
     form?.addEventListener('submit', async (e) => {
       e.preventDefault();
+      const hasRealId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(product.id);
+      if (!hasRealId) {
+        showToast('Reviews require a live catalog product. Please try again once the store is connected.', 'info');
+        reviewModal?.close();
+        return;
+      }
       const author = document.getElementById('rev-name')?.value.trim();
       const title = document.getElementById('rev-title')?.value.trim();
       const comment = document.getElementById('rev-comment')?.value.trim();

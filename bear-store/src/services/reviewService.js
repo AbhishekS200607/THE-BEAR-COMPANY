@@ -7,6 +7,8 @@
 
 import { API_V1 } from '../config/api.js';
 
+const isUUID = (id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
 const API_URL = `${API_V1}/reviews`;
 
 const SEED_REVIEWS = [
@@ -151,6 +153,10 @@ export function calculateReviewMetrics(reviews = []) {
  * Fetches real reviews and metrics from the backend API, falling back to cache.
  */
 export async function fetchProductReviews(productId) {
+  if (!isUUID(productId)) {
+    const fallback = getProductReviews(productId);
+    return { reviews: fallback, metrics: calculateReviewMetrics(fallback) };
+  }
   try {
     const res = await fetch(`${API_URL}?productId=${encodeURIComponent(productId)}`);
     if (res.ok) {
@@ -176,6 +182,11 @@ export async function fetchProductReviews(productId) {
  * Dispatches verified review submission to the backend API and persists server-side.
  */
 export async function postProductReview(productId, reviewData) {
+  if (!isUUID(productId)) {
+    const localRev = submitProductReview(productId, reviewData);
+    const updatedReviews = getProductReviews(productId);
+    return { review: localRev, metrics: calculateReviewMetrics(updatedReviews) };
+  }
   try {
     const res = await fetch(API_URL, {
       method: 'POST',
