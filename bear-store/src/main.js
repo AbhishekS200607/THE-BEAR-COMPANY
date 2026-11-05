@@ -99,6 +99,33 @@ async function router(options = {}) {
         title: 'BEAR. — Product Details',
         description: 'Technical activewear engineered with moisture-wicking polymers and ergonomic stretch fit.',
       });
+      // Show skeleton immediately so the page doesn't appear frozen
+      pageContainer.innerHTML = `
+        <div class="min-h-screen px-4 pt-20 pb-10 max-w-6xl mx-auto">
+          <div class="flex flex-col md:flex-row gap-8 animate-pulse">
+            <div class="w-full md:w-1/2 aspect-[3/4] rounded-2xl bg-zinc-200"></div>
+            <div class="flex-1 flex flex-col gap-4 pt-2">
+              <div class="h-3 bg-zinc-200 rounded w-1/4"></div>
+              <div class="h-7 bg-zinc-200 rounded w-3/4"></div>
+              <div class="h-7 bg-zinc-200 rounded w-1/2"></div>
+              <div class="h-5 bg-zinc-200 rounded w-1/4 mt-2"></div>
+              <div class="flex gap-2 mt-2">
+                ${Array(4).fill(0).map(() => '<div class="h-9 w-14 bg-zinc-200 rounded-lg"></div>').join('')}
+              </div>
+              <div class="flex gap-3 mt-4">
+                ${Array(3).fill(0).map(() => '<div class="h-8 w-8 rounded-full bg-zinc-200"></div>').join('')}
+              </div>
+              <div class="h-12 bg-zinc-200 rounded-full mt-4"></div>
+              <div class="h-12 bg-zinc-200 rounded-full"></div>
+              <div class="space-y-2 mt-4">
+                <div class="h-3 bg-zinc-200 rounded w-full"></div>
+                <div class="h-3 bg-zinc-200 rounded w-5/6"></div>
+                <div class="h-3 bg-zinc-200 rounded w-4/6"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
       const { render } = await import('./pages/product.js');
       await render(pageContainer, slug);
     } else if (path === 'cart') {
