@@ -338,6 +338,40 @@ describe('BEAR REST API Server Tests', () => {
     assert.strictEqual(archivedItem.isPublished, false);
   });
 
+  test('Stage 2: WebP Product Image Upload & Supabase Storage Bucket', async () => {
+    // 1. Unauthorized attempt
+    const anonRes = await fetch(`${baseUrl}/admin/upload-image`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ base64Data: 'sample', filename: 'test.webp' }),
+    });
+    assert.strictEqual(anonRes.status, 401);
+
+    // 2. Authorized admin upload with base64 WebP image
+    const sampleWebpBase64 = 'data:image/webp;base64,UklGRkAAAABXRUJQVlA4IDQAAADwAQCdASoBAAEAAQAcJaACdLoB+AAA/v6n/4k1z/5Fsf+QfP9f538o+R7I6/3+b3+n8AA=';
+    const uploadRes = await fetch(`${baseUrl}/admin/upload-image`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${superAdminToken}`,
+      },
+      body: JSON.stringify({
+        filename: 'bear-test-tee.webp',
+        base64Data: sampleWebpBase64,
+      }),
+    });
+    assert.strictEqual(uploadRes.status, 201);
+    const uploadJson = await uploadRes.json();
+    assert.strictEqual(uploadJson.success, true);
+    assert.ok(uploadJson.data.url.includes('product-images'));
+    assert.ok(uploadJson.data.filename.endsWith('.webp'));
+    assert.strictEqual(uploadJson.data.contentType, 'image/webp');
+
+    // Clean up created test object from bucket
+    const clientAdmin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    await clientAdmin.storage.from('product-images').remove([uploadJson.data.filename]);
+  });
+
   test('Stage 2: Inventory matrix listing and stock adjustment', async () => {
     // 1. Get inventory
     const invRes = await fetch(`${baseUrl}/admin/inventory`, {

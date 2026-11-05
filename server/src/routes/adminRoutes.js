@@ -34,6 +34,7 @@ import {
   handleGetAuditLogs,
   handleGetNotifications,
   handleMarkNotificationsRead,
+  handleUploadImage,
 } from '../controllers/adminController.js';
 
 const router = Router();
@@ -205,6 +206,7 @@ router.get('/products', handleGetAdminProducts);
 router.post('/products', validate(createProductSchema), handleCreateProduct);
 router.patch('/products/:id', validate(updateProductSchema), handleUpdateProduct);
 router.delete('/products/:id', handleArchiveProduct);
+router.post('/upload-image', handleUploadImage);
 
 // 5. Customers
 router.get('/customers', handleGetCustomers);

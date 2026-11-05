@@ -164,6 +164,15 @@ export async function archiveProduct(id) {
   throw new Error(d?.error?.message || 'Failed to archive product');
 }
 
+export async function uploadProductImage(base64Data, filename) {
+  const d = await apiFetch('/upload-image', {
+    method: 'POST',
+    body: JSON.stringify({ base64Data, filename }),
+  });
+  if (d?.success) return d.data;
+  throw new Error(d?.error?.message || 'Failed to upload image');
+}
+
 // ── 5. Customers CRM ──────────────────────────────────────────────────────────
 
 export async function getCustomers() {

@@ -1,5 +1,6 @@
-import { getProducts, createProduct, updateProduct, archiveProduct } from '../services/adminService.js';
+import { getProducts, createProduct, updateProduct, archiveProduct, uploadProductImage } from '../services/adminService.js';
 import { fmtCurrency, modeBadge, spinner, showToast, openModal } from '../helpers.js';
+import { compressImageToWebP, formatBytes } from '../utils/imageCompressor.js';
 
 export async function renderProducts(container) {
   container.innerHTML = spinner();
@@ -170,24 +171,27 @@ function openProductDrawer(product, onSave) {
       <!-- PHOTO MANAGER SECTION -->
       <div style="background:#141417;border:1px solid #27272a;border-radius:4px;padding:12px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <label style="font-size:11px;color:#e4e4e7;text-transform:uppercase;font-weight:600;letter-spacing:0.04em;">
+          <label id="photo-count-label" style="font-size:11px;color:#e4e4e7;text-transform:uppercase;font-weight:600;letter-spacing:0.04em;">
             Product Photos (${currentImages.length})
           </label>
-          <span style="font-size:10px;color:#71717a;">First photo is Primary Catalog Cover</span>
+          <span style="font-size:10px;color:#71717a;">Auto-compressed to WebP · Supabase Storage</span>
         </div>
 
         <!-- Drag & Drop Zone -->
         <div id="dropzone" style="border:1.5px dashed #3f3f46;border-radius:4px;padding:16px 12px;text-align:center;background:#18181b;cursor:pointer;transition:all 0.15s ease-in-out;">
-          <span class="material-symbols-outlined" style="font-size:24px;color:#71717a;margin-bottom:4px;display:block;">add_photo_alternate</span>
+          <span class="material-symbols-outlined" style="font-size:24px;color:#60a5fa;margin-bottom:4px;display:block;">cloud_upload</span>
           <p style="font-size:12px;color:#e4e4e7;margin-bottom:2px;">
             Drag & drop images here, or <span style="color:#60a5fa;text-decoration:underline;">browse files</span>
           </p>
-          <p style="font-size:10px;color:#71717a;">PNG, JPG, WEBP or Paste Image URL below</p>
+          <p style="font-size:10px;color:#71717a;">Converts JPEG/PNG → WebP (82% quality) & uploads to Supabase Storage</p>
           <input type="file" id="file-input" multiple accept="image/*" style="display:none;" />
         </div>
 
+        <!-- Uploading Progress Indicator -->
+        <div id="upload-status" style="display:none;margin-top:10px;padding:10px 12px;background:#18181b;border:1px solid #3b82f6;border-radius:4px;font-size:12px;color:#93c5fd;align-items:center;gap:8px;"></div>
+
         <!-- URL Input fallback -->
-        <div style="display:flex;gap:6px;margin-top:8px;">
+        <div style="display:flex;gap:6px;margin-top:10px;">
           <input id="img-url-input" class="admin-input" placeholder="Or paste image URL (e.g. https://...)" style="font-size:11px;flex:1;" />
           <button type="button" id="btn-add-img-url" class="admin-btn" style="white-space:nowrap;padding:6px 12px;font-size:11px;">+ Add URL</button>
         </div>
@@ -230,12 +234,19 @@ function openProductDrawer(product, onSave) {
 
   // Gallery Preview Renderer
   const galleryEl = overlay.querySelector('#image-gallery-preview');
+  const countLabel = overlay.querySelector('#photo-count-label');
+
   function renderGallery() {
+    if (countLabel) {
+      countLabel.textContent = `Product Photos (${currentImages.length})`;
+    }
     if (currentImages.length === 0) {
       galleryEl.innerHTML = `<p style="grid-column:1/-1;text-align:center;color:#52525b;font-size:11px;padding:8px 0;">No photos attached yet.</p>`;
       return;
     }
-    galleryEl.innerHTML = currentImages.map((url, idx) => `
+    galleryEl.innerHTML = currentImages.map((url, idx) => {
+      const isWebp = url.toLowerCase().includes('.webp') || url.includes('product-images');
+      return `
       <div style="position:relative;background:#18181b;border:1px solid ${idx === 0 ? '#3b82f6' : '#27272a'};border-radius:4px;overflow:hidden;group" data-idx="${idx}">
         <div style="position:relative;padding-top:125%;background:#09090b;">
           <img src="${url}" alt="Preview" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" onerror="this.src='';this.alt='Broken URL';" />
@@ -244,6 +255,9 @@ function openProductDrawer(product, onSave) {
           ` : `
             <button type="button" class="btn-make-primary" data-idx="${idx}" style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,0.7);color:#e4e4e7;border:1px solid #3f3f46;font-size:9px;padding:1px 4px;border-radius:2px;cursor:pointer;" title="Make Primary Cover">★ Cover</button>
           `}
+          ${isWebp ? `
+            <span style="position:absolute;bottom:4px;left:4px;background:rgba(16,185,129,0.9);color:#022c22;font-size:8px;font-family:'Space Grotesk',sans-serif;font-weight:700;padding:1px 4px;border-radius:2px;letter-spacing:0.05em;" title="Hosted as WebP on Supabase">WEBP</span>
+          ` : ''}
           <button type="button" class="btn-del-photo" data-idx="${idx}" style="position:absolute;top:4px;right:4px;background:rgba(239,68,68,0.85);color:#fff;border:none;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:10px;line-height:1;display:flex;align-items:center;justify-content:center;" title="Remove Photo">✕</button>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 4px;background:#18181b;border-top:1px solid #27272a;">
@@ -252,7 +266,7 @@ function openProductDrawer(product, onSave) {
           <button type="button" class="btn-move-right" data-idx="${idx}" ${idx === currentImages.length - 1 ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : 'style="cursor:pointer;"'} title="Move right">→</button>
         </div>
       </div>
-    `).join('');
+    `;}).join('');
 
     // Attach actions
     galleryEl.querySelectorAll('.btn-del-photo').forEach(b => {
@@ -306,6 +320,8 @@ function openProductDrawer(product, onSave) {
   // Drag & drop handlers
   const dropzone = overlay.querySelector('#dropzone');
   const fileInput = overlay.querySelector('#file-input');
+  const statusEl = overlay.querySelector('#upload-status');
+  const saveBtn = overlay.querySelector('#p-save');
 
   dropzone.addEventListener('click', () => fileInput.click());
 
@@ -327,19 +343,61 @@ function openProductDrawer(product, onSave) {
     });
   });
 
-  function processFiles(files) {
-    Array.from(files).forEach(file => {
-      if (!file.type.startsWith('image/')) {
-        showToast(`Skipped non-image file "${file.name}"`, 'error');
-        return;
+  async function processFiles(files) {
+    const fileList = Array.from(files).filter(f => f.type.startsWith('image/'));
+    if (fileList.length === 0) {
+      showToast('Please select valid image files (JPEG, PNG, WebP).', 'error');
+      return;
+    }
+
+    if (saveBtn) saveBtn.disabled = true;
+    let successCount = 0;
+
+    for (let i = 0; i < fileList.length; i++) {
+      const file = fileList[i];
+      if (statusEl) {
+        statusEl.style.display = 'flex';
+        statusEl.innerHTML = `
+          <span class="material-symbols-outlined spin" style="font-size:16px;color:#60a5fa;">sync</span>
+          <span>[${i + 1}/${fileList.length}] Compressing <strong>${file.name}</strong> to WebP...</span>
+        `;
       }
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        currentImages.push(e.target.result);
-        renderGallery();
-      };
-      reader.readAsDataURL(file);
-    });
+
+      try {
+        // Step 1: Client-Side WebP compression (82% quality, max 1600x2000)
+        const compressed = await compressImageToWebP(file, {
+          maxWidth: 1600,
+          maxHeight: 2000,
+          quality: 0.82,
+        });
+
+        if (statusEl) {
+          statusEl.innerHTML = `
+            <span class="material-symbols-outlined spin" style="font-size:16px;color:#34d399;">cloud_upload</span>
+            <span>[${i + 1}/${fileList.length}] Uploading WebP (${formatBytes(compressed.compressedSize)}, -${compressed.savingsPercent}%) to Supabase...</span>
+          `;
+        }
+
+        // Step 2: Upload to Supabase Storage bucket 'product-images'
+        const res = await uploadProductImage(compressed.base64, compressed.filename);
+        if (res?.url) {
+          currentImages.push(res.url);
+          renderGallery();
+          successCount++;
+        }
+      } catch (err) {
+        console.error('Image upload failed:', err);
+        showToast(`Failed uploading "${file.name}": ${err.message}`, 'error');
+      }
+    }
+
+    if (statusEl) statusEl.style.display = 'none';
+    if (saveBtn) saveBtn.disabled = false;
+    fileInput.value = '';
+
+    if (successCount > 0) {
+      showToast(`Successfully compressed & uploaded ${successCount} photo(s) to Supabase Storage!`);
+    }
   }
 
   dropzone.addEventListener('drop', (e) => {

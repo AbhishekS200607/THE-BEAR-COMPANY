@@ -1364,3 +1364,88 @@ export async function handleRevokeStaff(req, res, next) {
     return next(err);
   }
 }
+
+export async function handleUploadImage(req, res, next) {
+  try {
+    const { base64Data, filename } = req.body;
+    if (!base64Data) {
+      return errorResponse(res, 'Image data (base64) is required', 400);
+    }
+
+    // Strip header prefix if present (e.g., data:image/webp;base64, or data:image/png;base64,)
+    const commaIdx = base64Data.indexOf(',');
+    const cleanBase64 = commaIdx !== -1 ? base64Data.slice(commaIdx + 1) : base64Data;
+    const buffer = Buffer.from(cleanBase64, 'base64');
+
+    if (!buffer || buffer.length === 0) {
+      return errorResponse(res, 'Invalid image buffer', 400);
+    }
+
+    // Max 10MB sanity check
+    if (buffer.length > 10 * 1024 * 1024) {
+      return errorResponse(res, 'Image exceeds maximum 10MB limit', 400);
+    }
+
+    // Generate safe unique filename
+    const safeBase = (filename || 'product')
+      .replace(/\.[^/.]+$/, '') // strip extension
+      .replace(/[^a-zA-Z0-9_-]/g, '_')
+      .toLowerCase()
+      .slice(0, 40);
+    const uniqueSuffix = `${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+    const cleanFilename = `${safeBase}_${uniqueSuffix}.webp`;
+
+    const bucketName = 'product-images';
+
+    // Upload to Supabase Storage with service role (bypasses RLS)
+    const { data: uploadData, error: uploadErr } = await supabaseAdmin.storage
+      .from(bucketName)
+      .upload(cleanFilename, buffer, {
+        contentType: 'image/webp',
+        cacheControl: '31536000',
+        upsert: true,
+      });
+
+    if (uploadErr) {
+      // If bucket somehow missing, self-heal by creating and retrying once
+      if (uploadErr.message?.toLowerCase().includes('bucket not found') || uploadErr.statusCode === '404') {
+        await supabaseAdmin.storage.createBucket(bucketName, { public: true });
+        const { error: retryErr } = await supabaseAdmin.storage
+          .from(bucketName)
+          .upload(cleanFilename, buffer, {
+            contentType: 'image/webp',
+            cacheControl: '31536000',
+            upsert: true,
+          });
+        if (retryErr) throw retryErr;
+      } else {
+        throw uploadErr;
+      }
+    }
+
+    // Get public URL
+    const { data: pubData } = supabaseAdmin.storage
+      .from(bucketName)
+      .getPublicUrl(cleanFilename);
+
+    // Audit log
+    await logAdminAction({
+      adminId: req.user?.id,
+      action: 'UPLOAD_PRODUCT_IMAGE',
+      targetEntity: 'storage.objects',
+      targetId: cleanFilename,
+      changes: { filename: cleanFilename, sizeBytes: buffer.length, format: 'webp' },
+      ipAddress: req.ip,
+    });
+
+    return successResponse(res, {
+      url: pubData.publicUrl,
+      filename: cleanFilename,
+      size: buffer.length,
+      contentType: 'image/webp',
+    }, 201, 'Image uploaded and stored in Supabase WebP bucket successfully');
+  } catch (err) {
+    return next(err);
+  }
+}
+
