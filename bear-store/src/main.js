@@ -75,6 +75,29 @@ async function router(options = {}) {
     pageContainer.classList.add('page-transition-active');
   }
 
+  // Generic skeleton for simple content pages — shown instantly before lazy import
+  function showPageSkeleton() {
+    pageContainer.innerHTML = `
+      <div class="min-h-screen px-4 pt-24 pb-16 max-w-4xl mx-auto animate-pulse">
+        <div class="h-3 bg-zinc-200 rounded w-24 mb-6"></div>
+        <div class="h-8 bg-zinc-200 rounded w-2/3 mb-3"></div>
+        <div class="h-4 bg-zinc-200 rounded w-1/2 mb-10"></div>
+        <div class="space-y-3">
+          <div class="h-3 bg-zinc-200 rounded w-full"></div>
+          <div class="h-3 bg-zinc-200 rounded w-5/6"></div>
+          <div class="h-3 bg-zinc-200 rounded w-4/6"></div>
+          <div class="h-3 bg-zinc-200 rounded w-full"></div>
+          <div class="h-3 bg-zinc-200 rounded w-3/4"></div>
+        </div>
+        <div class="mt-10 space-y-3">
+          <div class="h-3 bg-zinc-200 rounded w-full"></div>
+          <div class="h-3 bg-zinc-200 rounded w-5/6"></div>
+          <div class="h-3 bg-zinc-200 rounded w-2/3"></div>
+        </div>
+      </div>
+    `;
+  }
+
   try {
     // Route matching
     if (!path || path === '' || path === 'home') {
@@ -150,58 +173,72 @@ async function router(options = {}) {
       currentRouteCleanup = render(pageContainer) || null;
     } else if (path === 'faq') {
       setPageMeta({ title: 'BEAR. — Frequently Asked Questions' });
+      showPageSkeleton();
       const { render } = await import('./pages/faq.js');
       render(pageContainer);
     } else if (path === 'track-order') {
       setPageMeta({ title: 'BEAR. — Track Shipment & PIN Serviceability', description: 'Live BlueDart express air logistics and pin code transit tracker.' });
+      showPageSkeleton();
       const { render } = await import('./pages/trackOrder.js');
       render(pageContainer);
     } else if (path === 'returns' || path === 'swaps') {
       setPageMeta({ title: 'BEAR. — 7-Day Doorstep Swaps' });
+      showPageSkeleton();
       const { render } = await import('./pages/returns.js');
       render(pageContainer);
     } else if (path === 'size-guide') {
       setPageMeta({ title: 'BEAR. — Ergonomic Size & Fit Guide' });
+      showPageSkeleton();
       const { render } = await import('./pages/sizeGuide.js');
       render(pageContainer);
     } else if (path === 'shipping') {
       setPageMeta({ title: 'BEAR. — Shipping & Logistics Policy' });
+      showPageSkeleton();
       const { render } = await import('./pages/shipping.js');
       render(pageContainer);
     } else if (path === 'manifesto') {
       setPageMeta({ title: 'BEAR. — The Discipline Manifesto' });
+      showPageSkeleton();
       const { render } = await import('./pages/manifesto.js');
       render(pageContainer);
     } else if (path === 'textiles' || path === 'fabrics') {
       setPageMeta({ title: 'BEAR. — Technical Textiles & Fabric Lab' });
+      showPageSkeleton();
       const { render } = await import('./pages/textiles.js');
       render(pageContainer);
     } else if (path === 'ethical-production') {
       setPageMeta({ title: 'BEAR. — Ethical Production Hub' });
+      showPageSkeleton();
       const { render } = await import('./pages/ethicalProduction.js');
       render(pageContainer);
     } else if (path === 'athletes') {
       setPageMeta({ title: 'BEAR. — Athlete Club & Ambassador Roster' });
+      showPageSkeleton();
       const { render } = await import('./pages/athletes.js');
       render(pageContainer);
     } else if (path === 'careers') {
       setPageMeta({ title: 'BEAR. — Careers at BEAR' });
+      showPageSkeleton();
       const { render } = await import('./pages/careers.js');
       render(pageContainer);
     } else if (path === 'privacy') {
       setPageMeta({ title: 'BEAR. — Privacy Policy (DPDPA)' });
+      showPageSkeleton();
       const { render } = await import('./pages/legal.js');
       render(pageContainer, 'privacy');
     } else if (path === 'terms') {
       setPageMeta({ title: 'BEAR. — Terms of Service' });
+      showPageSkeleton();
       const { render } = await import('./pages/legal.js');
       render(pageContainer, 'terms');
     } else if (path === 'legal') {
       setPageMeta({ title: 'BEAR. — Trust & Legal Compliance' });
+      showPageSkeleton();
       const { render } = await import('./pages/legal.js');
       render(pageContainer, 'privacy');
     } else if (path === 'contact') {
       setPageMeta({ title: 'BEAR. — Contact Us', description: 'Get in touch with the BEAR support team via WhatsApp, email, or our contact form.' });
+      showPageSkeleton();
       const { render } = await import('./pages/contact.js');
       render(pageContainer);
     } else if (path === 'order-confirmation') {
