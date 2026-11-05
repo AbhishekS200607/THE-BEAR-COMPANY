@@ -170,6 +170,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
     tracking_number TEXT,
     tracking_url TEXT,
     dispatched_at TIMESTAMPTZ,
+    delivered_at TIMESTAMPTZ,
     admin_notes TEXT,
     
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

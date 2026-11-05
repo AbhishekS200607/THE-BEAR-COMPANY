@@ -1,12 +1,16 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import crypto from 'crypto';
+import { supabaseAdmin } from '../config/supabase.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.resolve(__dirname, '../data');
 
 if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  } catch {}
 }
 
 function safeReadJson(filePath, defaultData) {
@@ -16,7 +20,7 @@ function safeReadJson(filePath, defaultData) {
       return JSON.parse(raw);
     }
   } catch (err) {
-    console.error(`Error reading ${filePath}:`, err.message);
+    console.error(`[storePersistence] Error reading ${filePath}:`, err.message);
   }
   safeWriteJson(filePath, defaultData);
   return defaultData;
@@ -28,8 +32,53 @@ function safeWriteJson(filePath, data) {
     fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), 'utf-8');
     fs.renameSync(tmpPath, filePath);
   } catch (err) {
-    console.error(`Error writing ${filePath}:`, err.message);
+    // Non-blocking fallback write error
   }
+}
+
+// ── Product ID to UUID mapping for Reviews FK integrity ──────────────────────
+
+const PRODUCT_ID_MAP = {
+  'bear-001': 'c0000001-0000-4000-8000-000000000001',
+  'essential-oversized-tee': 'c0000001-0000-4000-8000-000000000001',
+  'bear-002': 'c0000001-0000-4000-8000-000000000002',
+  'training-tee': 'c0000001-0000-4000-8000-000000000002',
+  'bear-003': 'c0000001-0000-4000-8000-000000000003',
+  'training-shorts': 'c0000001-0000-4000-8000-000000000003',
+  'bear-004': 'c0000001-0000-4000-8000-000000000004',
+  'performance-joggers': 'c0000001-0000-4000-8000-000000000004',
+  'bear-005': 'c0000001-0000-4000-8000-000000000005',
+  'core-tank-top': 'c0000001-0000-4000-8000-000000000005',
+  'bear-006': 'c0000001-0000-4000-8000-000000000006',
+  'essential-hoodie': 'c0000001-0000-4000-8000-000000000006',
+  'bear-007': 'c0000001-0000-4000-8000-000000000007',
+  'athletic-shorts-7in': 'c0000001-0000-4000-8000-000000000007',
+  'bear-008': 'c0000001-0000-4000-8000-000000000008',
+  'compression-tee': 'c0000001-0000-4000-8000-000000000008',
+  'sow-001': 'd0000001-0000-4000-8000-000000000001',
+  'sculpt-flex-bra': 'd0000001-0000-4000-8000-000000000001',
+  'sow-002': 'd0000001-0000-4000-8000-000000000002',
+  'high-waist-ribbed-leggings': 'd0000001-0000-4000-8000-000000000002',
+  'sow-003': 'd0000001-0000-4000-8000-000000000003',
+  'cropped-zip-hoodie': 'd0000001-0000-4000-8000-000000000003',
+  'sow-004': 'd0000001-0000-4000-8000-000000000004',
+  'seamless-contour-shorts': 'd0000001-0000-4000-8000-000000000004',
+  'sow-005': 'd0000001-0000-4000-8000-000000000005',
+  'terracotta-contour-suit': 'd0000001-0000-4000-8000-000000000005',
+  'sow-006': 'd0000001-0000-4000-8000-000000000006',
+  'flow-studio-joggers': 'd0000001-0000-4000-8000-000000000006',
+  'sow-007': 'd0000001-0000-4000-8000-000000000007',
+  'ribbed-crop-tank': 'd0000001-0000-4000-8000-000000000007',
+  'sow-008': 'd0000001-0000-4000-8000-000000000008',
+  'sculpt-biker-set': 'd0000001-0000-4000-8000-000000000008',
+};
+
+function resolveProductId(pid) {
+  if (!pid) return 'c0000001-0000-4000-8000-000000000001';
+  if (PRODUCT_ID_MAP[pid]) return PRODUCT_ID_MAP[pid];
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (uuidRegex.test(pid)) return pid;
+  return 'c0000001-0000-4000-8000-000000000001';
 }
 
 // ── 1. Coupons ───────────────────────────────────────────────────────────────
@@ -86,13 +135,70 @@ const DEFAULT_COUPONS = [
   },
 ];
 
+let cachedCoupons = safeReadJson(COUPONS_FILE, DEFAULT_COUPONS);
+
+function normalizeCoupon(row) {
+  const isAct = row.isActive !== undefined ? Boolean(row.isActive) : (row.is_active !== undefined ? Boolean(row.is_active) : true);
+  return {
+    id: row.id,
+    code: row.code,
+    type: row.type,
+    value: Number(row.value),
+    minOrder: Number(row.min_order ?? row.minOrder ?? 0),
+    min_order: Number(row.min_order ?? row.minOrder ?? 0),
+    usageCount: Number(row.usage_count ?? row.usageCount ?? 0),
+    usage_count: Number(row.usage_count ?? row.usageCount ?? 0),
+    usageLimit: Number(row.usage_limit ?? row.usageLimit ?? 100),
+    usage_limit: Number(row.usage_limit ?? row.usageLimit ?? 100),
+    isActive: isAct,
+    is_active: isAct,
+    expiresAt: row.expires_at || row.expiresAt || null,
+    expires_at: row.expires_at || row.expiresAt || null,
+    createdAt: row.created_at || row.createdAt || new Date().toISOString(),
+    created_at: row.created_at || row.createdAt || new Date().toISOString(),
+    updatedAt: row.updated_at || row.updatedAt || new Date().toISOString(),
+    updated_at: row.updated_at || row.updatedAt || new Date().toISOString(),
+  };
+}
+
+function toCouponRow(c) {
+  return {
+    id: c.id,
+    code: c.code.toUpperCase(),
+    type: c.type || 'percentage',
+    value: Number(c.value),
+    min_order: Number(c.minOrder ?? c.min_order ?? 0),
+    usage_count: Number(c.usageCount ?? c.usage_count ?? 0),
+    usage_limit: Number(c.usageLimit ?? c.usage_limit ?? 100),
+    is_active: c.isActive !== undefined ? Boolean(c.isActive) : (c.is_active !== undefined ? Boolean(c.is_active) : true),
+    expires_at: c.expiresAt || c.expires_at || null,
+    updated_at: new Date().toISOString(),
+  };
+}
+
 export function getStoredCoupons() {
-  return safeReadJson(COUPONS_FILE, DEFAULT_COUPONS);
+  return cachedCoupons;
 }
 
 export function saveStoredCoupons(coupons) {
-  safeWriteJson(COUPONS_FILE, coupons);
-  return coupons;
+  cachedCoupons = coupons.map(normalizeCoupon);
+  safeWriteJson(COUPONS_FILE, cachedCoupons);
+
+  // Asynchronously persist to Supabase using supabaseAdmin
+  if (supabaseAdmin) {
+    (async () => {
+      try {
+        const rows = cachedCoupons.map(toCouponRow);
+        if (rows.length > 0) {
+          await supabaseAdmin.from('coupons').upsert(rows, { onConflict: 'code' });
+        }
+      } catch (err) {
+        console.error('[storePersistence] Supabase coupon sync error:', err.message);
+      }
+    })();
+  }
+
+  return cachedCoupons;
 }
 
 export function validateCouponCode(code, cartTotal) {
@@ -148,6 +254,20 @@ export function incrementCouponUsage(code) {
   c.usageCount = (c.usageCount || c.usage_count || 0) + 1;
   c.usage_count = c.usageCount;
   saveStoredCoupons(coupons);
+
+  if (supabaseAdmin) {
+    (async () => {
+      try {
+        await supabaseAdmin
+          .from('coupons')
+          .update({ usage_count: c.usageCount, updated_at: new Date().toISOString() })
+          .eq('code', c.code.toUpperCase());
+      } catch (err) {
+        console.error('[storePersistence] Supabase coupon increment error:', err.message);
+      }
+    })();
+  }
+
   return c;
 }
 
@@ -160,6 +280,20 @@ export function decrementCouponUsage(code) {
   c.usageCount = Math.max(0, (c.usageCount || c.usage_count || 1) - 1);
   c.usage_count = c.usageCount;
   saveStoredCoupons(coupons);
+
+  if (supabaseAdmin) {
+    (async () => {
+      try {
+        await supabaseAdmin
+          .from('coupons')
+          .update({ usage_count: c.usageCount, updated_at: new Date().toISOString() })
+          .eq('code', c.code.toUpperCase());
+      } catch (err) {
+        console.error('[storePersistence] Supabase coupon decrement error:', err.message);
+      }
+    })();
+  }
+
   return c;
 }
 
@@ -185,13 +319,32 @@ const DEFAULT_PROMOTIONS = {
   },
 };
 
+let cachedPromotions = safeReadJson(PROMOTIONS_FILE, DEFAULT_PROMOTIONS);
+
 export function getStoredPromotions() {
-  return safeReadJson(PROMOTIONS_FILE, DEFAULT_PROMOTIONS);
+  return cachedPromotions;
 }
 
 export function saveStoredPromotions(promotions) {
-  safeWriteJson(PROMOTIONS_FILE, promotions);
-  return promotions;
+  cachedPromotions = { ...cachedPromotions, ...promotions };
+  safeWriteJson(PROMOTIONS_FILE, cachedPromotions);
+
+  // Asynchronously persist to Supabase store_settings using supabaseAdmin
+  if (supabaseAdmin) {
+    (async () => {
+      try {
+        await supabaseAdmin.from('store_settings').upsert({
+          key: 'promotions',
+          value: cachedPromotions,
+          updated_at: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.error('[storePersistence] Supabase promotions sync error:', err.message);
+      }
+    })();
+  }
+
+  return cachedPromotions;
 }
 
 // ── 3. Store Settings ────────────────────────────────────────────────────────
@@ -210,8 +363,10 @@ const DEFAULT_SETTINGS = {
   deliveryFee: 0,
 };
 
+let cachedSettings = safeReadJson(SETTINGS_FILE, DEFAULT_SETTINGS);
+
 export function getStoredSettings() {
-  return safeReadJson(SETTINGS_FILE, DEFAULT_SETTINGS);
+  return cachedSettings;
 }
 
 export function saveStoredSettings(settings) {
@@ -226,7 +381,24 @@ export function saveStoredSettings(settings) {
     whatsappNumber: whatsapp,
     whatsapp_number: whatsapp,
   };
+  cachedSettings = merged;
   safeWriteJson(SETTINGS_FILE, merged);
+
+  // Asynchronously persist to Supabase store_settings using supabaseAdmin
+  if (supabaseAdmin) {
+    (async () => {
+      try {
+        await supabaseAdmin.from('store_settings').upsert({
+          key: 'settings',
+          value: merged,
+          updated_at: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.error('[storePersistence] Supabase settings sync error:', err.message);
+      }
+    })();
+  }
+
   return merged;
 }
 
@@ -245,14 +417,14 @@ export function saveReadNotificationIds(ids) {
   return merged;
 }
 
-// ── 5. Product Reviews & Ratings (Persistent Server Storage) ─────────────────
+// ── 5. Product Reviews & Ratings (Persistent Storage via Supabase) ───────────
 
 const REVIEWS_FILE = path.join(DATA_DIR, 'reviews.json');
 
 const DEFAULT_REVIEWS = [
   {
-    id: 'rev-001',
-    productId: 'bear-001',
+    id: 'a0000001-0001-4000-8000-000000000001',
+    productId: 'c0000001-0000-4000-8000-000000000001',
     productName: 'Essential Oversized Tee',
     author: 'Vikram Mehta',
     rating: 5,
@@ -265,8 +437,8 @@ const DEFAULT_REVIEWS = [
     updatedAt: new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString(),
   },
   {
-    id: 'rev-002',
-    productId: 'sow-001',
+    id: 'a0000001-0001-4000-8000-000000000002',
+    productId: 'd0000001-0000-4000-8000-000000000002',
     productName: 'Sculpt High-Waist Ribbed Leggings',
     author: 'Ananya Deshmukh',
     rating: 5,
@@ -279,8 +451,8 @@ const DEFAULT_REVIEWS = [
     updatedAt: new Date(Date.now() - 21 * 24 * 3600 * 1000).toISOString(),
   },
   {
-    id: 'rev-003',
-    productId: 'bear-001',
+    id: 'a0000001-0001-4000-8000-000000000003',
+    productId: 'c0000001-0000-4000-8000-000000000001',
     productName: 'Essential Oversized Tee',
     author: 'Rohit Shenoy',
     rating: 5,
@@ -293,8 +465,8 @@ const DEFAULT_REVIEWS = [
     updatedAt: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(),
   },
   {
-    id: 'rev-004',
-    productId: 'bear-002',
+    id: 'a0000001-0001-4000-8000-000000000004',
+    productId: 'c0000001-0000-4000-8000-000000000002',
     productName: 'Training Tee',
     author: 'Karanvir S.',
     rating: 4,
@@ -307,8 +479,8 @@ const DEFAULT_REVIEWS = [
     updatedAt: new Date(Date.now() - 35 * 24 * 3600 * 1000).toISOString(),
   },
   {
-    id: 'rev-005',
-    productId: 'sow-002',
+    id: 'a0000001-0001-4000-8000-000000000005',
+    productId: 'd0000001-0000-4000-8000-000000000007',
     productName: 'Ribbed Contour Crop Top',
     author: 'Meera Rao',
     rating: 5,
@@ -322,10 +494,58 @@ const DEFAULT_REVIEWS = [
   },
 ];
 
+let cachedReviews = safeReadJson(REVIEWS_FILE, DEFAULT_REVIEWS);
+
+function normalizeReview(r) {
+  const pId = resolveProductId(r.product_id || r.productId);
+  const isPub = r.isPublished !== undefined ? Boolean(r.isPublished) : (r.is_published !== undefined ? Boolean(r.is_published) : true);
+  const isVer = r.isVerified !== undefined ? Boolean(r.isVerified) : (r.is_verified !== undefined ? Boolean(r.is_verified) : true);
+  return {
+    id: r.id || crypto.randomUUID(),
+    productId: pId,
+    product_id: pId,
+    productName: r.product_name || r.productName || 'BEAR Garment',
+    product_name: r.product_name || r.productName || 'BEAR Garment',
+    author: r.author || 'Anonymous Athlete',
+    rating: Math.max(1, Math.min(5, Math.round(Number(r.rating) || 5))),
+    fit: r.fit || 'True to Size',
+    title: r.title || 'Verified Athlete Review',
+    comment: r.comment || '',
+    isVerified: isVer,
+    is_verified: isVer,
+    isPublished: isPub,
+    is_published: isPub,
+    createdAt: r.created_at || r.createdAt || new Date().toISOString(),
+    created_at: r.created_at || r.createdAt || new Date().toISOString(),
+    updatedAt: r.updated_at || r.updatedAt || new Date().toISOString(),
+    updated_at: r.updated_at || r.updatedAt || new Date().toISOString(),
+  };
+}
+
+function toReviewRow(r) {
+  const norm = normalizeReview(r);
+  return {
+    id: norm.id,
+    product_id: norm.productId,
+    product_name: norm.productName,
+    author: norm.author,
+    rating: norm.rating,
+    fit: norm.fit,
+    title: norm.title,
+    comment: norm.comment,
+    is_verified: norm.isVerified,
+    is_published: norm.isPublished,
+    created_at: norm.createdAt,
+    updated_at: norm.updatedAt,
+  };
+}
+
 export function getStoredReviews(filters = {}) {
-  const reviews = safeReadJson(REVIEWS_FILE, DEFAULT_REVIEWS);
-  return reviews.filter((r) => {
-    if (filters.productId && r.productId !== filters.productId) return false;
+  return cachedReviews.filter((r) => {
+    if (filters.productId) {
+      const targetPid = resolveProductId(filters.productId);
+      if (r.productId !== targetPid && r.productId !== filters.productId) return false;
+    }
     if (filters.rating && r.rating !== Number(filters.rating)) return false;
     if (filters.isPublished !== undefined && r.isPublished !== filters.isPublished) return false;
     if (filters.search) {
@@ -342,58 +562,90 @@ export function getStoredReviews(filters = {}) {
 }
 
 export function createStoredReview(data) {
-  const reviews = safeReadJson(REVIEWS_FILE, DEFAULT_REVIEWS);
-  const newReview = {
-    id: data.id || `rev-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    productId: data.productId || 'general',
-    productName: data.productName || 'BEAR Garment',
-    author: data.author || 'Anonymous Athlete',
-    rating: Math.max(1, Math.min(5, Math.round(Number(data.rating) || 5))),
-    fit: data.fit || 'True to Size',
-    title: data.title || 'Verified Athlete Review',
-    comment: data.comment || '',
-    isVerified: data.isVerified !== undefined ? Boolean(data.isVerified) : true,
-    isPublished: data.isPublished !== undefined ? Boolean(data.isPublished) : true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
+  const pId = resolveProductId(data.productId);
+  const newReview = normalizeReview({
+    ...data,
+    id: data.id || crypto.randomUUID(),
+    productId: pId,
+  });
 
-  reviews.unshift(newReview);
-  safeWriteJson(REVIEWS_FILE, reviews);
+  cachedReviews.unshift(newReview);
+  safeWriteJson(REVIEWS_FILE, cachedReviews);
+
+  if (supabaseAdmin) {
+    (async () => {
+      try {
+        await supabaseAdmin.from('reviews').insert(toReviewRow(newReview));
+      } catch (err) {
+        console.error('[storePersistence] Supabase review insert error:', err.message);
+      }
+    })();
+  }
+
   return newReview;
 }
 
 export function updateStoredReview(id, updates) {
-  const reviews = safeReadJson(REVIEWS_FILE, DEFAULT_REVIEWS);
-  const idx = reviews.findIndex((r) => r.id === id);
+  const idx = cachedReviews.findIndex((r) => r.id === id);
   if (idx === -1) return null;
 
-  const current = reviews[idx];
+  const current = cachedReviews[idx];
+  const isPub = updates.isPublished !== undefined ? Boolean(updates.isPublished) : (updates.is_published !== undefined ? Boolean(updates.is_published) : current.isPublished);
+  const isVer = updates.isVerified !== undefined ? Boolean(updates.isVerified) : (updates.is_verified !== undefined ? Boolean(updates.is_verified) : current.isVerified);
+
   const updated = {
     ...current,
-    ...(updates.author !== undefined && { author: updates.author }),
-    ...(updates.rating !== undefined && { rating: Math.max(1, Math.min(5, Math.round(Number(updates.rating)))) }),
-    ...(updates.fit !== undefined && { fit: updates.fit }),
-    ...(updates.title !== undefined && { title: updates.title }),
-    ...(updates.comment !== undefined && { comment: updates.comment }),
-    ...(updates.isVerified !== undefined && { isVerified: Boolean(updates.isVerified) }),
-    ...(updates.isPublished !== undefined && { isPublished: Boolean(updates.isPublished) }),
-    ...(updates.productName !== undefined && { productName: updates.productName }),
+    ...updates,
+    isPublished: isPub,
+    is_published: isPub,
+    isVerified: isVer,
+    is_verified: isVer,
     updatedAt: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   };
 
-  reviews[idx] = updated;
-  safeWriteJson(REVIEWS_FILE, reviews);
+  if (updates.rating !== undefined) {
+    updated.rating = Math.max(1, Math.min(5, Math.round(Number(updates.rating))));
+  }
+  if (updates.productId || updates.product_id) {
+    const pId = resolveProductId(updates.productId || updates.product_id);
+    updated.productId = pId;
+    updated.product_id = pId;
+  }
+
+  cachedReviews[idx] = updated;
+  safeWriteJson(REVIEWS_FILE, cachedReviews);
+
+  if (supabaseAdmin) {
+    (async () => {
+      try {
+        await supabaseAdmin.from('reviews').update(toReviewRow(updated)).eq('id', id);
+      } catch (err) {
+        console.error('[storePersistence] Supabase review update error:', err.message);
+      }
+    })();
+  }
+
   return updated;
 }
 
 export function deleteStoredReview(id) {
-  const reviews = safeReadJson(REVIEWS_FILE, DEFAULT_REVIEWS);
-  const idx = reviews.findIndex((r) => r.id === id);
+  const idx = cachedReviews.findIndex((r) => r.id === id);
   if (idx === -1) return false;
 
-  reviews.splice(idx, 1);
-  safeWriteJson(REVIEWS_FILE, reviews);
+  cachedReviews.splice(idx, 1);
+  safeWriteJson(REVIEWS_FILE, cachedReviews);
+
+  if (supabaseAdmin) {
+    (async () => {
+      try {
+        await supabaseAdmin.from('reviews').delete().eq('id', id);
+      } catch (err) {
+        console.error('[storePersistence] Supabase review delete error:', err.message);
+      }
+    })();
+  }
+
   return true;
 }
 
@@ -445,3 +697,75 @@ export function calculateStoredReviewMetrics(reviews = []) {
     breakdown,
   };
 }
+
+// ── One-Time Supabase Sync & Auto-Migration Fallback ─────────────────────────
+
+export async function syncFromSupabase() {
+  if (!supabaseAdmin) return;
+
+  try {
+    // 1. Sync Coupons
+    const { data: dbCoupons, error: couponErr } = await supabaseAdmin
+      .from('coupons')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!couponErr && Array.isArray(dbCoupons) && dbCoupons.length > 0) {
+      cachedCoupons = dbCoupons.map(normalizeCoupon);
+    } else if (!couponErr && Array.isArray(dbCoupons) && dbCoupons.length === 0 && cachedCoupons.length > 0) {
+      // One-time migration fallback: seed Supabase from JSON
+      const rows = cachedCoupons.map(toCouponRow);
+      await supabaseAdmin.from('coupons').insert(rows);
+    }
+
+    // 2. Sync Store Settings (Promotions & General Settings)
+    const { data: dbSettings, error: settingsErr } = await supabaseAdmin
+      .from('store_settings')
+      .select('*');
+
+    if (!settingsErr && Array.isArray(dbSettings)) {
+      const promoRow = dbSettings.find((s) => s.key === 'promotions');
+      if (promoRow?.value) {
+        cachedPromotions = { ...cachedPromotions, ...promoRow.value };
+      } else {
+        // One-time migration fallback
+        await supabaseAdmin.from('store_settings').upsert({
+          key: 'promotions',
+          value: cachedPromotions,
+          updated_at: new Date().toISOString(),
+        });
+      }
+
+      const generalRow = dbSettings.find((s) => s.key === 'settings');
+      if (generalRow?.value) {
+        cachedSettings = { ...cachedSettings, ...generalRow.value };
+      } else {
+        // One-time migration fallback
+        await supabaseAdmin.from('store_settings').upsert({
+          key: 'settings',
+          value: cachedSettings,
+          updated_at: new Date().toISOString(),
+        });
+      }
+    }
+
+    // 3. Sync Reviews
+    const { data: dbReviews, error: reviewErr } = await supabaseAdmin
+      .from('reviews')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!reviewErr && Array.isArray(dbReviews) && dbReviews.length > 0) {
+      cachedReviews = dbReviews.map(normalizeReview);
+    } else if (!reviewErr && Array.isArray(dbReviews) && dbReviews.length === 0 && cachedReviews.length > 0) {
+      // One-time migration fallback
+      const rows = cachedReviews.map(toReviewRow);
+      await supabaseAdmin.from('reviews').insert(rows);
+    }
+  } catch (err) {
+    console.warn('[storePersistence] Initial Supabase synchronization notice:', err.message);
+  }
+}
+
+// Background sync on server startup
+syncFromSupabase().catch(() => {});

@@ -219,11 +219,12 @@ SET
     updated_at = NOW();
 
 -- 3. PRODUCT VARIANTS & INVENTORY GENERATION
--- Corrected: Globally unique SKU generation
+-- Corrected: Globally unique SKU generation with multi-colour support (3 colours per product)
 -- Safe to rerun: Existing variants are updated, inventory is preserved
 DO $$
 DECLARE
     prod RECORD;
+    col_rec RECORD;
     sz TEXT;
     var_id UUID;
     sku_val TEXT;
@@ -240,71 +241,114 @@ BEGIN
         ORDER BY id
     LOOP
 
-        -- Assign colour based on BEAR / SOW mode
-        IF prod.mode = 'bear' THEN
-            colour_val := 'Pitch Black';
-            colour_hex_val := '#111111';
-        ELSE
-            colour_val := 'Terracotta';
-            colour_hex_val := '#80534C';
-        END IF;
-
-        -- Generate variants for each size
-        FOREACH sz IN ARRAY ARRAY['S', 'M', 'L', 'XL', 'XXL']
+        -- Iterate over 3 colours per product mode
+        FOR col_rec IN
+            SELECT * FROM (
+                VALUES
+                    ('Pitch Black', '#111111', 'bear'),
+                    ('Heather Grey', '#888888', 'bear'),
+                    ('Raw White', '#EAEAEA', 'bear'),
+                    ('Terracotta', '#80534C', 'sow'),
+                    ('Sage Green', '#6B8F71', 'sow'),
+                    ('Ink Black', '#1A1A1A', 'sow')
+            ) AS c(colour_name, colour_hex, mode)
+            WHERE c.mode = prod.mode
         LOOP
+            colour_val := col_rec.colour_name;
+            colour_hex_val := col_rec.colour_hex;
 
-            -- Use the COMPLETE product UUID to guarantee unique SKUs
-            sku_val := UPPER(
-                SUBSTRING(prod.mode, 1, 1)
-                || '-'
-                || REPLACE(prod.id::text, '-', '')
-                || '-'
-                || sz
-            );
+            -- Generate variants for each size
+            FOREACH sz IN ARRAY ARRAY['S', 'M', 'L', 'XL', 'XXL']
+            LOOP
 
-            -- Insert or update the matching product variant
-            INSERT INTO public.product_variants (
-                product_id,
-                sku,
-                colour_name,
-                colour_hex,
-                size
-            )
-            VALUES (
-                prod.id,
-                sku_val,
-                colour_val,
-                colour_hex_val,
-                sz
-            )
-            ON CONFLICT (product_id, colour_name, size)
-            DO UPDATE SET
-                sku = EXCLUDED.sku,
-                colour_hex = EXCLUDED.colour_hex
-            RETURNING id INTO var_id;
+                -- Use product UUID and colour abbreviation to guarantee globally unique SKUs
+                sku_val := UPPER(
+                    SUBSTRING(prod.mode, 1, 1)
+                    || '-'
+                    || REPLACE(prod.id::text, '-', '')
+                    || '-'
+                    || SUBSTRING(REPLACE(colour_val, ' ', ''), 1, 3)
+                    || '-'
+                    || sz
+                );
 
-            -- Create initial inventory only if it does not exist
-            INSERT INTO public.inventory (
-                variant_id,
-                quantity_available,
-                quantity_reserved,
-                low_stock_threshold
-            )
-            VALUES (
-                var_id,
-                30,
-                0,
-                5
-            )
-            ON CONFLICT (variant_id)
-            DO NOTHING;
+                -- Insert or update the matching product variant
+                INSERT INTO public.product_variants (
+                    product_id,
+                    sku,
+                    colour_name,
+                    colour_hex,
+                    size
+                )
+                VALUES (
+                    prod.id,
+                    sku_val,
+                    colour_val,
+                    colour_hex_val,
+                    sz
+                )
+                ON CONFLICT (product_id, colour_name, size)
+                DO UPDATE SET
+                    sku = EXCLUDED.sku,
+                    colour_hex = EXCLUDED.colour_hex
+                RETURNING id INTO var_id;
 
+                -- Create initial inventory only if it does not exist
+                INSERT INTO public.inventory (
+                    variant_id,
+                    quantity_available,
+                    quantity_reserved,
+                    low_stock_threshold
+                )
+                VALUES (
+                    var_id,
+                    30,
+                    0,
+                    5
+                )
+                ON CONFLICT (variant_id)
+                DO NOTHING;
+
+            END LOOP;
         END LOOP;
     END LOOP;
 
     RAISE NOTICE 'Product variants and inventory generation completed successfully.';
 
 END $$;
+
+-- 4. PRODUCT IMAGES SEEDING (One Primary Image per Product)
+INSERT INTO public.product_images (
+    product_id,
+    image_url,
+    alt_text,
+    display_order,
+    is_primary
+)
+SELECT v.product_id, v.image_url, v.alt_text, v.display_order, v.is_primary
+FROM (
+    VALUES
+        ('c0000001-0000-4000-8000-000000000001'::UUID, 'https://lh3.googleusercontent.com/aida-public/AB6AXuC0A_M4HqJNIIAusW1iTMaL94tnVHUlB2_7uyMjBw5mHw6BLBMJonDYlpbl1ks7zxdtF5jLW3oxBMrz9ZUSoacdbiSztre6lZoDTkvo9Apt6qGtxTxL2PLQibuZAUxKdZJVQD8YhaWaEAhApqCJQHkOjxDW8K-juFBWPSJxhzNXraK5jbwy0Vfos7iF5tBILTs-ByqMTeXYzQYYE66yCKJF6mcKz8kT6DF0rxTO3w', 'Essential Oversized Tee Front', 0, TRUE),
+        ('c0000001-0000-4000-8000-000000000002'::UUID, 'https://lh3.googleusercontent.com/aida-public/AB6AXuBQmFvyeHajAO2EewAdyDO-HInZVDGx5AxysNjqo7an0dHKhm4eCLM3wOwnaxRO7i7gyr0TlZeLPwkXOaOm62q_KFLJZs_6TeCoHiEDLWBDRn1fnISXvz3p0jPY7_lCiKZlcrRbqiQsu0ArWB3gUWC-Fhfzeql37_tFpmXSLiSsMwe9tQwe4HFScMGeTjK2JcitgA1sgoZlJc-4X4z1ENmADZYj_D50viFjFv2eLw', 'Training Tee Front', 0, TRUE),
+        ('c0000001-0000-4000-8000-000000000003'::UUID, 'https://lh3.googleusercontent.com/aida-public/AB6AXuB2ueOr2JQ6nAqaGWMtwNojd9BbeeDgei4FHY00nWZvozOP2mBUSkRi0F6_U1FXd-gDlUangcGp0usTkq-MNHZRDIxyBEomEPGW0KSayE7o12_8b5imHItg1v01dFfJw-gQGfmbCd8iF4AH3IFNL5q18bG0R9kmON-YnKgXjrxqTV-icn7dA4ltz5o-oLdDgHBxD9WDPPjj0MOGXSwQ8OX8x0MWXx_2euZpn1b8vQ', 'Training Shorts Front', 0, TRUE),
+        ('c0000001-0000-4000-8000-000000000004'::UUID, 'https://lh3.googleusercontent.com/aida-public/AB6AXuBv5GZk9CHUcMayrA6GNyFaN3-Op3M8Ig_IujOSZrvLnGzmnaxLsdzIyhDCZf9LeUCzEbn7pZ39WDFRU3Kxf19y-gDlcAfQrDzGMZeO-RxtBDd_8rIpcD6CwfUliq4_7DHXJ6oiMRx9dWBpxBFBg1wlkZp_6nZn_9dcvp-PqgY4elZPMwuvkY-RuRjkyGamKYXQWg4pmS5Rk-offXylM4p5J1DKkyaa5YR2w080gA', 'Performance Joggers Front', 0, TRUE),
+        ('c0000001-0000-4000-8000-000000000005'::UUID, 'https://lh3.googleusercontent.com/aida-public/AB6AXuBZfUaCLWobDsFeaa3fUotfDOwDwDCxViQiwoun9TK6_dXUUQXFOlWFGADID0ZMmkVuKjshRg_yXJ_0z9ern--ww8BVZ0wSTA7axQtzGhOEm14Kbno0vi-J495g6ghRL0de6ua4PncYU_8gVguf39AOI0U8ta6Agsn3oGpaUhfCyQYJhEJhNpyPwWR_3wWKE1p-FYpNffpR1LfSXhpLQ1ufI_FWbeQ2rivNiV_9uQ', 'Core Stringer Tank Front', 0, TRUE),
+        ('c0000001-0000-4000-8000-000000000006'::UUID, 'https://lh3.googleusercontent.com/aida-public/AB6AXuCFI4Qmp1Czp23XcB5Cbco6sMgrp2p35nxY5ytRztT6NUWiOQEDB_TSV7V9ibTH8cYRDe6Ya-rplEzJkOdlJfrpbTIQjWKRlWrjAqYW6MbQusWRoG_7f8G0Zsi44AY68eYDzXFr6hUvVyj0yVNY1-Q5R1optBBvWKFiwLmpzdtiy4x5WReXbpEYbaqjSQNPL_I-QEHzrnHUSWHdU--V7bVGK1gVwrlzeyTMi5lKGg', 'Essential Drop-Shoulder Hoodie Front', 0, TRUE),
+        ('c0000001-0000-4000-8000-000000000007'::UUID, 'https://lh3.googleusercontent.com/aida-public/AB6AXuCe9uvKg3u0Iep_b9FvetuEsfxVclYO__pB8rckS2BZAzuG-nmY8kLjH_4ef33tU4gP5C_awVUNs3_UCSMvJUvRoal-wO-QasovBAgozltnH17xxE6NjtJJdHWzW71Oj6K_GWoPh9V2yLzQj3H2E0bGmTK9IzQwTqMUGkjM7OmcTZfLHz-ucMIaayWX5AqnJq-ui5WHEf5XXZth63SQCBJtpl0bMyy_zBlgrYlGRg', 'All-Day Performance Shorts Front', 0, TRUE),
+        ('c0000001-0000-4000-8000-000000000008'::UUID, 'https://lh3.googleusercontent.com/aida-public/AB6AXuBgzcKioH0b84F8U8HAKo-q1RCrHEsE_vBoh_rzwKIEXJf5IMzpJH_WPl3qQa8BQS-jmAXqG9RZQKxdlB4QpuGOyk6q9bAqIRdfTYFM2uZ2TdJqY4skJyMsdVQQ0EpVR4HycrLdupEUDy4uvnjh_WZrsbdpWelp5XKPMqw2geRGpzTXCJuDMreP5kFSnE5ZmiQ4kehNU6P4Kf6QPJfCwPBJ5wdbLUzCY7JTnl5bmA', 'Pro-Combat Compression Top Front', 0, TRUE),
+        ('d0000001-0000-4000-8000-000000000001'::UUID, 'https://lh3.googleusercontent.com/aida-public/AB6AXuAwJwjClrMEmcZdI7T5_s4E_hHPVNSvONzixL7JG9-QvsrOFNVHsJuM34lczkEnDZwBuddxz_XYgYNG3dVxfyDWbS9nWSmYIm9hoZqLJC2kjzY0eZzeqffaWX-YYCyBV25Vha3ShEgy8-DsQyeiv8v-7doFJr0Aw4myGI4pHt412ia-kqZZyIN1J3O23yjiYoMKkZDS_f51t6qAJ4pXlwdu3EG3rgGzswUdnY2fxQ', 'Sculpt Flex Bra Front', 0, TRUE),
+        ('d0000001-0000-4000-8000-000000000002'::UUID, 'https://lh3.googleusercontent.com/aida-public/AB6AXuA4Mwdd33IQiXxYvoZjoUYwVaNsHMyQqHGgfwrOLC7mgwyMN3lSQTRaAsvH_c2sWptQerXsbHRreHedH5S_sijZ2e9eD11keAse9pyNAJaO8GNrRM_mIUVfqDic0edxJTyW_sOIZDPUKThT-y1_8bMr9J7Yal_Sbrxk3jvw0pWsNV9HEJZeHeb9ZGWzF83475qVnVZTEVvoPfuPh-_QdwrIvx2C35dqyAykokYYRw', 'High-Waist Ribbed Leggings Front', 0, TRUE),
+        ('d0000001-0000-4000-8000-000000000003'::UUID, 'https://lh3.googleusercontent.com/aida-public/AB6AXuAwJwjClrMEmcZdI7T5_s4E_hHPVNSvONzixL7JG9-QvsrOFNVHsJuM34lczkEnDZwBuddxz_XYgYNG3dVxfyDWbS9nWSmYIm9hoZqLJC2kjzY0eZzeqffaWX-YYCyBV25Vha3ShEgy8-DsQyeiv8v-7doFJr0Aw4myGI4pHt412ia-kqZZyIN1J3O23yjiYoMKkZDS_f51t6qAJ4pXlwdu3EG3rgGzswUdnY2fxQ', 'Cropped Zip Hoodie Front', 0, TRUE),
+        ('d0000001-0000-4000-8000-000000000004'::UUID, 'https://lh3.googleusercontent.com/aida-public/AB6AXuDQEiogc_cPXim5UCGnhYNjkqhNBolHTUYVLmqhnzr9avfYJ3iL_FxP5Ms6egN1z6_30qHnq1THf0gkHHYr4apPcM0A0i6Za-NpBQlrl6THFESDuh0cwSL-TFQ8yhT03GNn129FPbbTTjblL7Td3hyUSQd0l7a6iquHpLS_cJ81XPtoOcbfO17xZxFBhAjnP4-vaB3dtZDRi8lytMq4pOCSwyvG41cKE6fHzltWvQ', 'Seamless Contour Shorts Front', 0, TRUE),
+        ('d0000001-0000-4000-8000-000000000005'::UUID, 'https://lh3.googleusercontent.com/aida-public/AB6AXuAwJwjClrMEmcZdI7T5_s4E_hHPVNSvONzixL7JG9-QvsrOFNVHsJuM34lczkEnDZwBuddxz_XYgYNG3dVxfyDWbS9nWSmYIm9hoZqLJC2kjzY0eZzeqffaWX-YYCyBV25Vha3ShEgy8-DsQyeiv8v-7doFJr0Aw4myGI4pHt412ia-kqZZyIN1J3O23yjiYoMKkZDS_f51t6qAJ4pXlwdu3EG3rgGzswUdnY2fxQ', 'Terracotta Contour Suit Front', 0, TRUE),
+        ('d0000001-0000-4000-8000-000000000006'::UUID, 'https://lh3.googleusercontent.com/aida-public/AB6AXuA4Mwdd33IQiXxYvoZjoUYwVaNsHMyQqHGgfwrOLC7mgwyMN3lSQTRaAsvH_c2sWptQerXsbHRreHedH5S_sijZ2e9eD11keAse9pyNAJaO8GNrRM_mIUVfqDic0edxJTyW_sOIZDPUKThT-y1_8bMr9J7Yal_Sbrxk3jvw0pWsNV9HEJZeHeb9ZGWzF83475qVnVZTEVvoPfuPh-_QdwrIvx2C35dqyAykokYYRw', 'Flow Studio Joggers Front', 0, TRUE),
+        ('d0000001-0000-4000-8000-000000000007'::UUID, 'https://lh3.googleusercontent.com/aida-public/AB6AXuBZfUaCLWobDsFeaa3fUotfDOwDwDCxViQiwoun9TK6_dXUUQXFOlWFGADID0ZMmkVuKjshRg_yXJ_0z9ern--ww8BVZ0wSTA7axQtzGhOEm14Kbno0vi-J495g6ghRL0de6ua4PncYU_8gVguf39AOI0U8ta6Agsn3oGpaUhfCyQYJhEJhNpyPwWR_3wWKE1p-FYpNffpR1LfSXhpLQ1ufI_FWbeQ2rivNiV_9uQ', 'Ribbed Crop Tank Front', 0, TRUE),
+        ('d0000001-0000-4000-8000-000000000008'::UUID, 'https://lh3.googleusercontent.com/aida-public/AB6AXuAwJwjClrMEmcZdI7T5_s4E_hHPVNSvONzixL7JG9-QvsrOFNVHsJuM34lczkEnDZwBuddxz_XYgYNG3dVxfyDWbS9nWSmYIm9hoZqLJC2kjzY0eZzeqffaWX-YYCyBV25Vha3ShEgy8-DsQyeiv8v-7doFJr0Aw4myGI4pHt412ia-kqZZyIN1J3O23yjiYoMKkZDS_f51t6qAJ4pXlwdu3EG3rgGzswUdnY2fxQ', 'Sculpt Biker 2-Piece Set Front', 0, TRUE)
+) AS v(product_id, image_url, alt_text, display_order, is_primary)
+WHERE NOT EXISTS (
+    SELECT 1 FROM public.product_images pi 
+    WHERE pi.product_id = v.product_id AND pi.display_order = v.display_order
+);
 
 COMMIT;
 

@@ -7,7 +7,7 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS public.reviews (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    product_id TEXT NOT NULL,
+    product_id UUID NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
     product_name TEXT NOT NULL,
     author TEXT NOT NULL,
     rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
@@ -37,8 +37,7 @@ CREATE POLICY "Public read published reviews"
 
 -- 2. Authenticated users can insert reviews
 CREATE POLICY "Users can create reviews"
-    ON public.reviews
-    FOR INSERT
+    ON public.reviews FOR INSERT TO authenticated
     WITH CHECK (TRUE);
 
 -- 3. Service role and admins have full access
