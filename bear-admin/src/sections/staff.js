@@ -1,16 +1,28 @@
-import { getStaff } from '../services/adminService.js';
-import { spinner, mockBanner, showToast } from '../helpers.js';
+import { getStaff, inviteStaff } from '../services/adminService.js';
+import { spinner, showToast, openModal } from '../helpers.js';
 
 export async function renderStaff(container) {
   container.innerHTML = spinner();
-  const { staff, logs, _mock } = await getStaff();
+  const { staff = [], logs = [], _error } = await getStaff();
+
+  if (_error) {
+    container.innerHTML = `
+      <div style="padding:40px;text-align:center;background:#18181b;border:1px solid #27272a;">
+        <span class="material-symbols-outlined" style="font-size:36px;color:#f87171;margin-bottom:12px;">badge</span>
+        <p style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:#f4f4f5;margin-bottom:6px;">Error Loading Staff & Audit Logs</p>
+        <p style="font-size:12px;color:#71717a;margin-bottom:20px;">${_error}</p>
+        <button id="staff-retry-btn" class="admin-btn primary">Retry</button>
+      </div>
+    `;
+    container.querySelector('#staff-retry-btn')?.addEventListener('click', () => renderStaff(container));
+    return;
+  }
 
   container.innerHTML = `
-    ${_mock ? mockBanner() : ''}
     <div class="section-header">
       <div>
         <p class="section-title">Staff Roles & Permissions</p>
-        <p class="section-subtitle">Manage administrative console access, security roles, and system audit history</p>
+        <p class="section-subtitle">${staff.length} administrative user${staff.length !== 1 ? 's' : ''} with trusted role authorization</p>
       </div>
       <button class="admin-btn primary" id="add-staff-btn">+ Invite Staff Member</button>
     </div>
@@ -28,23 +40,21 @@ export async function renderStaff(container) {
           </tr>
         </thead>
         <tbody>
-          ${(staff || [
-            { id: 'st-1', name: 'Abhishek Sharma', email: 'admin@bear.in', role: 'Super Admin', permissions: 'Full System Access', active: true, last_active: 'Active Now' },
-            { id: 'st-2', name: 'Logistics Desk', email: 'shipping@bear.in', role: 'Fulfillment Lead', permissions: 'Orders & Inventory Only', active: true, last_active: '2h ago' },
-            { id: 'st-3', name: 'Support Associate', email: 'support@bear.in', role: 'Customer Support', permissions: 'Read Only & Notes', active: true, last_active: '1d ago' },
-          ]).map(s => `
+          ${staff.length === 0 ? `
+            <tr><td colspan="5" style="text-align:center;color:#52525b;padding:32px;">No admin profiles found.</td></tr>
+          ` : staff.map(s => `
             <tr>
               <td>
                 <p style="color:#e4e4e7;font-weight:600;">${s.name}</p>
-                <p style="font-size:11px;color:#52525b;">ID: ${s.id}</p>
+                <p style="font-size:11px;color:#52525b;font-family:'Space Grotesk',sans-serif;">ID: ${s.id.slice(0, 8)}...</p>
               </td>
-              <td style="font-size:12px;color:#a1a1aa;font-mono;">${s.email}</td>
+              <td style="font-size:12px;color:#a1a1aa;font-family:'Space Grotesk',sans-serif;">${s.email}</td>
               <td>
                 <span class="badge ${s.role === 'Super Admin' ? 'badge-amber' : 'badge-blue'}">${s.role}</span>
                 <p style="font-size:11px;color:#52525b;margin-top:2px;">${s.permissions}</p>
               </td>
               <td><span class="badge badge-green">ACTIVE</span></td>
-              <td style="font-size:12px;color:#71717a;">${s.last_active}</td>
+              <td style="font-size:12px;color:#71717a;">${s.lastActive}</td>
             </tr>
           `).join('')}
         </tbody>
@@ -55,7 +65,7 @@ export async function renderStaff(container) {
     <div class="section-header" style="margin-top:24px;">
       <div>
         <p class="section-title">Security & Action Audit Logs</p>
-        <p class="section-subtitle">Immutable chronological ledger of store changes and administrative events</p>
+        <p class="section-subtitle">Immutable chronological ledger of store changes and administrative events (Supabase public.admin_audit_logs)</p>
       </div>
     </div>
 
@@ -71,12 +81,9 @@ export async function renderStaff(container) {
           </tr>
         </thead>
         <tbody>
-          ${(logs || [
-            { id: 'log-1', timestamp: '2026-11-04 02:40:12', user: 'admin@bear.in', action: 'CREATE_PRODUCT', target: 'essential-oversized-tee', ip: '127.0.0.1' },
-            { id: 'log-2', timestamp: '2026-11-04 02:22:45', user: 'admin@bear.in', action: 'UPDATE_INVENTORY', target: 'SKU BEAR-OT-PB-M (+10 units)', ip: '127.0.0.1' },
-            { id: 'log-3', timestamp: '2026-11-04 01:50:30', user: 'admin@bear.in', action: 'DISPATCH_ORDER', target: 'BEAR-20261103-E5F6 (BlueDart)', ip: '127.0.0.1' },
-            { id: 'log-4', timestamp: '2026-11-03 23:15:00', user: 'admin@bear.in', action: 'AUTH_LOGIN', target: 'Admin Console Session Started', ip: '127.0.0.1' },
-          ]).map(l => `
+          ${logs.length === 0 ? `
+            <tr><td colspan="5" style="text-align:center;color:#52525b;padding:32px;">No audit logs recorded yet.</td></tr>
+          ` : logs.map(l => `
             <tr>
               <td style="font-family:'Space Grotesk',sans-serif;font-size:11px;color:#71717a;">${l.timestamp}</td>
               <td style="font-size:12px;color:#e4e4e7;font-weight:500;">${l.user}</td>
@@ -91,8 +98,54 @@ export async function renderStaff(container) {
   `;
 
   container.querySelector('#add-staff-btn')?.addEventListener('click', () => {
-    const email = prompt('Enter staff member email address:');
-    if (!email) return;
-    showToast(`Invitation sent to ${email}`);
+    const modalHtml = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <p style="font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;color:#f4f4f5;">Invite Staff Member</p>
+        <button id="modal-close" class="admin-btn" style="padding:4px 8px;font-size:11px;">✕</button>
+      </div>
+
+      <form id="invite-form" style="display:flex;flex-direction:column;gap:14px;">
+        <div>
+          <label style="display:block;font-size:11px;color:#71717a;margin-bottom:4px;text-transform:uppercase;">Email Address</label>
+          <input id="inv-email" type="email" class="admin-input" placeholder="colleague@bear.in" required />
+        </div>
+
+        <div>
+          <label style="display:block;font-size:11px;color:#71717a;margin-bottom:4px;text-transform:uppercase;">Administrative Role</label>
+          <select id="inv-role" class="admin-select">
+            <option value="admin">Admin (Catalog, Inventory, Fulfillment)</option>
+            <option value="super_admin">Super Admin (Full System Access)</option>
+          </select>
+        </div>
+
+        <button type="submit" id="inv-submit" class="admin-btn primary" style="width:100%;justify-content:center;padding:10px;margin-top:10px;">
+          Send Invitation
+        </button>
+      </form>
+    `;
+
+    const { overlay, close } = openModal(modalHtml);
+    overlay.querySelector('#modal-close').addEventListener('click', close);
+
+    overlay.querySelector('#invite-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = overlay.querySelector('#inv-submit');
+      btn.disabled = true;
+      btn.textContent = 'Sending...';
+
+      const email = overlay.querySelector('#inv-email').value.trim();
+      const role = overlay.querySelector('#inv-role').value;
+
+      try {
+        await inviteStaff({ email, role });
+        showToast(`Staff invitation sent to ${email}`);
+        close();
+        renderStaff(container);
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Send Invitation';
+      }
+    });
   });
 }

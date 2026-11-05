@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Environment & Credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+*.pfx
+
+# Logs
+logs
+*.log
+
+# Editor & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.tmp
+
+# Runtime data
+src/data/*.json
+
+# Coverage & testing
+coverage/
+*.mjs
+

@@ -39,6 +39,9 @@ export function createProductGallery(product) {
 
   function renderMain(index) {
     mainWrap.innerHTML = makePlaceholderSVG(product.name, index, product.mode);
+    mainWrap.classList.remove('gallery-main-fade');
+    void mainWrap.offsetWidth;
+    mainWrap.classList.add('gallery-main-fade');
   }
 
   function renderThumbs() {

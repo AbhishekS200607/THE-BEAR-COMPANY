@@ -111,7 +111,7 @@ export function mount(container) {
                   .map((item) => {
                     const img = item.image || (item.images && item.images[0]) || '';
                     return `
-                    <div class="py-3.5 flex gap-3 items-center">
+                    <div class="py-3.5 flex gap-3 items-center" data-cart-row>
                       <div class="w-16 h-20 rounded-lg bg-zinc-100 overflow-hidden shrink-0 border border-zinc-200">
                         ${img ? `<img src="${img}" alt="${item.name}" class="w-full h-full object-cover" />` : makePlaceholderSVG(item.name, item.mode)}
                       </div>
@@ -120,14 +120,14 @@ export function mount(container) {
                         <p class="text-[11px] text-zinc-400 mb-2">${item.colour} • Size ${item.size}</p>
                         <div class="flex items-center justify-between">
                           <div class="flex items-center border border-zinc-200 rounded-full px-2 py-0.5 bg-zinc-50 text-xs">
-                            <button class="cart-qty-btn px-1 text-zinc-700 hover:text-black font-bold cursor-pointer" data-action="dec" data-id="${item.id}" data-size="${item.size}" data-color="${item.colour}">-</button>
+                            <button class="cart-qty-btn px-1 text-zinc-700 hover:text-black font-bold cursor-pointer" data-action="dec" data-id="${item.id}" data-size="${item.size}" data-colour="${item.colour}">-</button>
                             <span class="px-2 font-bold font-headline">${item.quantity}</span>
-                            <button class="cart-qty-btn px-1 text-zinc-700 hover:text-black font-bold cursor-pointer" data-action="inc" data-id="${item.id}" data-size="${item.size}" data-color="${item.colour}">+</button>
+                            <button class="cart-qty-btn px-1 text-zinc-700 hover:text-black font-bold cursor-pointer" data-action="inc" data-id="${item.id}" data-size="${item.size}" data-colour="${item.colour}">+</button>
                           </div>
                           <span class="text-xs font-bold text-zinc-950 font-headline">${formatCurrency(item.price * item.quantity)}</span>
                         </div>
                       </div>
-                      <button class="cart-remove-btn text-zinc-300 hover:text-red-600 p-1 transition-colors cursor-pointer" data-id="${item.id}" data-size="${item.size}" data-color="${item.colour}" title="Remove item">
+                      <button class="cart-remove-btn text-zinc-300 hover:text-red-600 p-1 transition-colors cursor-pointer" data-id="${item.id}" data-size="${item.size}" data-colour="${item.colour}" title="Remove item">
                         <span class="material-symbols-outlined text-[18px]">delete</span>
                       </button>
                     </div>
@@ -206,12 +206,12 @@ export function mount(container) {
       btn.addEventListener('click', () => {
         const id = btn.dataset.id;
         const size = btn.dataset.size;
-        const color = btn.dataset.color;
+        const colour = btn.dataset.colour;
         const action = btn.dataset.action;
-        const item = cart.find((i) => i.id === id && i.size === size && i.colour === color);
+        const item = cart.find((i) => i.id === id && i.size === size && i.colour === colour);
         if (item) {
           const newQty = action === 'inc' ? item.quantity + 1 : item.quantity - 1;
-          updateCartQty(id, size, color, newQty);
+          updateCartQty(id, size, colour, newQty);
         }
       });
     });
@@ -220,8 +220,16 @@ export function mount(container) {
       btn.addEventListener('click', () => {
         const id = btn.dataset.id;
         const size = btn.dataset.size;
-        const color = btn.dataset.color;
-        removeFromCart(id, size, color);
+        const colour = btn.dataset.colour;
+        const row = btn.closest('[data-cart-row]');
+        if (row) {
+          row.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+          row.style.opacity = '0';
+          row.style.transform = 'translateX(20px)';
+          setTimeout(() => removeFromCart(id, size, colour), 200);
+        } else {
+          removeFromCart(id, size, colour);
+        }
       });
     });
 
@@ -248,14 +256,23 @@ export function mount(container) {
     overlay.classList.remove('opacity-0', 'pointer-events-none');
     drawer.classList.remove('translate-x-full');
     drawer.style.transform = '';
+    drawer.style.willChange = 'transform';
     document.body.classList.add('overflow-hidden');
     releaseTrap = trapFocus(drawer);
+    // Animate free-shipping progress bar fill from 0
+    const bar = drawer.querySelector('.h-full.bg-black.rounded-full');
+    if (bar) {
+      const target = bar.style.width;
+      bar.style.width = '0%';
+      requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.width = target; }));
+    }
   }
 
   function close() {
     drawer.classList.add('translate-x-full');
     overlay.classList.add('opacity-0', 'pointer-events-none');
     drawer.style.transform = '';
+    drawer.style.willChange = 'auto';
     document.body.classList.remove('overflow-hidden');
     drawer.setAttribute('aria-hidden', 'true');
     if (releaseTrap) releaseTrap();

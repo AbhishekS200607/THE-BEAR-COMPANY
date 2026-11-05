@@ -99,7 +99,7 @@ export function mount(container) {
               <ul class="flex flex-col space-y-2.5 text-xs">
                 <li><a href="#track-order" class="${textMutedClass} ${hoverTextClass} transition-colors block no-underline focus-visible:outline-2">PIN &amp; Order Tracking</a></li>
                 <li><a href="#faq" class="${textMutedClass} ${hoverTextClass} transition-colors block no-underline focus-visible:outline-2">Frequently Asked Questions</a></li>
-                <li><a href="https://wa.me/919876543210" target="_blank" rel="noopener noreferrer" class="${textMutedClass} ${hoverTextClass} transition-colors block no-underline focus-visible:outline-2">Contact Us</a></li>
+                <li><a href="#contact" class="${textMutedClass} ${hoverTextClass} transition-colors block no-underline focus-visible:outline-2">Contact Us</a></li>
                 <li><a href="#shipping" class="${textMutedClass} ${hoverTextClass} transition-colors block no-underline focus-visible:outline-2">Shipping &amp; Transit Times</a></li>
                 <li><a href="#returns" class="${textMutedClass} ${hoverTextClass} transition-colors block no-underline focus-visible:outline-2">Returns &amp; Exchange</a></li>
                 <li><a href="#size-guide" class="${textMutedClass} ${hoverTextClass} transition-colors block no-underline focus-visible:outline-2">Size Guide</a></li>

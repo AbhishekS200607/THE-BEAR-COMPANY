@@ -1,12 +1,24 @@
 import { getPromotions, savePromotions } from '../services/adminService.js';
-import { spinner, mockBanner, showToast } from '../helpers.js';
+import { spinner, showToast } from '../helpers.js';
 
 export async function renderPromotions(container) {
   container.innerHTML = spinner();
-  const { promotions, _mock } = await getPromotions();
+  const { promotions = {}, _error } = await getPromotions();
+
+  if (_error) {
+    container.innerHTML = `
+      <div style="padding:40px;text-align:center;background:#18181b;border:1px solid #27272a;">
+        <span class="material-symbols-outlined" style="font-size:36px;color:#f87171;margin-bottom:12px;">campaign</span>
+        <p style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:#f4f4f5;margin-bottom:6px;">Error Loading Promotions</p>
+        <p style="font-size:12px;color:#71717a;margin-bottom:20px;">${_error}</p>
+        <button id="promo-retry-btn" class="admin-btn primary">Retry</button>
+      </div>
+    `;
+    container.querySelector('#promo-retry-btn')?.addEventListener('click', () => renderPromotions(container));
+    return;
+  }
 
   container.innerHTML = `
-    ${_mock ? mockBanner() : ''}
     <div class="section-header">
       <div>
         <p class="section-title">Promotions & Marketing Banners</p>
@@ -80,6 +92,10 @@ export async function renderPromotions(container) {
   `;
 
   container.querySelector('#save-promos-btn')?.addEventListener('click', async () => {
+    const btn = container.querySelector('#save-promos-btn');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
     const announcementMessages = container.querySelector('#announcement-text').value.split('\n').map(s => s.trim()).filter(Boolean);
     const announcementEnabled = container.querySelector('#announcement-enabled').checked;
     const heroBearTitle = container.querySelector('#hero-bear-title').value.trim();
@@ -87,13 +103,20 @@ export async function renderPromotions(container) {
     const popupEnabled = container.querySelector('#popup-enabled').checked;
     const popupText = container.querySelector('#popup-text').value.trim();
 
-    await savePromotions({
-      announcement_bar: { enabled: announcementEnabled, messages: announcementMessages },
-      hero_banner: { bear_title: heroBearTitle, sow_title: heroSowTitle },
-      popup: { enabled: popupEnabled, text: popupText },
-    });
+    try {
+      await savePromotions({
+        announcement_bar: { enabled: announcementEnabled, messages: announcementMessages },
+        hero_banner: { bear_title: heroBearTitle, sow_title: heroSowTitle },
+        popup: { enabled: popupEnabled, text: popupText },
+      });
 
-    showToast('Promotions and banners published successfully.');
-    renderPromotions(container);
+      showToast('Promotions and banners published successfully.');
+      btn.disabled = false;
+      btn.textContent = 'Save All Changes';
+    } catch (err) {
+      showToast(err.message, 'error');
+      btn.disabled = false;
+      btn.textContent = 'Save All Changes';
+    }
   });
 }

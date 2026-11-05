@@ -2,47 +2,32 @@ import { getMode, setMode, subscribe } from '../state/store.js';
 import { announceToScreenReader } from '../utils/accessibility.js';
 
 export function createModeSwitch() {
-  const el = document.createElement('div');
-  el.className = 'mode-switch';
-  el.setAttribute('role', 'group');
-  el.setAttribute('aria-label', 'Shopping mode');
+  const el = document.createElement('button');
+  el.setAttribute('role', 'switch');
+  el.setAttribute('aria-label', 'Toggle between BEAR and SOW collection');
+  el.type = 'button';
 
   function render() {
     const mode = getMode();
+    const isSow = mode === 'sow';
+
+    el.className = `mode-switch${isSow ? ' mode-switch--sow' : ''}`;
+    el.setAttribute('aria-checked', isSow ? 'true' : 'false');
+
     el.innerHTML = `
-      <div class="mode-switch__indicator" id="mode-indicator"></div>
-      <button class="mode-switch__btn ${mode === 'bear' ? 'active' : ''}" data-mode="bear" aria-pressed="${mode === 'bear'}">BEAR</button>
-      <button class="mode-switch__btn ${mode === 'sow' ? 'active' : ''}" data-mode="sow" aria-pressed="${mode === 'sow'}">SOW</button>
+      <div class="mode-switch__thumb${isSow ? ' mode-switch__thumb--sow' : ''}"></div>
+      <div class="mode-switch__labels">
+        <span class="mode-switch__label mode-switch__label--bear">BEAR</span>
+        <span class="mode-switch__label mode-switch__label--sow">SOW</span>
+      </div>
     `;
-    updateIndicator(mode);
-    attachListeners();
   }
 
-  function updateIndicator(mode) {
-    const indicator = el.querySelector('#mode-indicator');
-    const bearBtn = el.querySelector('[data-mode="bear"]');
-    const sowBtn = el.querySelector('[data-mode="sow"]');
-    if (!indicator || !bearBtn || !sowBtn) return;
-
-    if (mode === 'bear') {
-      indicator.style.width = bearBtn.offsetWidth + 'px';
-      indicator.style.transform = 'translateX(0)';
-    } else {
-      indicator.style.width = sowBtn.offsetWidth + 'px';
-      indicator.style.transform = `translateX(${bearBtn.offsetWidth}px)`;
-    }
-  }
-
-  function attachListeners() {
-    el.querySelectorAll('.mode-switch__btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const newMode = btn.dataset.mode;
-        if (newMode === getMode()) return;
-        setMode(newMode);
-        announceToScreenReader(`Switched to ${newMode === 'bear' ? 'BEAR men\'s' : 'SOW women\'s'} collection`);
-      });
-    });
-  }
+  el.addEventListener('click', () => {
+    const next = getMode() === 'bear' ? 'sow' : 'bear';
+    setMode(next);
+    announceToScreenReader(`Switched to ${next === 'bear' ? 'BEAR men\'s' : 'SOW women\'s'} collection`);
+  });
 
   render();
   subscribe(() => render());
@@ -51,4 +36,3 @@ export function createModeSwitch() {
 }
 
 export default { createModeSwitch };
-

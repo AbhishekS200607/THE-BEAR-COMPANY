@@ -4,8 +4,11 @@ import { createProductCard } from '../components/productCard.js';
 import { addItem } from '../services/cartService.js';
 import { showToast } from '../components/toast.js';
 import { renderEmptyIllustration } from '../components/emptyState.js';
+import { skeletonWishlist } from '../utils/skeletons.js';
 
 export function render(container) {
+  container.innerHTML = skeletonWishlist();
+
   const page = document.createElement('div');
   page.className = 'w-full max-w-[1360px] mx-auto px-4 sm:px-6 md:px-gutter-desktop pt-20 md:pt-24 pb-32';
 
@@ -75,7 +78,7 @@ export function render(container) {
   container.appendChild(page);
 
   const unsub = subscribe(() => buildPage());
-  window.addEventListener('hashchange', () => unsub(), { once: true });
+  return unsub;
 }
 
 export default { render };

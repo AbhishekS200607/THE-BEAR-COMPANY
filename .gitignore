@@ -8,12 +8,15 @@ dist/
 build/
 out/
 
-# Environment files
+# Environment & Credentials
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+*.pfx
+.npmrc
 
 # Logs
 logs
@@ -41,4 +44,45 @@ Thumbs.db
 .cache/
 .vite/
 .eslintcache
+
+# Design reference dumps
+stitch_bear_performance_gymwear_storefront*
+
+# Root-level screenshots and media
+*.png
+*.jpg
+*.jpeg
+desktop.png
+mobile.png
+
+# Audit, verification, and temporary markdown reports
+*REPORT*.md
+*AUDIT*.md
+*_REPORT.md
+*_AUDIT.md
+*HANDOFF*.md
+PROBLEMS.md
+VERIFICATION_REPORT.md
+verified_reort.md
+AI_HANDOFF.md
+*.report.md
+*.audit.md
+*.scratch.md
+TODO.md
+NOTES.md
+TEMP*.md
+*.tmp.md
+
+# Scratch and temporary scripts
+*.mjs
+server/*.mjs
+test_*.mjs
+check_*.mjs
+
+# Test coverage & artifacts
+coverage/
+.nyc_output/
+
+# Runtime-generated JSON data
+server/src/data/*.json
 

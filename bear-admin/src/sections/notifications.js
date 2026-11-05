@@ -1,13 +1,23 @@
-import { showToast } from '../helpers.js';
+import { getNotifications, markNotificationsRead } from '../services/adminService.js';
+import { spinner, showToast } from '../helpers.js';
 
-const MOCK_NOTIFICATIONS = [
-  { id: 'notif-1', title: 'New WhatsApp Order Request', desc: 'Order BEAR-20261104-A1B2 received from Vikram Malhotra (+91 9876543210). Stock reserved for 30 min.', time: '12m ago', type: 'order', read: false },
-  { id: 'notif-2', title: 'Low Stock Alert: BEAR Oversized Tee', desc: 'SKU BEAR-OT-CH-M has reached 2 units available (threshold: 5).', time: '1h ago', type: 'inventory', read: false },
-  { id: 'notif-3', title: 'BlueDart Air Manifest Recorded', desc: 'AWB BD-889210948 generated and dispatched from Bengaluru Kempegowda hub.', time: '3h ago', type: 'shipping', read: true },
-  { id: 'notif-4', title: 'Customer Cancellation Handled', desc: 'Order BEAR-20261101-K1L2 cancelled by customer. Reserved inventory released back to catalog.', time: '1d ago', type: 'system', read: true },
-];
+export async function renderNotifications(container) {
+  container.innerHTML = spinner();
+  const { notifications = [], _error } = await getNotifications();
 
-export function renderNotifications(container) {
+  if (_error) {
+    container.innerHTML = `
+      <div style="padding:40px;text-align:center;background:#18181b;border:1px solid #27272a;">
+        <span class="material-symbols-outlined" style="font-size:36px;color:#f87171;margin-bottom:12px;">notifications_off</span>
+        <p style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:#f4f4f5;margin-bottom:6px;">Error Loading Notifications</p>
+        <p style="font-size:12px;color:#71717a;margin-bottom:20px;">${_error}</p>
+        <button id="notif-retry-btn" class="admin-btn primary">Retry</button>
+      </div>
+    `;
+    container.querySelector('#notif-retry-btn')?.addEventListener('click', () => renderNotifications(container));
+    return;
+  }
+
   container.innerHTML = `
     <div class="section-header">
       <div>
@@ -41,7 +51,13 @@ export function renderNotifications(container) {
 
     <!-- Notifications List -->
     <div style="display:flex;flex-direction:column;gap:10px;">
-      ${MOCK_NOTIFICATIONS.map(n => `
+      ${notifications.length === 0 ? `
+        <div class="card" style="padding:32px;text-align:center;color:#71717a;">
+          <span class="material-symbols-outlined" style="font-size:32px;color:#34d399;margin-bottom:8px;">check_circle</span>
+          <p style="color:#e4e4e7;font-size:14px;font-weight:600;">All caught up!</p>
+          <p style="font-size:12px;color:#71717a;margin-top:4px;">No critical inventory warnings or unhandled orders.</p>
+        </div>
+      ` : notifications.map(n => `
         <div class="card" style="padding:16px;display:flex;align-items:flex-start;gap:14px;border-left:3px solid ${n.read ? '#3f3f46' : '#22d3ee'};">
           <span class="material-symbols-outlined" style="font-size:22px;color:${n.type === 'order' ? '#34d399' : n.type === 'inventory' ? '#fbbf24' : '#22d3ee'};flex-shrink:0;margin-top:2px;">
             ${n.type === 'order' ? 'shopping_bag' : n.type === 'inventory' ? 'warning' : 'local_shipping'}
@@ -51,7 +67,7 @@ export function renderNotifications(container) {
               <p style="font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;color:${n.read ? '#a1a1aa' : '#f4f4f5'};">
                 ${n.title}
               </p>
-              <span style="font-size:11px;color:#52525b;white-space:nowrap;">${n.time}</span>
+              <span style="font-size:11px;color:#52525b;white-space:nowrap;font-family:'Space Grotesk',sans-serif;">${n.time}</span>
             </div>
             <p style="font-size:12px;color:#71717a;line-height:1.4;">${n.desc}</p>
           </div>
@@ -60,9 +76,13 @@ export function renderNotifications(container) {
     </div>
   `;
 
-  container.querySelector('#mark-all-read-btn')?.addEventListener('click', () => {
-    MOCK_NOTIFICATIONS.forEach(n => { n.read = true; });
-    showToast('All notifications marked as read.');
-    renderNotifications(container);
+  container.querySelector('#mark-all-read-btn')?.addEventListener('click', async () => {
+    try {
+      await markNotificationsRead();
+      showToast('All notifications marked as read.');
+      renderNotifications(container);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
   });
 }

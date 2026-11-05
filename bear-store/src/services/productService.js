@@ -1,74 +1,113 @@
-import { mockDelay } from './mockStore.js';
-import { products } from '../data/products.js';
+import { products as fallbackProducts } from '../data/products.js';
 import { collections } from '../data/collections.js';
 import { remember } from './cacheService.js';
+
+const API_BASE = 'http://localhost:4000/api/v1';
+
+async function fetchAllLiveProducts() {
+  try {
+    const res = await fetch(`${API_BASE}/products`);
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+        return json.data.map(normalizeProduct);
+      }
+    }
+  } catch (err) {
+    console.warn('[BEAR Store] Could not reach products API, using static fallback:', err.message);
+  }
+  return fallbackProducts.map(normalizeProduct);
+}
+
+function normalizeProduct(p) {
+  return {
+    ...p,
+    rating: p.rating || 4.8,
+    reviewCount: p.reviewCount || 128,
+    sizes: (p.sizes || []).map((s) => ({
+      ...s,
+      variantId: s.variantId || null,
+      available: s.available !== undefined ? s.available : true,
+    })),
+  };
+}
 
 export async function getProducts(mode, filters = {}, sort = 'featured') {
   const key = `products:${mode}:${JSON.stringify(filters)}:${sort}`;
   return remember(key, async () => {
-  await mockDelay();
-  let result = products.filter((p) => p.mode === mode);
+    const all = await fetchAllLiveProducts();
+    let result = all.filter((p) => p.mode === mode);
 
-  // Apply category filter
-  if (filters.category && filters.category !== 'all') {
-    result = result.filter((p) => p.category.toLowerCase() === filters.category.toLowerCase());
-  }
+    // Apply category filter
+    if (filters.category && filters.category !== 'all') {
+      result = result.filter((p) => (p.category || '').toLowerCase() === filters.category.toLowerCase());
+    }
 
-  // Apply size filter
-  if (filters.sizes && filters.sizes.length > 0) {
-    result = result.filter((p) =>
-      p.sizes.some((s) => filters.sizes.includes(s.size) && s.available)
-    );
-  }
+    // Apply size filter
+    if (filters.sizes && filters.sizes.length > 0) {
+      result = result.filter((p) =>
+        (p.sizes || []).some((s) => filters.sizes.includes(s.size) && s.available)
+      );
+    }
 
-  // Apply colour filter
-  if (filters.colours && filters.colours.length > 0) {
-    result = result.filter((p) =>
-      p.colours.some((c) => filters.colours.includes(c.id))
-    );
-  }
+    // Apply colour filter
+    if (filters.colours && filters.colours.length > 0) {
+      result = result.filter((p) =>
+        (p.colours || []).some((c) => filters.colours.includes(c.id))
+      );
+    }
 
-  // Apply price filter
-  if (filters.minPrice !== undefined) {
-    result = result.filter((p) => p.price >= filters.minPrice);
-  }
-  if (filters.maxPrice !== undefined) {
-    result = result.filter((p) => p.price <= filters.maxPrice);
-  }
+    // Apply price filter
+    if (filters.minPrice !== undefined) {
+      result = result.filter((p) => p.price >= filters.minPrice);
+    }
+    if (filters.maxPrice !== undefined) {
+      result = result.filter((p) => p.price <= filters.maxPrice);
+    }
 
-  // Apply sort
-  switch (sort) {
-    case 'price-asc':
-      result.sort((a, b) => a.price - b.price);
-      break;
-    case 'price-desc':
-      result.sort((a, b) => b.price - a.price);
-      break;
-    case 'newest':
-      result.sort((a, b) => (b.new ? 1 : 0) - (a.new ? 1 : 0));
-      break;
-    case 'rating':
-      result.sort((a, b) => b.rating - a.rating);
-      break;
-    case 'featured':
-    default:
-      result.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
-  }
+    // Apply sort
+    switch (sort) {
+      case 'price-asc':
+        result.sort((a, b) => a.price - b.price);
+        break;
+      case 'price-desc':
+        result.sort((a, b) => b.price - a.price);
+        break;
+      case 'newest':
+        result.sort((a, b) => (b.new ? 1 : 0) - (a.new ? 1 : 0));
+        break;
+      case 'rating':
+        result.sort((a, b) => b.rating - a.rating);
+        break;
+      case 'featured':
+      default:
+        result.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
+    }
 
-  return result;
-  });
+    return result;
+  }, 60 * 1000); // 1 min cache
 }
 
 export async function getProductBySlug(slug) {
   return remember(`product:${slug}`, async () => {
-    await mockDelay(100, 200);
-    return products.find((p) => p.slug === slug) || null;
-  });
+    try {
+      const res = await fetch(`${API_BASE}/products/${encodeURIComponent(slug)}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          return normalizeProduct(json.data);
+        }
+      }
+    } catch (err) {
+      console.warn('[BEAR Store] Could not fetch product by slug from API:', err.message);
+    }
+    const found = fallbackProducts.find((p) => p.slug === slug);
+    return found ? normalizeProduct(found) : null;
+  }, 60 * 1000);
 }
 
 export async function getCollections(mode) {
   return remember(`collections:${mode}`, async () => {
-    await mockDelay();
     return collections[mode] || [];
   });
 }
@@ -76,38 +115,37 @@ export async function getCollections(mode) {
 export async function searchProducts(query, mode) {
   if (!query || query.trim().length < 2) return [];
   return remember(`search:${mode}:${query.trim().toLowerCase()}`, async () => {
-    await mockDelay(100, 250);
     const q = query.trim().toLowerCase();
-    return products.filter(
+    const all = await fetchAllLiveProducts();
+    return all.filter(
       (p) =>
         (mode ? p.mode === mode : true) &&
         (p.name.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q) ||
-          p.description.toLowerCase().includes(q))
+          (p.category || '').toLowerCase().includes(q) ||
+          (p.description || '').toLowerCase().includes(q))
     );
-  }, 2 * 60 * 1000); // 2 min TTL for search
+  }, 2 * 60 * 1000);
 }
 
 export async function getFeatured(mode) {
   return remember(`featured:${mode}`, async () => {
-    await mockDelay();
-    return products.filter((p) => p.mode === mode && p.featured);
-  });
+    const all = await fetchAllLiveProducts();
+    return all.filter((p) => p.mode === mode && p.featured);
+  }, 60 * 1000);
 }
 
 export async function getBestsellers(mode) {
   return remember(`bestsellers:${mode}`, async () => {
-    await mockDelay();
-    return products.filter((p) => p.mode === mode && p.bestseller);
-  });
+    const all = await fetchAllLiveProducts();
+    return all.filter((p) => p.mode === mode && p.bestseller);
+  }, 60 * 1000);
 }
 
 export async function getNewArrivals(mode) {
   return remember(`newArrivals:${mode}`, async () => {
-    await mockDelay();
-    return products.filter((p) => p.mode === mode && p.new);
-  });
+    const all = await fetchAllLiveProducts();
+    return all.filter((p) => p.mode === mode && p.new);
+  }, 60 * 1000);
 }
 
 export default { getProducts, getProductBySlug, getCollections, searchProducts, getFeatured, getBestsellers, getNewArrivals };
-

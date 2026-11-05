@@ -2,6 +2,7 @@ import './styles.css';
 import { isAuthenticated, logout, renderAuthGate } from './auth.js';
 import { renderDashboard } from './sections/dashboard.js';
 import { renderOrders } from './sections/orders.js';
+import { renderCancellations } from './sections/cancellations.js';
 import { renderInventory } from './sections/inventory.js';
 import { renderProducts } from './sections/products.js';
 import { renderCategories } from './sections/categories.js';
@@ -21,6 +22,7 @@ const SECTIONS = {
   categories:    { label: 'Categories',           icon: 'category',         render: renderCategories },
   inventory:     { label: 'Inventory Matrix',     icon: 'warehouse',        render: renderInventory },
   orders:        { label: 'Orders Queue',         icon: 'shopping_bag',     render: renderOrders },
+  cancellations: { label: 'Cancellations',        icon: 'cancel_presentation', render: renderCancellations },
   customers:     { label: 'Customer CRM',         icon: 'group',            render: renderCustomers },
   shipping:      { label: 'Shipping & Logistics', icon: 'local_shipping',   render: renderShipping },
   discounts:     { label: 'Discounts & Coupons',  icon: 'loyalty',          render: renderDiscounts },
@@ -33,8 +35,9 @@ const SECTIONS = {
 let currentSection = 'dashboard';
 let clockInterval = null;
 
-function init() {
-  if (!isAuthenticated()) {
+async function init() {
+  const authed = await isAuthenticated();
+  if (!authed) {
     if (clockInterval) clearInterval(clockInterval);
     renderAuthGate(app, () => init());
     return;
@@ -180,9 +183,9 @@ function renderShell() {
   });
 
   // Attach logout handler
-  app.querySelector('#admin-logout-btn')?.addEventListener('click', () => {
+  app.querySelector('#admin-logout-btn')?.addEventListener('click', async () => {
     if (confirm('Sign out of BEAR Admin Console?')) {
-      logout();
+      await logout();
       init();
     }
   });

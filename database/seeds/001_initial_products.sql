@@ -219,36 +219,91 @@ SET
     updated_at = NOW();
 
 -- 3. PRODUCT VARIANTS & INVENTORY GENERATION
--- Helper DO block to generate sizes (S, M, L, XL, XXL) per product and attach initial inventory
+-- Corrected: Globally unique SKU generation
+-- Safe to rerun: Existing variants are updated, inventory is preserved
 DO $$
 DECLARE
     prod RECORD;
     sz TEXT;
     var_id UUID;
     sku_val TEXT;
+    colour_val TEXT;
+    colour_hex_val TEXT;
 BEGIN
-    FOR prod IN SELECT id, slug, mode::text AS mode, name FROM public.products LOOP
-        FOREACH sz IN ARRAY ARRAY['S', 'M', 'L', 'XL', 'XXL'] LOOP
-            sku_val := UPPER(SUBSTRING(prod.mode, 1, 1) || '-' || SUBSTRING(REGEXP_REPLACE(prod.slug, '[^a-zA-Z0-9]', '', 'g'), 1, 6) || '-' || sz);
-            
-            INSERT INTO public.product_variants (product_id, sku, colour_name, colour_hex, size)
+    FOR prod IN
+        SELECT
+            id,
+            slug,
+            mode::text AS mode,
+            name
+        FROM public.products
+        ORDER BY id
+    LOOP
+
+        -- Assign colour based on BEAR / SOW mode
+        IF prod.mode = 'bear' THEN
+            colour_val := 'Pitch Black';
+            colour_hex_val := '#111111';
+        ELSE
+            colour_val := 'Terracotta';
+            colour_hex_val := '#80534C';
+        END IF;
+
+        -- Generate variants for each size
+        FOREACH sz IN ARRAY ARRAY['S', 'M', 'L', 'XL', 'XXL']
+        LOOP
+
+            -- Use the COMPLETE product UUID to guarantee unique SKUs
+            sku_val := UPPER(
+                SUBSTRING(prod.mode, 1, 1)
+                || '-'
+                || REPLACE(prod.id::text, '-', '')
+                || '-'
+                || sz
+            );
+
+            -- Insert or update the matching product variant
+            INSERT INTO public.product_variants (
+                product_id,
+                sku,
+                colour_name,
+                colour_hex,
+                size
+            )
             VALUES (
                 prod.id,
                 sku_val,
-                CASE WHEN prod.mode = 'bear' THEN 'Pitch Black' ELSE 'Terracotta' END,
-                CASE WHEN prod.mode = 'bear' THEN '#111111' ELSE '#80534C' END,
+                colour_val,
+                colour_hex_val,
                 sz
             )
-            ON CONFLICT (product_id, colour_name, size) DO UPDATE
-            SET sku = EXCLUDED.sku
+            ON CONFLICT (product_id, colour_name, size)
+            DO UPDATE SET
+                sku = EXCLUDED.sku,
+                colour_hex = EXCLUDED.colour_hex
             RETURNING id INTO var_id;
 
-            -- Attach initial inventory for each variant
-            INSERT INTO public.inventory (variant_id, quantity_available, quantity_reserved, low_stock_threshold)
-            VALUES (var_id, 30, 0, 5)
-            ON CONFLICT (variant_id) DO NOTHING;
+            -- Create initial inventory only if it does not exist
+            INSERT INTO public.inventory (
+                variant_id,
+                quantity_available,
+                quantity_reserved,
+                low_stock_threshold
+            )
+            VALUES (
+                var_id,
+                30,
+                0,
+                5
+            )
+            ON CONFLICT (variant_id)
+            DO NOTHING;
+
         END LOOP;
     END LOOP;
+
+    RAISE NOTICE 'Product variants and inventory generation completed successfully.';
+
 END $$;
 
 COMMIT;

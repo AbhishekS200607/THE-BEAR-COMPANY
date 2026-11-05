@@ -170,21 +170,49 @@ export function render(container) {
     }
 
     const allOrders = await getDemoOrders();
-    const cleanId = orderIdInput.toUpperCase();
-    const matched = liveOrder || allOrders.find(
+    const cleanId = orderIdInput.trim().toUpperCase();
+    const cleanPhone = phoneInput.replace(/[^0-9]/g, '').slice(-10);
+
+    const matched = liveOrder || (allOrders || []).find(
       (o) =>
-        (o.id && o.id.toUpperCase().includes(cleanId)) ||
-        (o.orderNumber && o.orderNumber.toUpperCase().includes(cleanId)) ||
-        cleanId === 'DEMO' ||
-        cleanId.includes('1049')
+        ((o.orderNumber || o.id || '').toUpperCase() === cleanId) &&
+        (!cleanPhone || !o.details?.mobile || o.details.mobile.endsWith(cleanPhone))
     );
 
     setTimeout(() => {
-      const orderRef = liveOrder ? liveOrder.order_number : (matched ? matched.orderNumber || matched.id : orderIdInput.toUpperCase());
-      const orderStatus = liveOrder ? liveOrder.status : (matched?.status || 'shipped');
-      const awbNumber = liveOrder?.tracking_number || (matched?.awbNumber || `BD${Math.floor(Math.random() * 8999999) + 1000000}IN`);
-      const carrierName = liveOrder?.carrier_name || 'BLUEDART AIR';
-      const trackingUrl = liveOrder?.tracking_url || `https://www.bluedart.com/tracking/${awbNumber}`;
+      if (!matched) {
+        trackResultMount.innerHTML = `
+          <div class="bg-red-50/80 border border-red-200 rounded-2xl p-6 sm:p-8 text-center text-zinc-800">
+            <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-3">
+              <span class="material-symbols-outlined text-2xl">search_off</span>
+            </div>
+            <h3 class="font-headline text-sm font-bold uppercase tracking-wider text-red-950 mb-1">Shipment Not Found</h3>
+            <p class="text-xs text-zinc-600 max-w-md mx-auto mb-4 leading-relaxed">
+              We couldn't locate an active shipment matching order reference <strong class="font-mono text-zinc-900">${cleanId}</strong> for phone ending in <strong class="font-mono text-zinc-900">${cleanPhone || phoneInput}</strong>.
+            </p>
+            <div class="flex flex-wrap items-center justify-center gap-3">
+              <a href="https://wa.me/919605210198?text=Hi%20BEAR!%20Need%20help%20tracking%20order%20${encodeURIComponent(cleanId)}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-[#25D366] text-white text-xs font-bold uppercase font-headline hover:bg-[#1EBE5D] transition-colors">
+                <span>WhatsApp Support</span>
+              </a>
+              <button type="button" id="recheck-order-btn" class="px-5 py-2.5 rounded-full border border-zinc-300 text-xs font-bold uppercase font-headline hover:border-black transition-colors cursor-pointer">
+                Try Again
+              </button>
+            </div>
+          </div>
+        `;
+        trackResultMount.querySelector('#recheck-order-btn')?.addEventListener('click', () => {
+          trackResultMount.classList.add('hidden');
+          document.getElementById('track-order-id')?.focus();
+        });
+        trackResultMount.scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
+
+      const orderRef = liveOrder ? liveOrder.order_number : (matched.orderNumber || matched.id);
+      const orderStatus = liveOrder ? liveOrder.status : (matched.status || 'pending_whatsapp');
+      const awbNumber = liveOrder?.tracking_number || matched.tracking_number || matched.awbNumber || null;
+      const carrierName = liveOrder?.carrier_name || matched.carrier_name || (awbNumber ? 'BLUEDART AIR' : 'Pending Allocation');
+      const trackingUrl = liveOrder?.tracking_url || matched.tracking_url || (awbNumber ? `https://www.bluedart.com/tracking/${awbNumber}` : null);
 
       // Status text & badge
       let statusBadge = '';
@@ -220,7 +248,10 @@ export function render(container) {
           </div>
           <div>
             <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400 font-headline">Air Courier AWB</span>
-            <p class="font-mono text-xs font-bold text-zinc-900">${carrierName} • <a href="${trackingUrl}" target="_blank" rel="noopener" class="underline text-black hover:text-zinc-600">${awbNumber}</a></p>
+            ${awbNumber 
+              ? `<p class="font-mono text-xs font-bold text-zinc-900">${carrierName} • <a href="${trackingUrl || '#'}" target="_blank" rel="noopener" class="underline text-black hover:text-zinc-600">${awbNumber}</a></p>`
+              : `<p class="font-mono text-xs text-zinc-500 font-semibold">Assigned upon air dispatch</p>`
+            }
           </div>
           <div>
             <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400 font-headline">Status</span>

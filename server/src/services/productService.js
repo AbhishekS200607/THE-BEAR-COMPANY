@@ -63,8 +63,10 @@ export async function getProducts({ mode, category, search, limit = 50 }) {
   return (data || []).map(formatProductResponse);
 }
 
-export async function getProductBySlug(slug) {
-  const { data, error } = await supabaseAdmin
+export async function getProductBySlug(slugOrId) {
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slugOrId);
+
+  let query = supabaseAdmin
     .from('products')
     .select(`
       id,
@@ -102,9 +104,15 @@ export async function getProductBySlug(slug) {
         )
       )
     `)
-    .eq('slug', slug)
-    .eq('is_active', true)
-    .single();
+    .eq('is_active', true);
+
+  if (isUuid) {
+    query = query.or(`id.eq.${slugOrId},slug.eq.${slugOrId}`);
+  } else {
+    query = query.eq('slug', slugOrId);
+  }
+
+  const { data, error } = await query.maybeSingle();
 
   if (error || !data) {
     const err = new Error('Product not found');

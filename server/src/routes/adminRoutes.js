@@ -8,15 +8,35 @@ import {
   handleUpdateOrderStatus,
   handleGetInventory,
   handleUpdateInventory,
+  handleBulkImportInventory,
   handleCreateProduct,
   handleUpdateProduct,
+  handleArchiveProduct,
+  handleGetAdminProducts,
+  handleGetCategories,
+  handleCreateCategory,
+  handleUpdateCategory,
+  handleDeleteCategory,
   handleGetCustomers,
+  handleUpdateCustomerNotes,
   handleGetDiscounts,
+  handleCreateDiscount,
+  handleUpdateDiscount,
+  handleDeleteDiscount,
+  handleGetPromotions,
+  handleSavePromotions,
+  handleGetSettings,
+  handleSaveSettings,
+  handleGetStaff,
+  handleInviteStaff,
+  handleGetAuditLogs,
+  handleGetNotifications,
+  handleMarkNotificationsRead,
 } from '../controllers/adminController.js';
 
 const router = Router();
 
-// All admin routes require admin role
+// All admin routes strictly require valid admin JWT authentication
 router.use(requireAdmin);
 
 const updateOrderStatusSchema = {
@@ -25,10 +45,10 @@ const updateOrderStatusSchema = {
   }),
   body: z.object({
     status: z.enum(['pending_whatsapp', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'returned']),
-    carrierName: z.string().trim().optional(),
-    trackingNumber: z.string().trim().optional(),
-    trackingUrl: z.string().url().optional(),
-    adminNotes: z.string().trim().optional(),
+    carrierName: z.string().trim().optional().nullable(),
+    trackingNumber: z.string().trim().optional().nullable(),
+    trackingUrl: z.string().url().optional().nullable(),
+    adminNotes: z.string().trim().optional().nullable(),
   }),
 };
 
@@ -42,14 +62,33 @@ const updateInventorySchema = {
   }),
 };
 
+const bulkImportInventorySchema = {
+  body: z.object({
+    items: z.array(z.object({
+      sku: z.string().trim().min(1).optional(),
+      variantId: z.string().uuid().optional(),
+      quantityAvailable: z.number().int().min(0),
+      lowStockThreshold: z.number().int().min(0).optional(),
+    })).min(1, 'At least one inventory item is required'),
+  }),
+};
+
 const createProductSchema = {
   body: z.object({
     name: z.string().trim().min(2).max(150),
     mode: z.enum(['bear', 'sow']),
-    categoryName: z.string().trim().min(2),
+    category: z.string().trim().min(2).optional(),
+    categoryName: z.string().trim().min(2).optional(),
     price: z.number().positive(),
-    compareAtPrice: z.number().positive().optional(),
+    comparePrice: z.number().positive().optional().nullable(),
+    compareAtPrice: z.number().positive().optional().nullable(),
     description: z.string().trim().min(5),
+    colours: z.array(z.string().trim()).optional(),
+    sizes: z.array(z.string().trim()).optional(),
+    images: z.array(z.string().trim()).optional(),
+    skuBase: z.string().trim().optional(),
+    isPublished: z.boolean().optional(),
+    isActive: z.boolean().optional(),
     isFeatured: z.boolean().optional(),
     isBestseller: z.boolean().optional(),
     isNew: z.boolean().optional(),
@@ -62,36 +101,138 @@ const updateProductSchema = {
   }),
   body: z.object({
     name: z.string().trim().min(2).max(150).optional(),
+    category: z.string().trim().min(2).optional(),
     categoryName: z.string().trim().min(2).optional(),
     price: z.number().positive().optional(),
-    compareAtPrice: z.number().positive().optional(),
+    comparePrice: z.number().positive().optional().nullable(),
+    compareAtPrice: z.number().positive().optional().nullable(),
     description: z.string().trim().min(5).optional(),
+    mode: z.enum(['bear', 'sow']).optional(),
+    images: z.array(z.string().trim()).optional(),
+    isPublished: z.boolean().optional(),
+    isActive: z.boolean().optional(),
     isFeatured: z.boolean().optional(),
     isBestseller: z.boolean().optional(),
     isNew: z.boolean().optional(),
-    isActive: z.boolean().optional(),
   }),
 };
 
-// Admin Dashboard stats
+const createCategorySchema = {
+  body: z.object({
+    name: z.string().trim().min(2).max(100),
+    mode: z.enum(['bear', 'sow']),
+    slug: z.string().trim().min(2).max(100).optional(),
+    displayOrder: z.number().int().min(0).optional(),
+  }),
+};
+
+const updateCategorySchema = {
+  params: z.object({
+    id: z.string().uuid(),
+  }),
+  body: z.object({
+    name: z.string().trim().min(2).max(100).optional(),
+    mode: z.enum(['bear', 'sow']).optional(),
+    slug: z.string().trim().min(2).max(100).optional(),
+    displayOrder: z.number().int().min(0).optional(),
+  }),
+};
+
+const updateCustomerNotesSchema = {
+  params: z.object({
+    id: z.string().uuid(),
+  }),
+  body: z.object({
+    notes: z.string().trim().optional().default(''),
+  }),
+};
+
+const createDiscountSchema = {
+  body: z.object({
+    code: z.string().trim().min(2).max(30),
+    type: z.enum(['percentage', 'fixed']).default('percentage'),
+    value: z.number().positive(),
+    minOrder: z.number().min(0).optional(),
+    min_order: z.number().min(0).optional(),
+    usageLimit: z.number().int().min(1).optional(),
+    usage_limit: z.number().int().min(1).optional(),
+    isActive: z.boolean().optional(),
+    is_active: z.boolean().optional(),
+    expiresAt: z.string().optional(),
+  }),
+};
+
+const updateDiscountSchema = {
+  params: z.object({
+    id: z.string(),
+  }),
+  body: z.object({
+    isActive: z.boolean().optional(),
+    is_active: z.boolean().optional(),
+    value: z.number().positive().optional(),
+    type: z.enum(['percentage', 'fixed']).optional(),
+    minOrder: z.number().min(0).optional(),
+    min_order: z.number().min(0).optional(),
+    usageLimit: z.number().int().min(1).optional(),
+    usage_limit: z.number().int().min(1).optional(),
+  }),
+};
+
+// 1. Dashboard
 router.get('/dashboard', handleGetDashboard);
 
-// Admin Order Management
+// 2. Orders
 router.get('/orders', handleGetOrders);
 router.patch('/orders/:id/status', validate(updateOrderStatusSchema), handleUpdateOrderStatus);
 
-// Admin Inventory Management
+// 3. Inventory
 router.get('/inventory', handleGetInventory);
+router.post('/inventory/import', validate(bulkImportInventorySchema), handleBulkImportInventory);
 router.patch('/inventory/:variantId', validate(updateInventorySchema), handleUpdateInventory);
 
-// Admin Product Management
+// 4. Products & Categories
+router.get('/categories', handleGetCategories);
+router.post('/categories', validate(createCategorySchema), handleCreateCategory);
+router.patch('/categories/:id', validate(updateCategorySchema), handleUpdateCategory);
+router.delete('/categories/:id', handleDeleteCategory);
+
+router.get('/products', handleGetAdminProducts);
 router.post('/products', validate(createProductSchema), handleCreateProduct);
 router.patch('/products/:id', validate(updateProductSchema), handleUpdateProduct);
+router.delete('/products/:id', handleArchiveProduct);
 
-// Admin Customers Directory
+// 5. Customers
 router.get('/customers', handleGetCustomers);
+router.patch('/customers/:id', validate(updateCustomerNotesSchema), handleUpdateCustomerNotes);
 
-// Admin Discounts & Coupons
+// 6. Discounts & Coupons
 router.get('/discounts', handleGetDiscounts);
+router.post('/discounts', validate(createDiscountSchema), handleCreateDiscount);
+router.patch('/discounts/:id', validate(updateDiscountSchema), handleUpdateDiscount);
+router.delete('/discounts/:id', handleDeleteDiscount);
+
+// 7. Promotions
+router.get('/promotions', handleGetPromotions);
+router.put('/promotions', handleSavePromotions);
+router.patch('/promotions', handleSavePromotions);
+
+// 8. Settings
+router.get('/settings', handleGetSettings);
+router.put('/settings', handleSaveSettings);
+router.patch('/settings', handleSaveSettings);
+
+// 9. Staff & Roles
+router.get('/staff', handleGetStaff);
+router.post('/staff/invite', validate({
+  body: z.object({
+    email: z.string().email(),
+    role: z.enum(['admin', 'super_admin']).default('admin'),
+  }),
+}), handleInviteStaff);
+router.get('/audit-logs', handleGetAuditLogs);
+
+// 10. Notifications
+router.get('/notifications', handleGetNotifications);
+router.post('/notifications/mark-read', handleMarkNotificationsRead);
 
 export default router;

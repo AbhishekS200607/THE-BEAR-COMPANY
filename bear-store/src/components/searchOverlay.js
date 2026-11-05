@@ -3,6 +3,7 @@ import { getMode, setState, subscribe } from '../state/store.js';
 import { createProductCard } from './productCard.js';
 import { trapFocus, releaseFocus } from '../utils/accessibility.js';
 import { renderEmptyIllustration } from './emptyState.js';
+import { applyStagger } from '../utils/animations.js';
 
 let overlay = null;
 let previousFocus = null;
@@ -154,6 +155,7 @@ export function mount(container) {
   function open() {
     previousFocus = document.activeElement;
     overlay.classList.remove('opacity-0', 'pointer-events-none');
+    overlay.style.willChange = 'opacity';
     document.body.classList.add('overflow-hidden');
     renderRecentHistoryChips();
     releaseTrap = trapFocus(overlay);
@@ -162,6 +164,7 @@ export function mount(container) {
 
   function close() {
     overlay.classList.add('opacity-0', 'pointer-events-none');
+    overlay.style.willChange = 'auto';
     document.body.classList.remove('overflow-hidden');
     if (releaseTrap) releaseTrap();
     input.value = '';
@@ -227,6 +230,7 @@ export function mount(container) {
       results.forEach((p) => {
         grid.appendChild(createProductCard(p));
       });
+      applyStagger(grid);
       resultsArea.appendChild(grid);
     }
   }

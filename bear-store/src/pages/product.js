@@ -9,31 +9,11 @@ import { createProductCard } from '../components/productCard.js';
 import { recordView, getRecentlyViewedIds } from '../services/recentlyViewedService.js';
 import { openSizeRecommender } from '../components/sizeRecommender.js';
 import { openRestockModal } from '../components/restockNotifyModal.js';
+import { skeletonProduct } from '../utils/skeletons.js';
+import { flyToCart } from '../utils/animations.js';
 
 export async function render(container, slug) {
-  // 1. Shimmer Skeleton Loader (Eliminates layout shift)
-  container.innerHTML = `
-    <div class="max-w-[1360px] mx-auto w-full px-4 sm:px-6 md:px-gutter-desktop pt-20 md:pt-24 pb-24 animate-pulse">
-      <div class="h-4 bg-zinc-200 rounded w-36 mb-6"></div>
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        <div class="lg:col-span-7 flex flex-col md:flex-row gap-4">
-          <div class="order-2 md:order-1 flex md:flex-col gap-3 md:w-24">
-            <div class="w-20 h-24 bg-zinc-200 rounded-xl"></div>
-            <div class="w-20 h-24 bg-zinc-200 rounded-xl"></div>
-            <div class="w-20 h-24 bg-zinc-200 rounded-xl"></div>
-          </div>
-          <div class="order-1 md:order-2 flex-1 aspect-[3/4] bg-zinc-200 rounded-2xl"></div>
-        </div>
-        <div class="lg:col-span-5 flex flex-col gap-4">
-          <div class="h-4 bg-zinc-200 rounded w-24"></div>
-          <div class="h-8 bg-zinc-200 rounded w-3/4"></div>
-          <div class="h-6 bg-zinc-200 rounded w-32"></div>
-          <div class="h-16 bg-zinc-200 rounded w-full"></div>
-          <div class="h-12 bg-zinc-200 rounded-full w-full mt-4"></div>
-        </div>
-      </div>
-    </div>
-  `;
+  container.innerHTML = `<div class="w-full flex flex-col pt-20 md:pt-24">${skeletonProduct()}</div>`;
 
   const product = await getProductBySlug(slug);
 
@@ -199,6 +179,17 @@ export async function render(container, slug) {
             </div>
             <span class="text-zinc-300">•</span>
             <span class="text-emerald-700 font-bold uppercase text-[11px] font-headline">Free Pan-India Air Express</span>
+          </div>
+
+          <!-- Live Scarcity Radar Pulse (FOMO / Social Proof) -->
+          <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50/90 border border-amber-200 text-amber-900 text-xs mb-4 shadow-2xs self-start">
+            <span class="relative flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+            </span>
+            <span class="font-headline tracking-wide uppercase text-[10px] font-bold">
+              High Demand: 7 athletes viewing now · Only 2 left in Size <strong id="radar-size-indicator">${selectedSize}</strong>
+            </span>
           </div>
 
           <!-- Price Display -->
@@ -422,7 +413,7 @@ export async function render(container, slug) {
     <!-- ============================================================
          STICKY BOTTOM ADD-TO-BAG BAR (Item 5)
          ============================================================ -->
-    <div id="sticky-pdp-bar" class="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-zinc-200 p-3 sm:px-6 shadow-2xl transition-transform duration-300 translate-y-full flex items-center justify-between gap-4">
+    <div id="sticky-pdp-bar" class="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-zinc-200 p-3 sm:px-6 shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] translate-y-full flex items-center justify-between gap-4">
       <div class="flex items-center gap-3 min-w-0">
         <img src="${productImages[0]}" alt="${product.name}" class="w-10 h-12 object-cover rounded-lg shrink-0 border border-zinc-200" />
         <div class="min-w-0">
@@ -533,9 +524,14 @@ export async function render(container, slug) {
         }
       });
       btn.className = 'pdp-size-btn h-12 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center border font-headline bg-black text-white border-black shadow-sm';
+      btn.classList.remove('size-pill-elastic');
+      void btn.offsetWidth;
+      btn.classList.add('size-pill-elastic');
       selectedSize = sizeVal;
       if (sizeLabel) sizeLabel.textContent = selectedSize;
       if (stickySizeDisplay) stickySizeDisplay.textContent = selectedSize;
+      const radarSize = page.querySelector('#radar-size-indicator');
+      if (radarSize) radarSize.textContent = selectedSize;
     });
   });
 
@@ -573,8 +569,17 @@ export async function render(container, slug) {
     }
   });
 
-  // Add to Bag CTA
-  const handleAdd = () => {
+  // Add to Bag CTA with Parabolic Fly-to-Cart
+  const handleAdd = (e) => {
+    const triggerEl = e?.currentTarget;
+    const rect = triggerEl?.getBoundingClientRect();
+    const isVisible = rect && rect.top >= 0 && rect.bottom <= window.innerHeight;
+    const effectiveTrigger = isVisible
+      ? triggerEl
+      : page.querySelector('#sticky-add-btn') || triggerEl;
+    
+    // Launch fly-to-cart particle
+    flyToCart(effectiveTrigger, productImages[0]);
     addItem(product, selectedColour, selectedSize, quantity);
     showToast(`Added ${quantity}× ${product.name} (${selectedSize}) to bag`, 'success');
   };
@@ -582,23 +587,22 @@ export async function render(container, slug) {
   page.querySelector('#pdp-add-to-bag-btn')?.addEventListener('click', handleAdd);
   page.querySelector('#sticky-add-btn')?.addEventListener('click', handleAdd);
 
-  // Sticky Bottom Bar IntersectionObserver (Item 5)
+  // Sticky Bottom Bar — activates strictly when scrolling past the main purchase CTA
   const stickyBar = page.querySelector('#sticky-pdp-bar');
   const ctaBlock = page.querySelector('#pdp-cta-block');
   if (stickyBar && ctaBlock) {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) {
-            stickyBar.classList.remove('translate-y-full');
-          } else {
-            stickyBar.classList.add('translate-y-full');
-          }
-        });
-      },
-      { threshold: 0.1 }
-    );
-    observer.observe(ctaBlock);
+    const updateStickyVisibility = () => {
+      const rect = ctaBlock.getBoundingClientRect();
+      // Show sticky bar ONLY when user has scrolled past the main CTA block (rect.bottom < 0)
+      if (rect.bottom < 0) {
+        stickyBar.classList.remove('translate-y-full');
+      } else {
+        stickyBar.classList.add('translate-y-full');
+      }
+    };
+
+    window.addEventListener('scroll', updateStickyVisibility, { passive: true });
+    updateStickyVisibility();
   }
 
   // Wishlist toggle

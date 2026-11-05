@@ -6,14 +6,15 @@ export function cartGetCart() {
 
 /**
  * Flexible addItem supporting both:
- * 1. addItem({ id, name, price, size, colour, image, mode, quantity })
+ * 1. addItem({ id, name, price, size, colour, image, mode, quantity, variantId })
  * 2. addItem(product, colour, size, quantity)
  */
 export function addItem(productOrItem, colour, size, quantity = 1) {
-  if (productOrItem && typeof productOrItem === 'object' && productOrItem.size) {
-    // Single payload object
+  if (productOrItem && typeof productOrItem === 'object' && productOrItem.size && !productOrItem.sizes) {
+    // Single item payload object
     addToCart({
       id: productOrItem.id,
+      variantId: productOrItem.variantId || null,
       slug: productOrItem.slug || productOrItem.id,
       name: productOrItem.name,
       price: productOrItem.price,
@@ -24,14 +25,30 @@ export function addItem(productOrItem, colour, size, quantity = 1) {
       mode: productOrItem.mode || 'bear',
     });
   } else {
-    // Positional arguments
+    // Product object + positional arguments
+    const chosenSize = size || (productOrItem?.sizes && productOrItem.sizes[0]?.size) || 'M';
+    const chosenColour = colour || (productOrItem?.colours && productOrItem.colours[0]?.name) || 'Standard';
+
+    // Resolve real Supabase variantId
+    let resolvedVariantId = productOrItem?.variantId || null;
+    if (!resolvedVariantId && Array.isArray(productOrItem?.sizes)) {
+      const match =
+        productOrItem.sizes.find((s) => s.size === chosenSize && (!s.colour || s.colour === chosenColour)) ||
+        productOrItem.sizes.find((s) => s.size === chosenSize) ||
+        productOrItem.sizes[0];
+      if (match?.variantId) {
+        resolvedVariantId = match.variantId;
+      }
+    }
+
     addToCart({
       id: productOrItem.id,
+      variantId: resolvedVariantId,
       slug: productOrItem.slug || productOrItem.id,
       name: productOrItem.name,
       price: productOrItem.price,
-      colour: colour || 'Standard',
-      size: size || 'M',
+      colour: chosenColour,
+      size: chosenSize,
       quantity: quantity || 1,
       image: (productOrItem.images && productOrItem.images[0]) || productOrItem.image || '',
       mode: productOrItem.mode || 'bear',

@@ -1,0 +1,389 @@
+/* ═══════════════════════════════════════════════════════════════
+   BEAR — ALL ANIMATIONS (24 total)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── 1. ADD TO CART BURST ───────────────────────────────────── */
+@keyframes cartBurst {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(0.86); }
+  60%  { transform: scale(1.16); }
+  80%  { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+.cart-add-burst {
+  animation: cartBurst 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Cart badge pop */
+@keyframes badgePop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.55); }
+  70%  { transform: scale(0.88); }
+  100% { transform: scale(1); }
+}
+.badge-pop {
+  animation: badgePop 0.35s var(--transition-spring) forwards;
+}
+
+/* ─── 2. WISHLIST HEART FILL / UNFILL ───────────────────────── */
+@keyframes heartFill {
+  0%   { transform: scale(1); }
+  25%  { transform: scale(0.78); }
+  55%  { transform: scale(1.32); }
+  75%  { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+@keyframes heartUnfill {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(0.72); }
+  100% { transform: scale(1); }
+}
+.heart-fill-anim   { animation: heartFill   0.42s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+.heart-unfill-anim { animation: heartUnfill 0.25s ease forwards; }
+
+/* ─── 3. IMAGE LAZY-LOAD FADE-IN ────────────────────────────── */
+@keyframes imgFadeIn {
+  from { opacity: 0; transform: scale(1.04); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.img-lazy { opacity: 0; }
+.img-lazy.img-loaded {
+  animation: imgFadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ─── 4. PRODUCT GRID STAGGER ENTRANCE ─────────────────────── */
+@keyframes cardReveal {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.card-stagger {
+  opacity: 0;
+  animation: cardReveal 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.card-stagger-d0 { animation-delay: 0ms; }
+.card-stagger-d1 { animation-delay: 60ms; }
+.card-stagger-d2 { animation-delay: 120ms; }
+.card-stagger-d3 { animation-delay: 180ms; }
+.card-stagger-d4 { animation-delay: 240ms; }
+.card-stagger-d5 { animation-delay: 300ms; }
+.card-stagger-d6 { animation-delay: 360ms; }
+.card-stagger-d7 { animation-delay: 420ms; }
+
+/* ─── 5. NUMBER COUNTER ROLL-UP ─────────────────────────────── */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.count-up-anim { animation: countUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+/* ─── 6. DRAWER BACKDROP BLUR-IN ────────────────────────────── */
+@keyframes backdropIn {
+  from { opacity: 0; backdrop-filter: blur(0px); }
+  to   { opacity: 1; backdrop-filter: blur(6px); }
+}
+.backdrop-blur-in { animation: backdropIn 0.3s ease forwards; }
+
+/* ─── 7. FORM INPUT SHAKE ON ERROR ─────────────────────────── */
+@keyframes inputShake {
+  0%,100% { transform: translateX(0); }
+  15%     { transform: translateX(-7px); }
+  30%     { transform: translateX(7px); }
+  45%     { transform: translateX(-5px); }
+  60%     { transform: translateX(5px); }
+  75%     { transform: translateX(-2px); }
+  90%     { transform: translateX(2px); }
+}
+.input-shake {
+  animation: inputShake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards;
+  border-color: var(--color-error) !important;
+}
+
+/* ─── 8. BUTTON INLINE LOADING SPINNER ─────────────────────── */
+@keyframes btnSpin { to { transform: rotate(360deg); } }
+.btn-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: btnSpin 0.65s linear infinite;
+  flex-shrink: 0;
+}
+.btn-spinner-dark {
+  border-color: rgba(0,0,0,0.12);
+  border-top-color: var(--color-text);
+}
+
+/* ─── 9. PRICE STRIKE-THROUGH REVEAL ───────────────────────── */
+@keyframes strikeReveal {
+  from { width: 0; }
+  to   { width: 100%; }
+}
+.price-strike {
+  position: relative;
+  display: inline-block;
+}
+.price-strike::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 1.5px;
+  background: var(--color-muted);
+  width: 0;
+  animation: strikeReveal 0.4s 0.15s ease forwards;
+}
+
+/* ─── 10. SCROLL-TRIGGERED SECTION REVEAL ──────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal.revealed        { opacity: 1; transform: translateY(0); }
+
+.reveal-left {
+  opacity: 0;
+  transform: translateX(-26px);
+  transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal-left.revealed   { opacity: 1; transform: translateX(0); }
+
+.reveal-scale {
+  opacity: 0;
+  transform: scale(0.93);
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal-scale.revealed  { opacity: 1; transform: scale(1); }
+
+.reveal-d1 { transition-delay: 80ms; }
+.reveal-d2 { transition-delay: 160ms; }
+.reveal-d3 { transition-delay: 240ms; }
+.reveal-d4 { transition-delay: 320ms; }
+
+/* ─── 11. ANNOUNCEMENT BAR TICKER ──────────────────────────── */
+@keyframes ticker {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.announcement-ticker {
+  display: flex;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.announcement-ticker__track {
+  display: flex;
+  animation: ticker 24s linear infinite;
+  will-change: transform;
+}
+.announcement-ticker__track:hover { animation-play-state: paused; }
+
+/* ─── 12. MODE SWITCH RIPPLE ────────────────────────────────── */
+@keyframes ripple {
+  from { transform: scale(0); opacity: 0.3; }
+  to   { transform: scale(2.8); opacity: 0; }
+}
+.mode-switch__btn { overflow: hidden; }
+.mode-ripple {
+  position: absolute;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  margin-top: -20px;
+  margin-left: -20px;
+  background: currentColor;
+  pointer-events: none;
+  animation: ripple 0.5s ease forwards;
+}
+
+/* ─── 13. EMPTY STATE BOUNCE ────────────────────────────────── */
+@keyframes emptyBounce {
+  0%, 100% { transform: translateY(0); }
+  35%      { transform: translateY(-12px); }
+  65%      { transform: translateY(-5px); }
+}
+.empty-state__icon {
+  animation: emptyBounce 2.6s ease-in-out infinite;
+}
+
+/* ─── 14. STOCK BADGE PULSE ─────────────────────────────────── */
+@keyframes stockPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45); }
+  50%      { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+}
+.stock-badge-pulse {
+  animation: stockPulse 1.9s ease-in-out infinite;
+}
+[data-mode="sow"] .stock-badge-pulse {
+  animation: none;
+}
+
+/* ─── 15. GALLERY IMAGE CROSSFADE ───────────────────────────── */
+@keyframes galleryFade {
+  from { opacity: 0; transform: scale(1.03); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.gallery-main-fade {
+  animation: galleryFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ─── 16. QUICK-ADD SHEET SLIDE-UP ──────────────────────────── */
+@keyframes sheetSlideUp {
+  from { transform: translateY(40px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.sheet-slide-up {
+  animation: sheetSlideUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* ─── 17. TOAST SLIDE-IN FROM RIGHT ─────────────────────────── */
+@keyframes toastSlideIn {
+  from { transform: translateX(110%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes toastSlideOut {
+  from { transform: translateX(0);    opacity: 1; }
+  to   { transform: translateX(110%); opacity: 0; }
+}
+
+/* ─── 18. COLOUR SWATCH SELECTION POP ───────────────────────── */
+@keyframes swatchPop {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+.swatch-pop {
+  animation: swatchPop 0.2s ease forwards;
+}
+
+/* ─── 19. CATEGORY CARD HOVER LIFT ──────────────────────────── */
+.category-card-lift {
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.category-card-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.10);
+}
+
+/* ─── 20. PARABOLIC FLY-TO-CART ──────────────────────────────── */
+.fly-to-cart-particle {
+  position: fixed !important;
+  z-index: 999999 !important;
+  pointer-events: none !important;
+  width: 52px;
+  height: 52px;
+  border-radius: 9999px;
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45), 0 0 24px rgba(255, 255, 255, 0.95);
+  border: 2.5px solid #ffffff;
+  will-change: transform, opacity;
+}
+
+/* Radar pulse animation for scarcity badges */
+@keyframes ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  75%, 100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+.animate-ping {
+  animation: ping 1.35s cubic-bezier(0, 0, 0.2, 1) infinite !important;
+}
+
+/* Spring pop on cart icon when particle lands */
+@keyframes cartIconPop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.42); }
+  65%  { transform: scale(0.88); }
+  82%  { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+.cart-icon-pop {
+  animation: cartIconPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* ─── 21. 3D CARD TILT & DYNAMIC FABRIC SHEEN ────────────────── */
+.product-card-3d {
+  perspective: 1200px;
+  transform-style: preserve-3d;
+  transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease !important;
+  position: relative;
+  will-change: transform;
+}
+.product-card-3d:hover {
+  transform: perspective(1200px) rotateX(var(--tilt-rx, 0deg)) rotateY(var(--tilt-ry, 0deg)) scale3d(1.025, 1.025, 1.025);
+  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.22) !important;
+  z-index: 20;
+}
+.card-sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  border-radius: inherit;
+  transition: opacity 0.25s ease;
+  background: radial-gradient(circle 260px at var(--sheen-x, 50%) var(--sheen-y, 50%), rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0.18) 35%, rgba(0, 0, 0, 0) 70%);
+  mix-blend-mode: overlay;
+  z-index: 25;
+}
+.product-card-3d:hover .card-sheen {
+  opacity: 1;
+}
+
+/* ─── 22. SPRING-LOADED STICKY MOBILE BUY DOCK ──────────────── */
+.sticky-buy-dock {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 45;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
+  transform: translateY(115%);
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.sticky-buy-dock.visible {
+  transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+  #sticky-pdp-bar {
+    bottom: 64px !important;
+  }
+}
+
+/* ─── 23. ELASTIC SIZE PILL SELECTION ────────────────────────── */
+@keyframes pillElastic {
+  0%   { transform: scale(0.88); }
+  42%  { transform: scale(1.15); }
+  72%  { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+.size-pill-elastic {
+  animation: pillElastic 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
+}
+
+/* ─── 24. MONOCHROME ORDER CONFETTI CANVAS ──────────────────── */
+.order-confetti-canvas {
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  pointer-events: none !important;
+  z-index: 999999 !important;
+}
+

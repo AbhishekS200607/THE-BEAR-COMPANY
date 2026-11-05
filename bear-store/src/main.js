@@ -4,6 +4,7 @@
  */
 
 import { getMode, setMode, subscribe } from './state/store.js';
+import { hasConsent } from './services/cookieService.js';
 import { mount as mountAnnouncement } from './components/announcementBar.js';
 import { mount as mountHeader } from './components/header.js';
 import { mount as mountFooter } from './components/footer.js';
@@ -15,27 +16,9 @@ import { initLoadingBar, startLoading, completeLoading } from './components/load
 import { mountScrollToTop } from './components/scrollToTop.js';
 import { mountFloatingWhatsApp } from './components/floatingWhatsApp.js';
 import { setPageMeta } from './utils/seo.js';
+import { initAnimations, initPageAnimations } from './utils/animations.js';
+import './styles/animations.css';
 
-// Pages
-import { render as renderHome } from './pages/home.js';
-import { render as renderCollection } from './pages/collection.js';
-import { render as renderProduct } from './pages/product.js';
-import { render as renderCart } from './pages/cart.js';
-import { render as renderCheckout } from './pages/checkout.js';
-import { render as renderAccount } from './pages/account.js';
-import { render as renderWishlist } from './pages/wishlist.js';
-import { render as renderFAQ } from './pages/faq.js';
-import { render as renderTrackOrder } from './pages/trackOrder.js';
-import { render as renderReturns } from './pages/returns.js';
-import { render as renderSizeGuide } from './pages/sizeGuide.js';
-import { render as renderShipping } from './pages/shipping.js';
-import { render as renderManifesto } from './pages/manifesto.js';
-import { render as renderTextiles } from './pages/textiles.js';
-import { render as renderEthicalProduction } from './pages/ethicalProduction.js';
-import { render as renderAthletes } from './pages/athletes.js';
-import { render as renderCareers } from './pages/careers.js';
-import { render as renderLegal } from './pages/legal.js';
-import { render as renderAdmin } from './pages/admin.js';
 
 // DOM Containers
 const announcementContainer = document.getElementById('announcement-bar');
@@ -100,75 +83,108 @@ async function router(options = {}) {
         title: mode === 'sow' ? 'SOW. by BEAR — Women\'s Luxury Activewear' : 'BEAR. — Built For More',
         description: 'Engineered activewear, oversized technical tees, and seamless training essentials. Pan-India express delivery.',
       });
-      await renderHome(pageContainer);
+      const { render } = await import('./pages/home.js');
+      currentRouteCleanup = await render(pageContainer) || null;
     } else if (path === 'collection') {
       const mode = getMode();
       setPageMeta({
         title: mode === 'sow' ? 'SOW. Collection — Women\'s Athletic' : 'BEAR. — Performance Collection',
         description: 'Explore the complete high-performance activewear collection for athletic training and daily discipline.',
       });
-      await renderCollection(pageContainer);
+      const { render } = await import('./pages/collection.js');
+      currentRouteCleanup = await render(pageContainer) || null;
     } else if (path.startsWith('product/')) {
       const slug = path.replace('product/', '');
       setPageMeta({
         title: 'BEAR. — Product Details',
         description: 'Technical activewear engineered with moisture-wicking polymers and ergonomic stretch fit.',
       });
-      await renderProduct(pageContainer, slug);
+      const { render } = await import('./pages/product.js');
+      await render(pageContainer, slug);
     } else if (path === 'cart') {
       setPageMeta({ title: 'BEAR. — Your Bag', description: 'Review your selected garments and prepare for WhatsApp express checkout.' });
-      renderCart(pageContainer);
+      const { render } = await import('./pages/cart.js');
+      currentRouteCleanup = render(pageContainer) || null;
     } else if (path === 'checkout') {
       setPageMeta({ title: 'BEAR. — Checkout', description: 'Complete your pan-India delivery details and order via WhatsApp verification.' });
-      renderCheckout(pageContainer);
+      const { render } = await import('./pages/checkout.js');
+      await render(pageContainer);
+    } else if (path === 'auth' || path === 'login' || path === 'signup') {
+      setPageMeta({ title: 'BEAR. — Sign In or Create Account' });
+      const { render } = await import('./pages/auth.js');
+      render(pageContainer);
     } else if (path === 'account') {
       setPageMeta({ title: 'BEAR. — My Account', description: 'Manage your delivery addresses, past orders, and profile.' });
-      await renderAccount(pageContainer);
+      const { render } = await import('./pages/account.js');
+      await render(pageContainer);
     } else if (path === 'wishlist') {
       setPageMeta({ title: 'BEAR. — Wishlist', description: 'Your saved favorite athletic pieces and garments.' });
-      renderWishlist(pageContainer);
+      const { render } = await import('./pages/wishlist.js');
+      currentRouteCleanup = render(pageContainer) || null;
     } else if (path === 'faq') {
       setPageMeta({ title: 'BEAR. — Frequently Asked Questions' });
-      renderFAQ(pageContainer);
+      const { render } = await import('./pages/faq.js');
+      render(pageContainer);
     } else if (path === 'track-order') {
       setPageMeta({ title: 'BEAR. — Track Shipment & PIN Serviceability', description: 'Live BlueDart express air logistics and pin code transit tracker.' });
-      renderTrackOrder(pageContainer);
+      const { render } = await import('./pages/trackOrder.js');
+      render(pageContainer);
     } else if (path === 'returns' || path === 'swaps') {
       setPageMeta({ title: 'BEAR. — 7-Day Doorstep Swaps' });
-      renderReturns(pageContainer);
+      const { render } = await import('./pages/returns.js');
+      render(pageContainer);
     } else if (path === 'size-guide') {
       setPageMeta({ title: 'BEAR. — Ergonomic Size & Fit Guide' });
-      renderSizeGuide(pageContainer);
+      const { render } = await import('./pages/sizeGuide.js');
+      render(pageContainer);
     } else if (path === 'shipping') {
       setPageMeta({ title: 'BEAR. — Shipping & Logistics Policy' });
-      renderShipping(pageContainer);
+      const { render } = await import('./pages/shipping.js');
+      render(pageContainer);
     } else if (path === 'manifesto') {
       setPageMeta({ title: 'BEAR. — The Discipline Manifesto' });
-      renderManifesto(pageContainer);
+      const { render } = await import('./pages/manifesto.js');
+      render(pageContainer);
     } else if (path === 'textiles' || path === 'fabrics') {
       setPageMeta({ title: 'BEAR. — Technical Textiles & Fabric Lab' });
-      renderTextiles(pageContainer);
+      const { render } = await import('./pages/textiles.js');
+      render(pageContainer);
     } else if (path === 'ethical-production') {
       setPageMeta({ title: 'BEAR. — Ethical Production Hub' });
-      renderEthicalProduction(pageContainer);
+      const { render } = await import('./pages/ethicalProduction.js');
+      render(pageContainer);
     } else if (path === 'athletes') {
       setPageMeta({ title: 'BEAR. — Athlete Club & Ambassador Roster' });
-      renderAthletes(pageContainer);
+      const { render } = await import('./pages/athletes.js');
+      render(pageContainer);
     } else if (path === 'careers') {
       setPageMeta({ title: 'BEAR. — Careers at BEAR' });
-      renderCareers(pageContainer);
+      const { render } = await import('./pages/careers.js');
+      render(pageContainer);
     } else if (path === 'privacy') {
       setPageMeta({ title: 'BEAR. — Privacy Policy (DPDPA)' });
-      renderLegal(pageContainer, 'privacy');
+      const { render } = await import('./pages/legal.js');
+      render(pageContainer, 'privacy');
     } else if (path === 'terms') {
       setPageMeta({ title: 'BEAR. — Terms of Service' });
-      renderLegal(pageContainer, 'terms');
+      const { render } = await import('./pages/legal.js');
+      render(pageContainer, 'terms');
     } else if (path === 'legal') {
       setPageMeta({ title: 'BEAR. — Trust & Legal Compliance' });
-      renderLegal(pageContainer, 'privacy');
+      const { render } = await import('./pages/legal.js');
+      render(pageContainer, 'privacy');
+    } else if (path === 'contact') {
+      setPageMeta({ title: 'BEAR. — Contact Us', description: 'Get in touch with the BEAR support team via WhatsApp, email, or our contact form.' });
+      const { render } = await import('./pages/contact.js');
+      render(pageContainer);
+    } else if (path === 'order-confirmation') {
+      setPageMeta({ title: 'BEAR. — Order Confirmed' });
+      const { render } = await import('./pages/orderConfirmation.js');
+      render(pageContainer);
     } else if (path === 'admin') {
       setPageMeta({ title: 'BEAR. — Admin Portal' });
-      renderAdmin(pageContainer);
+      const { render } = await import('./pages/admin.js');
+      render(pageContainer);
     } else {
       // 404 Not Found fallback
       setPageMeta({ title: 'BEAR. — Page Not Found' });
@@ -183,6 +199,11 @@ async function router(options = {}) {
         </div>
       `;
     }
+
+    // Trigger page-level animations on newly rendered elements
+    requestAnimationFrame(() => {
+      if (pageContainer) initPageAnimations(pageContainer);
+    });
   } finally {
     completeLoading();
   }
@@ -223,6 +244,20 @@ function init() {
 
   // 6. Initial route execution
   router();
+
+  // 7. Boot all animations
+  initAnimations();
+
+  // 7. Analytics — only if user consented
+  function initAnalytics() {
+    if (!hasConsent('analytics')) return;
+    // Placeholder: swap with real analytics SDK (e.g. gtag, Plausible)
+    // e.g. window.gtag?.('config', 'G-XXXXXXXX');
+    console.debug('[BEAR] Analytics initialised (consent granted)');
+  }
+  initAnalytics();
+  // Re-check when consent changes (user updates preferences)
+  window.addEventListener('bear:consent', () => initAnalytics());
 }
 
 // Start app when DOM is ready

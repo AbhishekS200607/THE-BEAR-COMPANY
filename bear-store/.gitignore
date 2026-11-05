@@ -8,12 +8,14 @@ dist/
 build/
 out/
 
-# Environment files
+# Environment & Credentials
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+*.pfx
 
 # Logs
 logs

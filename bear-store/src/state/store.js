@@ -119,11 +119,12 @@ export function isInWishlist(productId) {
 }
 
 export function toggleWishlist(productId) {
-  const wishlist = isInWishlist(productId)
+  const wasWishlisted = isInWishlist(productId);
+  const wishlist = wasWishlisted
     ? state.wishlist.filter((id) => id !== productId)
     : [...state.wishlist, productId];
   setState({ wishlist });
-  return !state.wishlist.includes(productId); // return new state before setState completes
+  return !wasWishlisted;
 }
 
 export function removeFromWishlist(productId) {

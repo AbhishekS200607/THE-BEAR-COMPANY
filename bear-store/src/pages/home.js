@@ -3,15 +3,17 @@ import { getFeatured, getProducts } from '../services/productService.js';
 import { createProductCard } from '../components/productCard.js';
 import { getRecentlyViewedIds } from '../services/recentlyViewedService.js';
 import { products } from '../data/products.js';
+import { skeletonHome } from '../utils/skeletons.js';
 
 export async function render(container) {
   const currentMode = getMode();
   const isSow = currentMode === 'sow';
 
+  container.innerHTML = skeletonHome();
+
   const page = document.createElement('div');
   page.className = 'w-full flex flex-col pt-20 md:pt-24 pb-28 md:pb-12';
 
-  // Render initial page with loading skeletons in grid to eliminate layout shift
   page.innerHTML = `
     <!-- Top Hero Campaign Section -->
     <section class="relative w-full max-w-[1360px] mx-auto px-4 md:px-gutter-desktop mt-2 md:mt-space-lg mb-6 md:mb-space-2xl">
@@ -38,7 +40,7 @@ export async function render(container) {
               </span>
             </div>
 
-            <div class="space-y-1" id="hero-headings">
+            <div class="space-y-1 reveal reveal-d1" id="hero-headings">
               <p class="font-headline text-xs tracking-widest uppercase text-white/70 font-semibold">
                 ${isSow ? 'NEW SOW DROP' : 'NEW BEAR RELEASE'}
               </p>
@@ -53,7 +55,7 @@ export async function render(container) {
                 : 'Performance apparel engineered for unrelenting discipline, dynamic range of motion, and the everyday grind. Crafted with ultra-breathable heavy-GSM yarn.'}
             </p>
 
-            <div class="pt-2 flex items-center flex-wrap gap-2.5 md:gap-space-md">
+            <div class="pt-2 flex items-center flex-wrap gap-2.5 md:gap-space-md reveal reveal-d2">
               <a href="#collection" class="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-white text-black text-xs md:text-sm hover:opacity-90 active:scale-[0.98] transition-all shadow-md font-bold font-headline">
                 <span>Shop Collection</span>
                 <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
@@ -110,7 +112,7 @@ export async function render(container) {
 
       <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3.5 md:gap-gutter-desktop">
         <!-- Category 1 -->
-        <a href="#collection" class="group relative rounded-xl sm:rounded-2xl bg-white p-3 pb-4 sm:p-4 sm:pb-5 shadow-xs hover:shadow-md transition-all flex flex-col items-center border border-zinc-200/80">
+        <a href="#collection" class="group relative rounded-xl sm:rounded-2xl bg-white p-3 pb-4 sm:p-4 sm:pb-5 shadow-xs hover:shadow-md transition-all flex flex-col items-center border border-zinc-200/80 category-card-lift">
           <div class="w-full aspect-square rounded-lg sm:rounded-xl overflow-hidden bg-zinc-100 mb-2">
             <img src="${isSow ? 'https://lh3.googleusercontent.com/aida-public/AB6AXuAwJwjClrMEmcZdI7T5_s4E_hHPVNSvONzixL7JG9-QvsrOFNVHsJuM34lczkEnDZwBuddxz_XYgYNG3dVxfyDWbS9nWSmYIm9hoZqLJC2kjzY0eZzeqffaWX-YYCyBV25Vha3ShEgy8-DsQyeiv8v-7doFJr0Aw4myGI4pHt412ia-kqZZyIN1J3O23yjiYoMKkZDS_f51t6qAJ4pXlwdu3EG3rgGzswUdnY2fxQ' : 'https://lh3.googleusercontent.com/aida-public/AB6AXuCCzKTdaaLRbanuHgk9tAnT3Od__K8RJ47QNldYiRR7AoApQCc0HaB6DuiijDI5ZEsm_MO36AofuWSm3CtHtIHJdUo8d3wJzYt5KYDvHtElcj6lVKsIi7pIJ1VneHGXzzBkdECisyUWAX_3O0YzSplDkpd2O2JyP3TdEAs03UoHehNq07xRUXrRNGRT1Cav6rakkFNYrqdyZSGUBe6S931X1B2eLXQOeaWtVGZ8bw'}" alt="${isSow ? 'Sports Bras' : 'T-Shirts'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 rounded-lg sm:rounded-xl" />
           </div>
@@ -121,7 +123,7 @@ export async function render(container) {
         </a>
 
         <!-- Category 2 (Valid Non-Truncated SOW Leggings Image) -->
-        <a href="#collection" class="group relative rounded-xl sm:rounded-2xl bg-white p-3 pb-4 sm:p-4 sm:pb-5 shadow-xs hover:shadow-md transition-all flex flex-col items-center border border-zinc-200/80">
+        <a href="#collection" class="group relative rounded-xl sm:rounded-2xl bg-white p-3 pb-4 sm:p-4 sm:pb-5 shadow-xs hover:shadow-md transition-all flex flex-col items-center border border-zinc-200/80 category-card-lift">
           <div class="w-full aspect-square rounded-lg sm:rounded-xl overflow-hidden bg-zinc-100 mb-2">
             <img src="${isSow ? 'https://lh3.googleusercontent.com/aida-public/AB6AXuA4Mwdd33IQiXxYvoZjoUYwVaNsHMyQqHGgfwrOLC7mgwyMN3lSQTRaAsvH_c2sWptQerXsbHRreHedH5S_sijZ2e9eD11keAse9pyNAJaO8GNrRM_mIUVfqDic0edxJTyW_sOIZDPUKThT-y1_8bMr9J7Yal_Sbrxk3jvw0pWsNV9HEJZeHeb9ZGWzF83475qVnVZTEVvoPfuPh-_QdwrIvx2C35dqyAykokYYRw' : 'https://lh3.googleusercontent.com/aida-public/AB6AXuBZfUaCLWobDsFeaa3fUotfDOwDwDCxViQiwoun9TK6_dXUUQXFOlWFGADID0ZMmkVuKjshRg_yXJ_0z9ern--ww8BVZ0wSTA7axQtzGhOEm14Kbno0vi-J495g6ghRL0de6ua4PncYU_8gVguf39AOI0U8ta6Agsn3oGpaUhfCyQYJhEJhNpyPwWR_3wWKE1p-FYpNffpR1LfSXhpLQ1ufI_FWbeQ2rivNiV_9uQ'}" alt="${isSow ? 'Contour Tights' : 'Tank Tops'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 rounded-lg sm:rounded-xl" />
           </div>
@@ -132,7 +134,7 @@ export async function render(container) {
         </a>
 
         <!-- Category 3 -->
-        <a href="#collection" class="group relative rounded-xl sm:rounded-2xl bg-white p-3 pb-4 sm:p-4 sm:pb-5 shadow-xs hover:shadow-md transition-all flex flex-col items-center border border-zinc-200/80">
+        <a href="#collection" class="group relative rounded-xl sm:rounded-2xl bg-white p-3 pb-4 sm:p-4 sm:pb-5 shadow-xs hover:shadow-md transition-all flex flex-col items-center border border-zinc-200/80 category-card-lift">
           <div class="w-full aspect-square rounded-lg sm:rounded-xl overflow-hidden bg-zinc-100 mb-2">
             <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQEiogc_cPXim5UCGnhYNjkqhNBolHTUYVLmqhnzr9avfYJ3iL_FxP5Ms6egN1z6_30qHnq1THf0gkHHYr4apPcM0A0i6Za-NpBQlrl6THFESDuh0cwSL-TFQ8yhT03GNn129FPbbTTjblL7Td3hyUSQd0l7a6iquHpLS_cJ81XPtoOcbfO17xZxFBhAjnP4-vaB3dtZDRi8lytMq4pOCSwyvG41cKE6fHzltWvQ" alt="${isSow ? 'Biker Shorts' : 'Shorts'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 rounded-lg sm:rounded-xl" />
           </div>
@@ -143,7 +145,7 @@ export async function render(container) {
         </a>
 
         <!-- Category 4 -->
-        <a href="#collection" class="group relative rounded-xl sm:rounded-2xl bg-white p-3 pb-4 sm:p-4 sm:pb-5 shadow-xs hover:shadow-md transition-all flex flex-col items-center border border-zinc-200/80">
+        <a href="#collection" class="group relative rounded-xl sm:rounded-2xl bg-white p-3 pb-4 sm:p-4 sm:pb-5 shadow-xs hover:shadow-md transition-all flex flex-col items-center border border-zinc-200/80 category-card-lift">
           <div class="w-full aspect-square rounded-lg sm:rounded-xl overflow-hidden bg-zinc-100 mb-2">
             <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBQEsW48g189o2HUpuW4bFaJfaUBgKBVtO_OU2E2bAnL3yp0UngrE1oIWVJ1yPQ2P1bop8H5Y8cG8KxRVAC6oX4H52nf0pDhKf2Y5sJvekTMYg237GbPCjj4GlRHLMzgoa0-2RscYX7onBeEc4Ijz5jTQAQS_vad33JlCG9u4Y2BA7c7uFJFhcSQBo6kLHg6sjIQKx_ORBdCq-Fx4OsagH26f8nNj45yBC2rSlMsA" alt="${isSow ? 'Ribbed Tops' : 'Joggers'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 rounded-lg sm:rounded-xl" />
           </div>

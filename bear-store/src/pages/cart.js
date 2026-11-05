@@ -168,7 +168,14 @@ export function render(container) {
     page.querySelectorAll('.cart-item__remove').forEach((btn) => {
       btn.addEventListener('click', () => {
         const row = btn.closest('.cart-item');
-        removeFromCart(row.dataset.id, row.dataset.size, row.dataset.colour);
+        if (row) {
+          row.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+          row.style.opacity = '0';
+          row.style.transform = 'translateX(24px)';
+          setTimeout(() => removeFromCart(row.dataset.id, row.dataset.size, row.dataset.colour), 200);
+        } else {
+          removeFromCart(row.dataset.id, row.dataset.size, row.dataset.colour);
+        }
       });
     });
   }
@@ -178,7 +185,7 @@ export function render(container) {
   container.appendChild(page);
 
   const unsub = subscribe(() => buildPage());
-  window.addEventListener('hashchange', () => unsub(), { once: true });
+  return unsub;
 }
 
 export default { render };

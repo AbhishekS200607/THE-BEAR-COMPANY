@@ -5,7 +5,8 @@ import rateLimit from 'express-rate-limit';
  */
 export const publicRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: process.env.NODE_ENV === 'test' ? 10000 : 100,
+  skip: () => process.env.NODE_ENV === 'test',
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -19,7 +20,8 @@ export const publicRateLimiter = rateLimit({
  */
 export const sensitiveRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 15,
+  max: process.env.NODE_ENV === 'test' ? 10000 : 15,
+  skip: () => process.env.NODE_ENV === 'test',
   standardHeaders: true,
   legacyHeaders: false,
   message: {

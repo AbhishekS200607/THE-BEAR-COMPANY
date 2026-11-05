@@ -1,9 +1,10 @@
 import { getCart, getCartTotal, setState, getMode } from '../state/store.js';
 import { formatCurrency } from '../utils/formatCurrency.js';
 import { submitOrder, generateWhatsAppMessage } from '../services/checkoutService.js';
-import { confirmOrder, cancelOrder } from '../services/accountService.js';
+import { confirmOrder, cancelOrder, getDemoAddresses, addAddress } from '../services/accountService.js';
 import { showToast } from '../components/toast.js';
 import { createSlideToConfirm } from '../components/slideToConfirm.js';
+import { triggerOrderConfetti } from '../utils/animations.js';
 
 const INDIAN_STATES = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat', 'Haryana',
@@ -13,14 +14,8 @@ const INDIAN_STATES = [
   'Chandigarh', 'Puducherry'
 ];
 
-// Available coupon dictionary (Item 13)
-const COUPONS = {
-  BEAR10: { type: 'pct', value: 0.1, label: '10% Off Your Drop' },
-  WELCOME500: { type: 'flat', value: 500, minOrder: 1500, label: '₹500 Off (Min ₹1,500)' },
-  DROP20: { type: 'pct', value: 0.2, label: '20% Athlete VIP Access' },
-};
 
-export function render(container) {
+export async function render(container) {
   const cart = getCart();
   const subtotal = getCartTotal();
   const shipping = 0; // Pan-India Air Express Delivery is always Free (₹0)
@@ -29,6 +24,10 @@ export function render(container) {
   let activeCoupon = null;
   let discountAmount = 0;
   let grandTotal = subtotal;
+
+  // Load saved delivery addresses
+  const savedAddresses = await getDemoAddresses().catch(() => []);
+  const defaultAddr = savedAddresses.find((a) => a.default) || savedAddresses[0] || null;
 
   const page = document.createElement('div');
   page.className = 'w-full flex flex-col pt-20 md:pt-24 pb-32 md:pb-16';
@@ -67,10 +66,53 @@ export function render(container) {
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <!-- LEFT: Delivery Details Form (7 Cols) -->
         <div class="lg:col-span-7 bg-white p-5 sm:p-space-lg rounded-xl border border-zinc-200/80 shadow-xs">
-          <h2 class="font-headline text-sm uppercase tracking-wider font-bold text-zinc-950 mb-4 pb-2 border-b border-zinc-100 flex items-center gap-2">
-            <span class="material-symbols-outlined text-[18px]">local_shipping</span>
-            <span>Pan-India Delivery Address</span>
-          </h2>
+          <div class="flex items-center justify-between pb-3 mb-4 border-b border-zinc-100">
+            <h2 class="font-headline text-sm uppercase tracking-wider font-bold text-zinc-950 flex items-center gap-2">
+              <span class="material-symbols-outlined text-[18px]">local_shipping</span>
+              <span>Pan-India Delivery Address</span>
+            </h2>
+            ${savedAddresses.length > 0 ? `
+              <button type="button" id="toggle-new-addr-btn" class="text-xs font-bold text-zinc-600 hover:text-black underline cursor-pointer font-headline uppercase tracking-wider">
+                + New Address
+              </button>
+            ` : ''}
+          </div>
+
+          ${savedAddresses.length > 0 ? `
+            <!-- Saved Delivery Addresses Selector -->
+            <div class="mb-5 pb-5 border-b border-zinc-100">
+              <p class="text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-2.5 font-headline">
+                Use Saved Address (${savedAddresses.length})
+              </p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="saved-addresses-grid">
+                ${savedAddresses.map((addr) => {
+                  const isSelected = defaultAddr && defaultAddr.id === addr.id;
+                  return `
+                    <div 
+                      class="saved-addr-card border rounded-xl p-3.5 cursor-pointer transition-all text-xs relative ${
+                        isSelected ? 'border-black bg-zinc-50 ring-1 ring-black shadow-2xs' : 'border-zinc-200 hover:border-zinc-400 bg-white'
+                      }"
+                      data-addr-id="${addr.id}"
+                    >
+                      <div class="flex items-center justify-between mb-1.5">
+                        <span class="font-bold font-headline uppercase text-[10px] px-2 py-0.5 rounded bg-zinc-200/80 text-zinc-800">
+                          ${addr.label || 'Home'}
+                        </span>
+                        ${addr.default ? '<span class="text-[9px] font-bold uppercase text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Default</span>' : ''}
+                      </div>
+                      <p class="font-bold text-zinc-950 font-headline">${addr.fullName}</p>
+                      <p class="text-zinc-600 line-clamp-2 mt-0.5 leading-relaxed">${addr.line1}${addr.line2 ? ', ' + addr.line2 : ''}</p>
+                      <p class="text-zinc-600 mt-0.5">${addr.city}, ${addr.state} — <span class="font-mono font-medium">${addr.pincode}</span></p>
+                      <p class="text-zinc-500 font-mono text-[11px] mt-1.5 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[13px]">call</span>
+                        <span>${addr.phone}</span>
+                      </p>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          ` : ''}
 
           <form id="checkout-address-form" class="flex flex-col gap-4" novalidate>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -81,7 +123,7 @@ export function render(container) {
                   id="full-name" 
                   required 
                   placeholder="e.g. Rahul Sharma" 
-                  value=""
+                  value="${defaultAddr?.fullName || ''}"
                   class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black transition-colors"
                 />
                 <p id="full-name-error" class="text-[11px] text-red-600 font-medium mt-1 hidden"></p>
@@ -95,7 +137,7 @@ export function render(container) {
                   required 
                   maxlength="10"
                   placeholder="10-digit mobile number" 
-                  value=""
+                  value="${defaultAddr?.phone || ''}"
                   class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black font-mono transition-colors"
                 />
                 <p id="mobile-error" class="text-[11px] text-red-600 font-medium mt-1 hidden"></p>
@@ -111,7 +153,7 @@ export function render(container) {
                   required 
                   maxlength="6" 
                   placeholder="6-digit PIN code" 
-                  value=""
+                  value="${defaultAddr?.pincode || ''}"
                   class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black font-mono transition-colors"
                 />
                 <p id="pincode-error" class="text-[11px] text-red-600 font-medium mt-1 hidden"></p>
@@ -120,7 +162,7 @@ export function render(container) {
               <div>
                 <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-600 mb-1 font-headline">State *</label>
                 <select id="state" class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black bg-white cursor-pointer">
-                  ${INDIAN_STATES.map((s) => `<option value="${s}" ${s === 'Karnataka' ? 'selected' : ''}>${s}</option>`).join('')}
+                  ${INDIAN_STATES.map((s) => `<option value="${s}" ${s === (defaultAddr?.state || 'Karnataka') ? 'selected' : ''}>${s}</option>`).join('')}
                 </select>
               </div>
             </div>
@@ -133,7 +175,7 @@ export function render(container) {
                 rows="2" 
                 placeholder="Flat/House no., building, street address" 
                 class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black transition-colors"
-              ></textarea>
+              >${defaultAddr ? (defaultAddr.line1 + (defaultAddr.line2 ? ', ' + defaultAddr.line2 : '')) : ''}</textarea>
               <p id="address-error" class="text-[11px] text-red-600 font-medium mt-1 hidden"></p>
             </div>
 
@@ -144,10 +186,22 @@ export function render(container) {
                 id="city" 
                 required 
                 placeholder="City / District" 
-                value=""
+                value="${defaultAddr?.city || ''}"
                 class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black transition-colors"
               />
               <p id="city-error" class="text-[11px] text-red-600 font-medium mt-1 hidden"></p>
+            </div>
+
+            <div class="flex items-center gap-2 pt-1">
+              <input 
+                type="checkbox" 
+                id="save-address-chk" 
+                ${savedAddresses.length === 0 ? 'checked' : ''} 
+                class="w-4 h-4 rounded border-zinc-300 text-black focus:ring-black cursor-pointer" 
+              />
+              <label for="save-address-chk" class="text-xs text-zinc-700 font-medium cursor-pointer select-none">
+                Save this address to my account for faster checkout
+              </label>
             </div>
           </form>
 
@@ -276,56 +330,66 @@ export function render(container) {
   const discountVal = page.querySelector('#discount-val');
   const grandTotalDisplay = page.querySelector('#grand-total-display');
 
-  function applyCoupon(code) {
+  async function applyCoupon(code) {
     const cleanCode = (code || '').toUpperCase().trim();
-    const coupon = COUPONS[cleanCode];
-
-    if (!coupon) {
+    if (!cleanCode) {
       couponFeedback.className = 'mt-2 text-[11px] font-semibold text-red-600 block';
-      couponFeedback.textContent = '✕ Invalid promo code. Try BEAR10 for 10% off.';
+      couponFeedback.textContent = '✕ Please enter a promo code.';
       return;
     }
 
-    if (coupon.minOrder && subtotal < coupon.minOrder) {
-      couponFeedback.className = 'mt-2 text-[11px] font-semibold text-amber-700 block';
-      couponFeedback.textContent = `✕ Code ${cleanCode} requires a minimum subtotal of ${formatCurrency(coupon.minOrder)}.`;
-      return;
-    }
+    try {
+      const res = await fetch('http://localhost:4000/api/v1/orders/validate-coupon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: cleanCode, cartTotal: subtotal }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success || !json.data?.valid) {
+        couponFeedback.className = 'mt-2 text-[11px] font-semibold text-red-600 block';
+        couponFeedback.textContent = `✕ ${json.error?.message || json.message || 'Invalid promo code.'}`;
+        return;
+      }
 
-    activeCoupon = { code: cleanCode, ...coupon };
-    if (coupon.type === 'pct') {
-      discountAmount = Math.round(subtotal * coupon.value);
-    } else {
-      discountAmount = coupon.value;
-    }
+      const data = json.data;
+      activeCoupon = {
+        code: cleanCode,
+        type: data.type === 'percentage' ? 'pct' : 'flat',
+        value: data.value,
+        label: data.label,
+      };
+      discountAmount = data.discountAmount;
+      grandTotal = Math.max(0, subtotal - discountAmount);
 
-    grandTotal = Math.max(0, subtotal - discountAmount);
+      couponFeedback.className = 'mt-2 text-[11px] font-semibold text-emerald-700 flex items-center justify-between';
+      couponFeedback.innerHTML = `
+        <span>✓ Applied ${cleanCode}: ${data.label}</span>
+        <button id="remove-coupon-btn" class="text-zinc-400 hover:text-black font-bold uppercase underline cursor-pointer ml-2">Remove</button>
+      `;
 
-    couponFeedback.className = 'mt-2 text-[11px] font-semibold text-emerald-700 flex items-center justify-between';
-    couponFeedback.innerHTML = `
-      <span>✓ Applied ${cleanCode}: ${coupon.label}</span>
-      <button id="remove-coupon-btn" class="text-zinc-400 hover:text-black font-bold uppercase underline cursor-pointer ml-2">Remove</button>
-    `;
-
-    discountLabel.textContent = `Coupon (${cleanCode})`;
-    discountVal.textContent = `-${formatCurrency(discountAmount)}`;
-    discountRow.classList.remove('hidden');
-    discountRow.classList.add('flex');
-    grandTotalDisplay.textContent = formatCurrency(grandTotal);
-
-    couponFeedback.querySelector('#remove-coupon-btn')?.addEventListener('click', () => {
-      activeCoupon = null;
-      discountAmount = 0;
-      grandTotal = subtotal;
-      discountRow.classList.add('hidden');
-      discountRow.classList.remove('flex');
+      discountLabel.textContent = `Coupon (${cleanCode})`;
+      discountVal.textContent = `-${formatCurrency(discountAmount)}`;
+      discountRow.classList.remove('hidden');
+      discountRow.classList.add('flex');
       grandTotalDisplay.textContent = formatCurrency(grandTotal);
-      couponFeedback.className = 'hidden';
-      couponInput.value = '';
-      showToast('Coupon removed', 'info');
-    });
 
-    showToast(`Coupon ${cleanCode} applied! Saved ${formatCurrency(discountAmount)}`, 'success');
+      couponFeedback.querySelector('#remove-coupon-btn')?.addEventListener('click', () => {
+        activeCoupon = null;
+        discountAmount = 0;
+        grandTotal = subtotal;
+        discountRow.classList.add('hidden');
+        discountRow.classList.remove('flex');
+        grandTotalDisplay.textContent = formatCurrency(grandTotal);
+        couponFeedback.className = 'hidden';
+        couponInput.value = '';
+        showToast('Coupon removed', 'info');
+      });
+
+      showToast(`Coupon ${cleanCode} applied! Saved ${formatCurrency(discountAmount)}`, 'success');
+    } catch {
+      couponFeedback.className = 'mt-2 text-[11px] font-semibold text-red-600 block';
+      couponFeedback.textContent = '✕ Could not validate coupon. Check connection.';
+    }
   }
 
   applyCouponBtn?.addEventListener('click', () => {
@@ -382,6 +446,74 @@ export function render(container) {
     validateField(cityInput, cityErr, (v) => v.length >= 2, 'Please enter your city / district');
   });
 
+  // Handle Saved Address Selection & Switching
+  const savedCards = page.querySelectorAll('.saved-addr-card');
+  const toggleNewAddrBtn = page.querySelector('#toggle-new-addr-btn');
+  const saveAddressChk = page.querySelector('#save-address-chk');
+  const stateSelect = page.querySelector('#state');
+
+  savedCards.forEach((card) => {
+    card.addEventListener('click', () => {
+      const addrId = card.getAttribute('data-addr-id');
+      const selected = savedAddresses.find((a) => a.id === addrId);
+      if (!selected) return;
+
+      // Update active card styling
+      savedCards.forEach((c) => {
+        c.classList.remove('border-black', 'bg-zinc-50', 'ring-1', 'ring-black', 'shadow-2xs');
+        c.classList.add('border-zinc-200', 'bg-white');
+      });
+      card.classList.add('border-black', 'bg-zinc-50', 'ring-1', 'ring-black', 'shadow-2xs');
+      card.classList.remove('border-zinc-200', 'bg-white');
+
+      // Populate form fields with saved address data
+      fullNameInput.value = selected.fullName || '';
+      mobileInput.value = selected.phone || '';
+      pincodeInput.value = selected.pincode || '';
+      addressInput.value = selected.line1 + (selected.line2 ? ', ' + selected.line2 : '');
+      cityInput.value = selected.city || '';
+      if (stateSelect && selected.state) {
+        stateSelect.value = selected.state;
+      }
+
+      if (saveAddressChk) saveAddressChk.checked = false;
+
+      // Clear any prior validation errors
+      [fullNameErr, mobileErr, pincodeErr, addressErr, cityErr].forEach((el) => el?.classList.add('hidden'));
+      [fullNameInput, mobileInput, pincodeInput, addressInput, cityInput].forEach((el) => {
+        el?.classList.remove('border-red-500', 'bg-red-50/20');
+        el?.classList.add('border-zinc-200');
+      });
+
+      showToast(`Using address: ${selected.label || 'Home'} (${selected.fullName})`, 'info');
+    });
+  });
+
+  toggleNewAddrBtn?.addEventListener('click', () => {
+    // Deselect all cards
+    savedCards.forEach((c) => {
+      c.classList.remove('border-black', 'bg-zinc-50', 'ring-1', 'ring-black', 'shadow-2xs');
+      c.classList.add('border-zinc-200', 'bg-white');
+    });
+
+    // Clear form inputs for entering a brand new address
+    fullNameInput.value = '';
+    mobileInput.value = '';
+    pincodeInput.value = '';
+    addressInput.value = '';
+    cityInput.value = '';
+    if (saveAddressChk) saveAddressChk.checked = true;
+
+    [fullNameErr, mobileErr, pincodeErr, addressErr, cityErr].forEach((el) => el?.classList.add('hidden'));
+    [fullNameInput, mobileInput, pincodeInput, addressInput, cityInput].forEach((el) => {
+      el?.classList.remove('border-red-500', 'bg-red-50/20');
+      el?.classList.add('border-zinc-200');
+    });
+
+    fullNameInput.focus();
+    showToast('Enter new delivery address', 'info');
+  });
+
   function validateAllDeliveryInputs() {
     const isNameValid = validateField(fullNameInput, fullNameErr, (v) => v.length >= 2, 'Please enter your full legal name');
     const isMobileValid = validateField(mobileInput, mobileErr, (v) => /^[6-9]\d{9}$/.test(v), 'Please enter a valid 10-digit Indian mobile number');
@@ -404,24 +536,46 @@ export function render(container) {
 
   // Unified Order Execution logic with WhatsApp Verification
   async function executeOrderPlacement() {
-    const fullName = fullNameInput.value.trim();
-    const mobile = mobileInput.value.trim();
-    const pincode = pincodeInput.value.trim();
-    const address = addressInput.value.trim();
-    const city = cityInput.value.trim();
-    const state = page.querySelector('#state').value.trim();
+    try {
+      const fullName = fullNameInput.value.trim();
+      const mobile = mobileInput.value.trim();
+      const pincode = pincodeInput.value.trim();
+      const address = addressInput.value.trim();
+      const city = cityInput.value.trim();
+      const state = page.querySelector('#state').value.trim();
 
-    const order = await submitOrder(cart, {
-      fullName,
-      mobile,
-      pincode,
-      address,
-      city,
-      state,
-      coupon: activeCoupon ? activeCoupon.code : null,
-      discount: discountAmount,
-      grandTotal,
-    });
+      const order = await submitOrder(cart, {
+        fullName,
+        mobile,
+        pincode,
+        address,
+        city,
+        state,
+        coupon: activeCoupon ? activeCoupon.code : null,
+        discount: discountAmount,
+        grandTotal,
+      });
+
+      if (!order) return false;
+
+      // Save address to user's address book if requested
+      if (saveAddressChk?.checked) {
+        const isAlreadySaved = savedAddresses.some(
+          (a) => a.phone === mobile && a.pincode === pincode && a.line1.toLowerCase().trim() === address.toLowerCase().trim()
+        );
+        if (!isAlreadySaved) {
+          addAddress({
+            label: 'Home',
+            fullName,
+            phone: mobile,
+            line1: address,
+            city,
+            state,
+            pincode,
+            default: savedAddresses.length === 0,
+          });
+        }
+      }
 
     const waText = generateWhatsAppMessage({
       ...order,
@@ -512,7 +666,22 @@ export function render(container) {
         confirmOrder(order.orderNumber);
         setState({ cart: [] });
         showToast('Order verified & confirmed!', 'success');
-        renderOrderConfirmedScreen();
+        // Pass order data to confirmation page via sessionStorage
+        try {
+          sessionStorage.setItem('bear_last_order', JSON.stringify({
+            id: order.orderNumber,
+            date: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
+            items: (order.items || []).map(i => ({ name: i.name, size: i.size, colour: i.colour, qty: i.quantity || 1, price: i.price })),
+            address: { name: fullName, line: address, city, state, pin: pincode },
+            payment: 'WhatsApp Verified',
+            shipping: 'Free Air Express',
+            eta: '24 – 48 Hours',
+            coupon: activeCoupon ? activeCoupon.code : null,
+            discount: discountAmount,
+            grandTotal,
+          }));
+        } catch { /* ignore quota */ }
+        window.location.hash = '#order-confirmation';
       });
 
       // Button: Did Not Send -> Keep Bag & Return
@@ -525,6 +694,9 @@ export function render(container) {
 
     // Stage 2: Final Confirmed View
     function renderOrderConfirmedScreen() {
+      try {
+        triggerOrderConfetti();
+      } catch {}
       container.innerHTML = `
         <div class="max-w-[720px] mx-auto px-4 sm:px-6 md:px-gutter-desktop py-16 md:py-20 text-center">
           <div class="w-16 h-16 rounded-full bg-green-100 text-green-700 flex items-center justify-center mx-auto mb-4">
@@ -558,14 +730,19 @@ export function render(container) {
     }
 
     renderVerificationPendingScreen();
+    return true;
+  } catch (err) {
+    showToast(err.message || 'Order failed. Please check connection.', 'error');
+    return false;
   }
+}
 
   // Mount Slide to Confirm
   const slideMount = page.querySelector('#slide-to-confirm-mount');
   if (slideMount) {
     const slider = createSlideToConfirm({
+      validate: () => validateAllDeliveryInputs(),
       onConfirm: async () => {
-        if (!validateAllDeliveryInputs()) return false;
         await executeOrderPlacement();
         return true;
       },
@@ -576,6 +753,9 @@ export function render(container) {
   // 1-Click WhatsApp CTA fallback button
   page.querySelector('#place-order-whatsapp-btn')?.addEventListener('click', async () => {
     if (!validateAllDeliveryInputs()) return;
+    try {
+      triggerOrderConfetti();
+    } catch {}
     await executeOrderPlacement();
   });
 

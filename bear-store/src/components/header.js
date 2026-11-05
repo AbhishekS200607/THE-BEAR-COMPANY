@@ -1,8 +1,75 @@
 import { getMode, setMode, getCartCount, subscribe, setState } from '../state/store.js';
 
+let promoMessages = [
+  'COMPLIMENTARY EXPRESS AIR SHIPPING ACROSS INDIA (₹0)',
+  'USE CODE BEAR10 FOR 10% OFF YOUR FIRST DROP',
+  'ORDER & TRACK DIRECT VIA WHATSAPP: +91 96052 10198',
+];
+let promoEnabled = true;
+let promoIndex = 0;
+let promoInterval = null;
+let promoFetched = false;
+
+async function loadPromotions(onUpdate) {
+  try {
+    const res = await fetch('http://localhost:4000/api/v1/promotions');
+    if (res.ok) {
+      const json = await res.json();
+      const bar = json.data?.announcement_bar;
+      if (bar) {
+        if (typeof bar.enabled === 'boolean') {
+          promoEnabled = bar.enabled;
+        }
+        if (Array.isArray(bar.messages) && bar.messages.length > 0) {
+          promoMessages = bar.messages;
+        }
+        promoFetched = true;
+        if (typeof onUpdate === 'function') onUpdate();
+      }
+    }
+  } catch {
+    // Graceful fallback to default messages if offline
+  }
+}
+
 export function mount(container) {
   const header = document.createElement('header');
   header.className = 'fixed top-0 left-0 right-0 z-50';
+
+  function updateAnnouncementDOM() {
+    const barEl = header.querySelector('#header-announcement-bar');
+    const textEl = header.querySelector('#header-announcement-text');
+    if (!promoEnabled) {
+      if (barEl) barEl.style.display = 'none';
+    } else {
+      if (barEl) barEl.style.display = 'flex';
+      if (textEl && promoMessages.length > 0) {
+        textEl.textContent = promoMessages[promoIndex % promoMessages.length];
+      }
+    }
+  }
+
+  function startAnnouncementTicker() {
+    if (promoInterval) clearInterval(promoInterval);
+    promoInterval = setInterval(() => {
+      if (!promoEnabled || promoMessages.length <= 1) return;
+      promoIndex = (promoIndex + 1) % promoMessages.length;
+      const textEl = header.querySelector('#header-announcement-text');
+      if (textEl) {
+        textEl.classList.remove('opacity-100', 'translate-y-0');
+        textEl.classList.add('opacity-0', '-translate-y-1');
+        setTimeout(() => {
+          textEl.textContent = promoMessages[promoIndex % promoMessages.length];
+          textEl.classList.remove('-translate-y-1');
+          textEl.classList.add('translate-y-1');
+          requestAnimationFrame(() => {
+            textEl.classList.remove('opacity-0', 'translate-y-1');
+            textEl.classList.add('opacity-100', 'translate-y-0');
+          });
+        }, 200);
+      }
+    }, 3800);
+  }
 
   function renderHeader() {
     const mode = getMode();
@@ -13,12 +80,17 @@ export function mount(container) {
     const isAccount = hash.startsWith('#account');
 
     header.innerHTML = `
-      <!-- Slim Top Announcement Bar -->
-      <div class="w-full ${mode === 'sow' ? 'bg-[#80534C]' : 'bg-black'} text-white py-1 px-4 text-center flex items-center justify-center">
-        <p class="font-headline text-[11px] tracking-widest uppercase font-semibold">
-          Complimentary domestic shipping across India • Seamless WhatsApp checkout
+      <!-- Slim Top Announcement Bar (Connected to /api/v1/promotions) -->
+      ${
+        promoEnabled
+          ? `
+      <div id="header-announcement-bar" class="w-full ${mode === 'sow' ? 'bg-[#80534C]' : 'bg-black'} text-white py-1 px-4 text-center flex items-center justify-center transition-colors duration-300">
+        <p id="header-announcement-text" class="font-headline text-[11px] tracking-widest uppercase font-semibold transition-all duration-300 transform opacity-100 translate-y-0 select-none">
+          ${promoMessages[promoIndex % promoMessages.length] || ''}
         </p>
-      </div>
+      </div>`
+          : ''
+      }
 
       <!-- Mobile Top Bar (< 768px): Clean Minimal Branding Header with Go Back Button -->
       <!-- Shows Go Back button when navigated to any inner screen / subpage -->
@@ -122,6 +194,14 @@ export function mount(container) {
   subscribe(() => renderHeader());
   window.addEventListener('hashchange', () => renderHeader());
 
+  startAnnouncementTicker();
+  if (!promoFetched) {
+    loadPromotions(() => updateAnnouncementDOM());
+  }
+  window.addEventListener('focus', () => {
+    loadPromotions(() => updateAnnouncementDOM());
+  });
+
   container.innerHTML = '';
   container.appendChild(header);
 
@@ -168,10 +248,20 @@ export function mount(container) {
         ${isCollection ? `<span class="w-1 h-1 ${dotColor} rounded-full mt-0.5"></span>` : ''}
       </a>
 
-      <!-- Center Switcher: BEAR / SOW Mode Pill -->
+      <!-- Center Switcher: Animated BEAR / SOW Toggle -->
       <div class="px-1 py-0.5">
-        <button id="dock-mode-btn" class="${mode === 'sow' ? 'bg-[#80534C]' : 'bg-black'} text-white font-headline font-extrabold text-[11px] px-3.5 py-1.5 rounded-full tracking-wider shadow-sm flex items-center gap-1 cursor-pointer transition-transform active:scale-95" title="Toggle BEAR / SOW Mode">
-          ${mode.toUpperCase()}
+        <button id="dock-mode-btn"
+          role="switch"
+          aria-checked="${mode === 'sow' ? 'true' : 'false'}"
+          aria-label="Toggle BEAR / SOW collection"
+          class="dock-mode-toggle mode-switch${mode === 'sow' ? ' mode-switch--sow' : ''}"
+          type="button"
+        >
+          <div class="mode-switch__thumb${mode === 'sow' ? ' mode-switch__thumb--sow' : ''}"></div>
+          <div class="mode-switch__labels">
+            <span class="mode-switch__label mode-switch__label--bear">BEAR</span>
+            <span class="mode-switch__label mode-switch__label--sow">SOW</span>
+          </div>
         </button>
       </div>
 

@@ -2,6 +2,7 @@ import { isInWishlist, toggleWishlist } from '../state/store.js';
 import { formatCurrency } from '../utils/formatCurrency.js';
 import { showToast } from './toast.js';
 import { addItem } from '../services/cartService.js';
+import { animateHeart, cartAddFeedback, flyToCart } from '../utils/animations.js';
 
 /**
  * Fallback SVG placeholder
@@ -44,7 +45,7 @@ export function openQuickAddSheet(product) {
   const isSow = product.mode === 'sow';
 
   root.innerHTML = `
-    <div class="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl p-5 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto border border-zinc-100" role="dialog" aria-modal="true" aria-labelledby="qa-sheet-title">
+    <div class="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl p-5 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto border border-zinc-100 sheet-slide-up" style="will-change:transform" role="dialog" aria-modal="true" aria-labelledby="qa-sheet-title">
       <!-- Header: Thumb, Details & Close -->
       <div class="flex items-start justify-between pb-3 border-b border-zinc-100">
         <div class="flex items-center gap-3">
@@ -154,6 +155,11 @@ export function openQuickAddSheet(product) {
       const label = root.querySelector('#qa-colour-name');
       if (label) label.textContent = selectedColour;
 
+      btn.classList.remove('swatch-pop');
+      void btn.offsetWidth;
+      btn.classList.add('swatch-pop');
+      btn.addEventListener('animationend', () => btn.classList.remove('swatch-pop'), { once: true });
+
       root.querySelectorAll('.qa-colour-btn').forEach((b) => {
         b.className = `qa-colour-btn w-7 h-7 rounded-full border-2 transition-all cursor-pointer ${
           b.dataset.colour === selectedColour
@@ -175,16 +181,16 @@ export function openQuickAddSheet(product) {
         b.className = `qa-size-btn h-11 rounded-lg border font-headline text-xs font-bold transition-all cursor-pointer ${
           isMatch
             ? isSow
-              ? 'border-[#80534C] bg-[#80534C] text-white shadow-sm'
-              : 'border-black bg-black text-white shadow-sm'
+              ? 'border-[#80534C] bg-[#80534C] text-white shadow-sm size-pill-elastic'
+              : 'border-black bg-black text-white shadow-sm size-pill-elastic'
             : 'border-zinc-200 bg-white text-zinc-800 hover:border-black'
         }`;
       });
     });
   });
 
-  // Submit Handler
-  root.querySelector('#qa-submit-btn')?.addEventListener('click', () => {
+  // Submit Handler — capture rect BEFORE closing the sheet
+  root.querySelector('#qa-submit-btn')?.addEventListener('click', (e) => {
     addItem({
       id: product.id,
       name: product.name,
@@ -194,8 +200,11 @@ export function openQuickAddSheet(product) {
       image: firstImage,
       mode: product.mode,
     });
+    // flyToCart must read getBoundingClientRect() while the button is still in DOM
+    flyToCart(e.currentTarget, firstImage);
     showToast(`Added ${product.name} (${selectedSize}) to Bag!`, 'success');
-    close();
+    // Delay close by one rAF tick so the particle start position is captured first
+    requestAnimationFrame(() => close());
   });
 }
 
@@ -205,7 +214,7 @@ export function openQuickAddSheet(product) {
  */
 export function createProductCard(product) {
   const card = document.createElement('article');
-  card.className = 'group flex flex-col cursor-pointer bg-white hover:shadow-md transition-shadow duration-200 border border-zinc-200/80 p-2 sm:p-2.5';
+  card.className = 'group flex flex-col cursor-pointer bg-white border border-zinc-200/80 p-2 sm:p-2.5 product-card-3d';
   card.setAttribute('data-purpose', 'product-card');
   card.setAttribute('data-product-id', product.id);
 
@@ -220,20 +229,32 @@ export function createProductCard(product) {
     : null;
 
   card.innerHTML = `
-    <!-- Thumbnail Container with 4:5 aspect ratio -->
-    <div class="relative bg-zinc-100 overflow-hidden aspect-square mb-2 flex-shrink-0">
+    <!-- Dynamic Light Sheen Overlay -->
+    <div class="card-sheen"></div>
+
+    <!-- Thumbnail Container with 3:4 aspect ratio -->
+    <div class="relative bg-zinc-100 overflow-hidden aspect-[3/4] mb-2 flex-shrink-0">
       <a href="#product/${product.slug}" class="block w-full h-full no-underline hover:no-underline" aria-label="View ${product.name}">
         ${
           firstImage
-            ? `<img src="${firstImage}" alt="${product.name}" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300" loading="lazy" onerror="this.parentElement.innerHTML='${makePlaceholderSVG(product.name, product.mode).replace(/'/g, "\\'")}'" />`
+            ? `<img src="${firstImage}" alt="${product.name}" width="600" height="600" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300" loading="lazy" data-fallback-name="${product.name}" data-fallback-mode="${product.mode}" />`
             : makePlaceholderSVG(product.name, product.mode)
         }
       </a>
 
-      <!-- Badges: Top Left -->
+      <!-- Badges: Top Left with Live Scarcity Radar Pulse -->
       <div class="absolute top-2 left-2 flex flex-col gap-1 z-10 pointer-events-none">
         ${product.new ? '<span class="px-2 py-0.5 rounded-full bg-black text-white font-headline text-[9px] uppercase font-bold tracking-wider shadow-xs">New</span>' : ''}
         ${product.bestseller ? '<span class="px-2 py-0.5 rounded-full bg-amber-500 text-white font-headline text-[9px] uppercase font-bold tracking-wider shadow-xs">Top Seller</span>' : ''}
+        ${(product.bestseller || (product.rating && product.rating >= 4.8)) ? `
+          <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-black/80 backdrop-blur-md text-amber-300 font-headline text-[8.5px] uppercase font-bold tracking-wider shadow-xs border border-amber-400/30">
+            <span class="relative flex h-1.5 w-1.5">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-90"></span>
+              <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
+            </span>
+            <span>High Demand</span>
+          </span>
+        ` : ''}
       </div>
 
       <!-- Wishlist Heart Button: Top Right -->
@@ -289,6 +310,17 @@ export function createProductCard(product) {
     </div>
   `;
 
+  // Image fallback — replaces broken img with placeholder SVG safely
+  const img = card.querySelector('img[data-fallback-name]');
+  if (img) {
+    img.addEventListener('error', () => {
+      img.parentElement.innerHTML = makePlaceholderSVG(
+        img.dataset.fallbackName,
+        img.dataset.fallbackMode
+      );
+    });
+  }
+
   // Wishlist click
   const wishlistBtn = card.querySelector('.wishlist-btn');
   wishlistBtn.addEventListener('click', (e) => {
@@ -296,6 +328,7 @@ export function createProductCard(product) {
     e.stopPropagation();
     const isNowWishlisted = toggleWishlist(product.id);
     const svg = wishlistBtn.querySelector('svg');
+    animateHeart(wishlistBtn, isNowWishlisted);
     if (isNowWishlisted) {
       wishlistBtn.classList.add('text-red-500');
       wishlistBtn.setAttribute('aria-pressed', 'true');
@@ -314,7 +347,30 @@ export function createProductCard(product) {
   addBtn.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
+    cartAddFeedback(addBtn);
     openQuickAddSheet(product);
+  });
+
+  // 3D Card Tilt & Dynamic Light Sheen
+  let cardRect = null;
+  card.addEventListener('mouseenter', () => {
+    cardRect = card.getBoundingClientRect();
+  });
+
+  card.addEventListener('mousemove', (e) => {
+    if (!cardRect) cardRect = card.getBoundingClientRect();
+    const x = (e.clientX - cardRect.left) / cardRect.width - 0.5;
+    const y = (e.clientY - cardRect.top) / cardRect.height - 0.5;
+    card.style.setProperty('--tilt-rx', `${-y * 14}deg`);
+    card.style.setProperty('--tilt-ry', `${x * 14}deg`);
+    card.style.setProperty('--sheen-x', `${e.clientX - cardRect.left}px`);
+    card.style.setProperty('--sheen-y', `${e.clientY - cardRect.top}px`);
+  });
+
+  card.addEventListener('mouseleave', () => {
+    cardRect = null;
+    card.style.setProperty('--tilt-rx', '0deg');
+    card.style.setProperty('--tilt-ry', '0deg');
   });
 
   return card;

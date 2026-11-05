@@ -1,55 +1,93 @@
-import { getProducts, updateProduct } from '../services/adminService.js';
-import { fmtCurrency, modeBadge, spinner, mockBanner, showToast, openModal } from '../helpers.js';
+import { getProducts, createProduct, updateProduct, archiveProduct } from '../services/adminService.js';
+import { fmtCurrency, modeBadge, spinner, showToast, openModal } from '../helpers.js';
 
 export async function renderProducts(container) {
   container.innerHTML = spinner();
-  const { products, _mock } = await getProducts();
+  const { products, _error } = await getProducts();
+
+  if (_error) {
+    container.innerHTML = `
+      <div style="padding:40px;text-align:center;background:#18181b;border:1px solid #27272a;">
+        <span class="material-symbols-outlined" style="font-size:36px;color:#f87171;margin-bottom:12px;">error</span>
+        <p style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:#f4f4f5;margin-bottom:6px;">Error Loading Products</p>
+        <p style="font-size:12px;color:#71717a;margin-bottom:20px;">${_error}</p>
+        <button id="prod-retry-btn" class="admin-btn primary">Retry</button>
+      </div>
+    `;
+    container.querySelector('#prod-retry-btn')?.addEventListener('click', () => renderProducts(container));
+    return;
+  }
 
   container.innerHTML = `
-    ${_mock ? mockBanner() : ''}
     <div class="section-header">
-      <div><p class="section-title">Products</p><p class="section-subtitle">${products.length} products</p></div>
+      <div>
+        <p class="section-title">Products</p>
+        <p class="section-subtitle">${products.length} catalog items · Synchronized with Supabase</p>
+      </div>
       <button class="admin-btn primary" id="add-product-btn">+ Add Product</button>
     </div>
 
     <div class="card" style="overflow-x:auto;">
       <table>
         <thead><tr>
-          <th>Product</th><th>Mode</th><th>Category</th><th>Price</th><th>SKU Base</th><th>Status</th><th>Actions</th>
+          <th style="width:50px;">Photo</th>
+          <th>Product</th>
+          <th>Mode</th>
+          <th>Category</th>
+          <th>Price</th>
+          <th>SKU Identifier</th>
+          <th>Status</th>
+          <th>Actions</th>
         </tr></thead>
         <tbody>
-          ${products.map(p => `
+          ${products.length === 0 ? `
+            <tr><td colspan="8" style="text-align:center;color:#52525b;padding:32px;">No products found in database.</td></tr>
+          ` : products.map(p => {
+            const displayImg = p.primaryImage || (p.images && p.images[0]) || null;
+            return `
             <tr data-product-id="${p.id}">
+              <td>
+                ${displayImg ? `
+                  <img src="${displayImg}" alt="${p.name}" style="width:38px;height:48px;object-fit:cover;border-radius:2px;border:1px solid #27272a;background:#09090b;display:block;" onerror="this.onerror=null;this.parentElement.innerHTML='<div style=\\'width:38px;height:48px;border-radius:2px;border:1px dashed #3f3f46;background:#18181b;display:flex;align-items:center;justify-content:center;color:#52525b;\\'><span class=\\'material-symbols-outlined\\' style=\\'font-size:18px;\\'>broken_image</span></div>';" />
+                ` : `
+                  <div style="width:38px;height:48px;border-radius:2px;border:1px dashed #3f3f46;background:#18181b;display:flex;align-items:center;justify-content:center;color:#52525b;">
+                    <span class="material-symbols-outlined" style="font-size:18px;">image</span>
+                  </div>
+                `}
+              </td>
               <td>
                 <p style="color:#e4e4e7;font-weight:500;">${p.name}</p>
                 <p style="font-size:11px;color:#52525b;">${(p.colours || []).join(', ')}</p>
               </td>
               <td>${modeBadge(p.mode)}</td>
-              <td style="color:#a1a1aa;font-size:12px;">${p.category}</td>
+              <td style="color:#a1a1aa;font-size:12px;">${p.category || 'General'}</td>
               <td>
                 <p style="font-family:'Space Grotesk',sans-serif;font-weight:600;">${fmtCurrency(p.price)}</p>
-                ${p.compare_price ? `<p style="font-size:11px;color:#52525b;text-decoration:line-through;">${fmtCurrency(p.compare_price)}</p>` : ''}
+                ${p.comparePrice ? `<p style="font-size:11px;color:#52525b;text-decoration:line-through;">${fmtCurrency(p.comparePrice)}</p>` : ''}
               </td>
-              <td style="font-size:11px;color:#52525b;font-family:'Space Grotesk',sans-serif;">${p.sku_base}</td>
+              <td style="font-size:11px;color:#52525b;font-family:'Space Grotesk',sans-serif;">${p.skuBase || p.slug}</td>
               <td>
-                <span class="badge ${p.is_published ? 'badge-green' : 'badge-zinc'}">${p.is_published ? 'Published' : 'Draft'}</span>
+                <span class="badge ${p.isPublished ? 'badge-green' : 'badge-zinc'}">${p.isPublished ? 'Published' : 'Draft / Inactive'}</span>
               </td>
               <td>
                 <div style="display:flex;gap:6px;">
-                  <button class="admin-btn product-edit-btn" data-id="${p.id}" style="padding:4px 10px;font-size:10px;">Edit</button>
-                  <button class="admin-btn product-toggle-btn ${p.is_published ? 'danger' : ''}" data-id="${p.id}" data-published="${p.is_published}" style="padding:4px 10px;font-size:10px;">
-                    ${p.is_published ? 'Unpublish' : 'Publish'}
+                  <button class="admin-btn product-edit-btn" data-id="${p.id}" style="padding:4px 8px;font-size:10px;">Edit</button>
+                  <button class="admin-btn product-toggle-btn ${p.isPublished ? '' : 'primary'}" data-id="${p.id}" data-published="${p.isPublished}" style="padding:4px 8px;font-size:10px;">
+                    ${p.isPublished ? 'Unpublish' : 'Publish'}
                   </button>
+                  <button class="admin-btn product-archive-btn danger" data-id="${p.id}" style="padding:4px 8px;font-size:10px;" title="Archive product safely">Archive</button>
                 </div>
               </td>
             </tr>
-          `).join('')}
+          `;}).join('')}
         </tbody>
       </table>
     </div>
   `;
 
-  container.querySelector('#add-product-btn')?.addEventListener('click', () => openProductDrawer(null, () => renderProducts(container)));
+  container.querySelector('#add-product-btn')?.addEventListener('click', () => {
+    openProductDrawer(null, () => renderProducts(container));
+  });
 
   container.querySelectorAll('.product-edit-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -61,69 +99,312 @@ export async function renderProducts(container) {
   container.querySelectorAll('.product-toggle-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       const isPublished = btn.dataset.published === 'true';
-      await updateProduct(btn.dataset.id, { is_published: !isPublished });
-      showToast(`Product ${isPublished ? 'unpublished' : 'published'}.`);
-      renderProducts(container);
+      try {
+        await updateProduct(btn.dataset.id, { isPublished: !isPublished });
+        showToast(`Product ${isPublished ? 'unpublished' : 'published'}.`);
+        renderProducts(container);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+  });
+
+  container.querySelectorAll('.product-archive-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (confirm('Archive this product? It will be marked inactive but historical order records will remain safe.')) {
+        try {
+          await archiveProduct(btn.dataset.id);
+          showToast('Product archived.');
+          renderProducts(container);
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      }
     });
   });
 }
 
 function openProductDrawer(product, onSave) {
   const isNew = !product;
-  const { panel, close } = openModal(`
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-      <p style="font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;color:#f4f4f5;">${isNew ? 'Add Product' : 'Edit Product'}</p>
-      <button id="modal-close" style="background:none;border:none;color:#71717a;cursor:pointer;font-size:20px;line-height:1;">✕</button>
+  let currentImages = [...(product?.images || [])];
+
+  const { overlay, panel, close } = openModal(`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+      <p style="font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;color:#f4f4f5;">
+        ${isNew ? 'Create New Catalog Product' : `Edit: ${product.name}`}
+      </p>
+      <button id="modal-close" class="admin-btn" style="padding:4px 8px;font-size:11px;">✕</button>
     </div>
-    <div style="display:flex;flex-direction:column;gap:12px;">
-      <div><label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;">Product Name</label>
-        <input id="p-name" class="admin-input" value="${product?.name || ''}" placeholder="e.g. BEAR Oversized Tee" /></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-        <div><label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;">Mode</label>
-          <select id="p-mode" class="admin-select">
-            <option value="bear" ${product?.mode === 'bear' ? 'selected' : ''}>BEAR</option>
-            <option value="sow" ${product?.mode === 'sow' ? 'selected' : ''}>SOW</option>
-          </select></div>
-        <div><label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;">Category</label>
-          <input id="p-category" class="admin-input" value="${product?.category || ''}" placeholder="e.g. T-Shirts" /></div>
+
+    <form id="product-form" style="display:flex;flex-direction:column;gap:12px;max-height:calc(85vh - 70px);overflow-y:auto;padding-right:4px;">
+      <div>
+        <label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;text-transform:uppercase;">Product Name</label>
+        <input id="p-name" class="admin-input" value="${product?.name || ''}" placeholder="e.g. BEAR 480 GSM Oversized Tee" required />
       </div>
+
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-        <div><label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;">Price (₹)</label>
-          <input id="p-price" type="number" class="admin-input" value="${product?.price || ''}" placeholder="2999" /></div>
-        <div><label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;">Compare Price (₹)</label>
-          <input id="p-compare" type="number" class="admin-input" value="${product?.compare_price || ''}" placeholder="3999" /></div>
+        <div>
+          <label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;text-transform:uppercase;">Brand Mode</label>
+          <select id="p-mode" class="admin-select" ${!isNew ? 'disabled' : ''}>
+            <option value="bear" ${product?.mode === 'bear' ? 'selected' : ''}>BEAR (Men / Unisex)</option>
+            <option value="sow" ${product?.mode === 'sow' ? 'selected' : ''}>SOW (Women)</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;text-transform:uppercase;">Category</label>
+          <input id="p-category" class="admin-input" value="${product?.category || ''}" placeholder="e.g. T-Shirts" required />
+        </div>
       </div>
-      <div><label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;">SKU Base</label>
-        <input id="p-sku" class="admin-input" value="${product?.sku_base || ''}" placeholder="e.g. BEAR-OT" /></div>
-      <div><label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;">Colours (comma-separated)</label>
-        <input id="p-colours" class="admin-input" value="${(product?.colours || []).join(', ')}" placeholder="Pitch Black, Charcoal" /></div>
-      <div><label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;">Sizes (comma-separated)</label>
-        <input id="p-sizes" class="admin-input" value="${(product?.sizes || []).join(', ')}" placeholder="S, M, L, XL" /></div>
-      <div><label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;">Description</label>
-        <textarea id="p-desc" class="admin-input" rows="3" style="resize:none;" placeholder="Product description...">${product?.description || ''}</textarea></div>
-      <button id="p-save" class="admin-btn primary" style="justify-content:center;padding:10px;margin-top:4px;">
-        ${isNew ? 'Create Product' : 'Save Changes'}
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div>
+          <label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;text-transform:uppercase;">Price (₹)</label>
+          <input id="p-price" type="number" class="admin-input" value="${product?.price || ''}" placeholder="2999" required min="1" />
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;text-transform:uppercase;">Compare Price (₹)</label>
+          <input id="p-compare" type="number" class="admin-input" value="${product?.comparePrice || ''}" placeholder="3999" min="1" />
+        </div>
+      </div>
+
+      <!-- PHOTO MANAGER SECTION -->
+      <div style="background:#141417;border:1px solid #27272a;border-radius:4px;padding:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <label style="font-size:11px;color:#e4e4e7;text-transform:uppercase;font-weight:600;letter-spacing:0.04em;">
+            Product Photos (${currentImages.length})
+          </label>
+          <span style="font-size:10px;color:#71717a;">First photo is Primary Catalog Cover</span>
+        </div>
+
+        <!-- Drag & Drop Zone -->
+        <div id="dropzone" style="border:1.5px dashed #3f3f46;border-radius:4px;padding:16px 12px;text-align:center;background:#18181b;cursor:pointer;transition:all 0.15s ease-in-out;">
+          <span class="material-symbols-outlined" style="font-size:24px;color:#71717a;margin-bottom:4px;display:block;">add_photo_alternate</span>
+          <p style="font-size:12px;color:#e4e4e7;margin-bottom:2px;">
+            Drag & drop images here, or <span style="color:#60a5fa;text-decoration:underline;">browse files</span>
+          </p>
+          <p style="font-size:10px;color:#71717a;">PNG, JPG, WEBP or Paste Image URL below</p>
+          <input type="file" id="file-input" multiple accept="image/*" style="display:none;" />
+        </div>
+
+        <!-- URL Input fallback -->
+        <div style="display:flex;gap:6px;margin-top:8px;">
+          <input id="img-url-input" class="admin-input" placeholder="Or paste image URL (e.g. https://...)" style="font-size:11px;flex:1;" />
+          <button type="button" id="btn-add-img-url" class="admin-btn" style="white-space:nowrap;padding:6px 12px;font-size:11px;">+ Add URL</button>
+        </div>
+
+        <!-- Gallery Thumbnails Grid -->
+        <div id="image-gallery-preview" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(95px, 1fr));gap:8px;margin-top:12px;"></div>
+      </div>
+
+      <div>
+        <label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;text-transform:uppercase;">Colours (comma-separated)</label>
+        <input id="p-colours" class="admin-input" value="${(product?.colours || []).join(', ')}" placeholder="Pitch Black, Charcoal" />
+      </div>
+
+      <div>
+        <label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;text-transform:uppercase;">Sizes (comma-separated)</label>
+        <input id="p-sizes" class="admin-input" value="${(product?.sizes || ['S', 'M', 'L', 'XL', 'XXL']).join(', ')}" placeholder="S, M, L, XL, XXL" />
+      </div>
+
+      <div>
+        <label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;text-transform:uppercase;">Description</label>
+        <textarea id="p-desc" class="admin-input" rows="3" style="resize:none;" placeholder="Crafted with heavyweight cotton, built for discipline..." required>${product?.description || ''}</textarea>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+        <input type="checkbox" id="p-published" ${product?.isPublished !== false ? 'checked' : ''} />
+        <label for="p-published" style="font-size:12px;color:#e4e4e7;cursor:pointer;">Published in Storefront Catalog</label>
+      </div>
+
+      <button type="submit" id="p-save" class="admin-btn primary" style="justify-content:center;padding:10px;margin-top:8px;">
+        ${isNew ? 'Create Product & Save Photos' : 'Save Changes'}
       </button>
-    </div>
+    </form>
   `);
 
-  panel.querySelector('#modal-close').addEventListener('click', close);
-  panel.querySelector('#p-save').addEventListener('click', async () => {
+  if (panel) {
+    panel.style.maxWidth = '540px';
+  }
+
+  overlay.querySelector('#modal-close').addEventListener('click', close);
+
+  // Gallery Preview Renderer
+  const galleryEl = overlay.querySelector('#image-gallery-preview');
+  function renderGallery() {
+    if (currentImages.length === 0) {
+      galleryEl.innerHTML = `<p style="grid-column:1/-1;text-align:center;color:#52525b;font-size:11px;padding:8px 0;">No photos attached yet.</p>`;
+      return;
+    }
+    galleryEl.innerHTML = currentImages.map((url, idx) => `
+      <div style="position:relative;background:#18181b;border:1px solid ${idx === 0 ? '#3b82f6' : '#27272a'};border-radius:4px;overflow:hidden;group" data-idx="${idx}">
+        <div style="position:relative;padding-top:125%;background:#09090b;">
+          <img src="${url}" alt="Preview" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" onerror="this.src='';this.alt='Broken URL';" />
+          ${idx === 0 ? `
+            <span style="position:absolute;top:4px;left:4px;background:#2563eb;color:#fff;font-size:9px;font-family:'Space Grotesk',sans-serif;font-weight:700;padding:1px 5px;border-radius:2px;letter-spacing:0.04em;">PRIMARY</span>
+          ` : `
+            <button type="button" class="btn-make-primary" data-idx="${idx}" style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,0.7);color:#e4e4e7;border:1px solid #3f3f46;font-size:9px;padding:1px 4px;border-radius:2px;cursor:pointer;" title="Make Primary Cover">★ Cover</button>
+          `}
+          <button type="button" class="btn-del-photo" data-idx="${idx}" style="position:absolute;top:4px;right:4px;background:rgba(239,68,68,0.85);color:#fff;border:none;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:10px;line-height:1;display:flex;align-items:center;justify-content:center;" title="Remove Photo">✕</button>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:3px 4px;background:#18181b;border-top:1px solid #27272a;">
+          <button type="button" class="btn-move-left" data-idx="${idx}" ${idx === 0 ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : 'style="cursor:pointer;"'} title="Move left">←</button>
+          <span style="font-size:10px;color:#71717a;font-family:'Space Grotesk',sans-serif;">#${idx + 1}</span>
+          <button type="button" class="btn-move-right" data-idx="${idx}" ${idx === currentImages.length - 1 ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : 'style="cursor:pointer;"'} title="Move right">→</button>
+        </div>
+      </div>
+    `).join('');
+
+    // Attach actions
+    galleryEl.querySelectorAll('.btn-del-photo').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const i = Number(b.dataset.idx);
+        currentImages.splice(i, 1);
+        renderGallery();
+      });
+    });
+
+    galleryEl.querySelectorAll('.btn-make-primary').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const i = Number(b.dataset.idx);
+        const [selected] = currentImages.splice(i, 1);
+        currentImages.unshift(selected);
+        renderGallery();
+      });
+    });
+
+    galleryEl.querySelectorAll('.btn-move-left').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const i = Number(b.dataset.idx);
+        if (i > 0) {
+          const temp = currentImages[i];
+          currentImages[i] = currentImages[i - 1];
+          currentImages[i - 1] = temp;
+          renderGallery();
+        }
+      });
+    });
+
+    galleryEl.querySelectorAll('.btn-move-right').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const i = Number(b.dataset.idx);
+        if (i < currentImages.length - 1) {
+          const temp = currentImages[i];
+          currentImages[i] = currentImages[i + 1];
+          currentImages[i + 1] = temp;
+          renderGallery();
+        }
+      });
+    });
+  }
+
+  renderGallery();
+
+  // Drag & drop handlers
+  const dropzone = overlay.querySelector('#dropzone');
+  const fileInput = overlay.querySelector('#file-input');
+
+  dropzone.addEventListener('click', () => fileInput.click());
+
+  ['dragenter', 'dragover'].forEach(eventName => {
+    dropzone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.style.borderColor = '#3b82f6';
+      dropzone.style.background = 'rgba(59,130,246,0.08)';
+    });
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    dropzone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.style.borderColor = '#3f3f46';
+      dropzone.style.background = '#18181b';
+    });
+  });
+
+  function processFiles(files) {
+    Array.from(files).forEach(file => {
+      if (!file.type.startsWith('image/')) {
+        showToast(`Skipped non-image file "${file.name}"`, 'error');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        currentImages.push(e.target.result);
+        renderGallery();
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  dropzone.addEventListener('drop', (e) => {
+    if (e.dataTransfer?.files) processFiles(e.dataTransfer.files);
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files) processFiles(fileInput.files);
+  });
+
+  // URL input handler
+  const urlInput = overlay.querySelector('#img-url-input');
+  overlay.querySelector('#btn-add-img-url')?.addEventListener('click', () => {
+    const u = urlInput.value.trim();
+    if (!u) return;
+    if (!u.startsWith('http') && !u.startsWith('data:image')) {
+      showToast('Please enter a valid HTTP/HTTPS image URL', 'error');
+      return;
+    }
+    currentImages.push(u);
+    urlInput.value = '';
+    renderGallery();
+  });
+
+  urlInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      overlay.querySelector('#btn-add-img-url')?.click();
+    }
+  });
+
+  // Form submit
+  overlay.querySelector('#product-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const saveBtn = overlay.querySelector('#p-save');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving to Database...';
+
     const payload = {
-      name: panel.querySelector('#p-name').value.trim(),
-      mode: panel.querySelector('#p-mode').value,
-      category: panel.querySelector('#p-category').value.trim(),
-      price: Number(panel.querySelector('#p-price').value),
-      compare_price: Number(panel.querySelector('#p-compare').value) || null,
-      sku_base: panel.querySelector('#p-sku').value.trim(),
-      colours: panel.querySelector('#p-colours').value.split(',').map(s => s.trim()).filter(Boolean),
-      sizes: panel.querySelector('#p-sizes').value.split(',').map(s => s.trim()).filter(Boolean),
-      description: panel.querySelector('#p-desc').value.trim(),
+      name: overlay.querySelector('#p-name').value.trim(),
+      mode: overlay.querySelector('#p-mode').value,
+      category: overlay.querySelector('#p-category').value.trim(),
+      price: Number(overlay.querySelector('#p-price').value),
+      comparePrice: Number(overlay.querySelector('#p-compare').value) || null,
+      colours: overlay.querySelector('#p-colours').value.split(',').map(s => s.trim()).filter(Boolean),
+      sizes: overlay.querySelector('#p-sizes').value.split(',').map(s => s.trim()).filter(Boolean),
+      description: overlay.querySelector('#p-desc').value.trim(),
+      images: currentImages,
+      isPublished: overlay.querySelector('#p-published').checked,
     };
-    if (!payload.name) { showToast('Product name is required.', 'error'); return; }
-    if (product) await updateProduct(product.id, payload);
-    showToast(isNew ? 'Product created.' : 'Product saved.');
-    close();
-    onSave();
+
+    try {
+      if (isNew) {
+        await createProduct(payload);
+        showToast(`Product "${payload.name}" created with ${currentImages.length} photo(s).`);
+      } else {
+        await updateProduct(product.id, payload);
+        showToast(`Product "${payload.name}" updated.`);
+      }
+      close();
+      onSave();
+    } catch (err) {
+      showToast(err.message, 'error');
+      saveBtn.disabled = false;
+      saveBtn.textContent = isNew ? 'Create Product & Save Photos' : 'Save Changes';
+    }
   });
 }

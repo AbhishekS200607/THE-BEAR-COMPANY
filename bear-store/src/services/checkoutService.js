@@ -1,6 +1,6 @@
 import { validateCheckoutDetails } from '../utils/validation.js';
 import { getCart, getCartTotal } from '../state/store.js';
-import { mockDelay } from './mockStore.js';
+import { get } from '../utils/storage.js';
 import { addOrder } from './accountService.js';
 
 let orderInProgress = false;
@@ -15,27 +15,61 @@ export function validateDetails(formData) {
 }
 
 /**
- * Converts any product/variant id string into a valid UUID format for backend schema validation
+ * Resolves real Supabase variantId for an item if not yet attached
  */
-function toValidUUID(str) {
-  // If already standard UUID format:
-  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)) {
-    return str;
+async function resolveCartVariantId(item) {
+  if (item.variantId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.variantId)) {
+    return item.variantId;
   }
-  // Generate deterministic-looking UUID from string
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash |= 0;
+  try {
+    const slugCandidates = [item.slug, item.id].filter(Boolean);
+    for (const slug of slugCandidates) {
+      const res = await fetch(`http://localhost:4000/api/v1/products/${encodeURIComponent(slug)}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data && Array.isArray(json.data.sizes)) {
+          const match =
+            json.data.sizes.find((s) => s.size === item.size && (!s.colour || s.colour === item.colour)) ||
+            json.data.sizes.find((s) => s.size === item.size) ||
+            json.data.sizes[0];
+          if (match?.variantId) return match.variantId;
+        }
+      }
+    }
+
+    // Fallback: search catalog by name
+    if (item.name) {
+      const searchRes = await fetch(`http://localhost:4000/api/v1/products?search=${encodeURIComponent(item.name)}`);
+      if (searchRes.ok) {
+        const searchJson = await searchRes.json();
+        const found = (searchJson.data?.products || searchJson.data || []).find(
+          (p) => p.name?.toLowerCase() === item.name?.toLowerCase() || p.slug === item.slug
+        );
+        if (found?.slug) {
+          const detailRes = await fetch(`http://localhost:4000/api/v1/products/${encodeURIComponent(found.slug)}`);
+          if (detailRes.ok) {
+            const detailJson = await detailRes.json();
+            if (detailJson.data && Array.isArray(detailJson.data.sizes)) {
+              const match =
+                detailJson.data.sizes.find((s) => s.size === item.size && (!s.colour || s.colour === item.colour)) ||
+                detailJson.data.sizes.find((s) => s.size === item.size) ||
+                detailJson.data.sizes[0];
+              if (match?.variantId) return match.variantId;
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[BEAR Checkout] Error resolving variant ID from API:', err.message);
   }
-  const hex = Math.abs(hash).toString(16).padStart(8, '0');
-  return `00000000-0000-4000-8000-${hex.repeat(2).slice(0, 12)}`;
+  return null;
 }
 
 /**
- * Submits an order request to the Express REST API backend with fallback to local mode
+ * Submits an order request to the Express REST API backend with real database persistence
  */
-export async function submitOrder(bagData, detailsData) {
+export async function submitOrder(bagData, detailsData, couponCode = null) {
   if (orderInProgress) return null;
   orderInProgress = true;
 
@@ -44,10 +78,22 @@ export async function submitOrder(bagData, detailsData) {
     const total = getCartTotal();
     const idempotencyKey = `idemp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
+    // Ensure all items carry real UUIDs from Supabase
+    for (const item of cart) {
+      if (!item.variantId) {
+        item.variantId = await resolveCartVariantId(item);
+      }
+      if (!item.variantId) {
+        throw new Error(`Variant ID missing for "${item.name}" (${item.size || 'M'}). Please re-select size from product page.`);
+      }
+    }
+
+    const appliedCoupon = detailsData?.coupon || couponCode || null;
+
     // Prepare payload for backend API
     const apiPayload = {
       items: cart.map((item) => ({
-        variant_id: toValidUUID(item.variantId || `${item.id}-${item.size}-${item.colour}`),
+        variant_id: item.variantId,
         quantity: Math.min(Math.max(item.quantity || 1, 1), 10),
       })),
       customerName: detailsData.fullName || 'Guest Customer',
@@ -58,55 +104,53 @@ export async function submitOrder(bagData, detailsData) {
       deliveryState: detailsData.state || 'Karnataka',
       deliveryPincode: (detailsData.pincode || '560001').slice(0, 6),
       idempotencyKey,
+      couponCode: appliedCoupon,
     };
 
-    let serverOrder = null;
-
-    try {
-      // Attempt live REST API call
-      const res = await fetch('http://localhost:4000/api/v1/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Idempotency-Key': idempotencyKey,
-        },
-        body: JSON.stringify(apiPayload),
-      });
-
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && json.data) {
-          serverOrder = json.data;
-        }
-      }
-    } catch (netErr) {
-      // Backend is offline or unreachable - proceed gracefully with local fallback
-      console.info('[BEAR Checkout] Backend server offline, completing order in client mode:', netErr.message);
+    const session = get('bear_auth_session');
+    const headers = {
+      'Content-Type': 'application/json',
+      'Idempotency-Key': idempotencyKey,
+    };
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
     }
 
-    // Standardize order response object
-    const randomSuffix = String(Math.floor(Math.random() * 900000) + 100000).slice(0, 6);
-    const orderNumber = serverOrder?.order_number || `BEAR-${new Date().getFullYear()}-${randomSuffix}`;
-    const reservationExpiresAt = serverOrder?.reservation_expires_at || new Date(Date.now() + 30 * 60 * 1000).toISOString();
+    const res = await fetch('http://localhost:4000/api/v1/orders', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(apiPayload),
+    });
+
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json.success || !json.data) {
+      const errMsg = json.error?.message || json.message || `Order placement failed (HTTP ${res.status})`;
+      throw new Error(errMsg);
+    }
+
+    const serverOrder = json.data?.order || json.data;
+    const orderNumber = serverOrder.orderNumber || serverOrder.order_number || `BEAR-${Date.now().toString().slice(-8)}`;
+    const reservationExpiresAt = serverOrder.reservationExpiresAt || serverOrder.reservation_expires_at || new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
     const newOrder = {
       success: true,
       orderNumber,
       id: orderNumber,
-      backendId: serverOrder?.id || null,
+      backendId: serverOrder.id,
       reservationExpiresAt,
       estimatedDelivery: '2–3 business days (BlueDart Air Express)',
       items: cart,
-      total,
+      total: typeof serverOrder.total === 'number'
+        ? serverOrder.total
+        : (serverOrder.total_paise ? serverOrder.total_paise / 100 : total),
       details: detailsData,
-      status: 'pending_whatsapp',
-      createdAt: new Date().toISOString(),
+      status: serverOrder.status || 'pending_whatsapp',
+      createdAt: serverOrder.createdAt || serverOrder.created_at || new Date().toISOString(),
     };
 
-    // Persist to user orders list in localStorage
+    // Persist to user orders list in localStorage & customer account
     addOrder(newOrder);
 
-    await mockDelay(300, 600);
     return newOrder;
   } finally {
     orderInProgress = false;

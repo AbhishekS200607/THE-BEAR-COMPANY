@@ -1,15 +1,31 @@
-import { announcementMessages } from '../data/content.js';
-
 let currentIndex = 0;
 let intervalId = null;
 let dismissed = false;
 
-const VALUE_MESSAGES = [
+const DEFAULT_MESSAGES = [
   '⚡ Free Pan-India Air Express Delivery (₹0 Delivery Charge)',
   '🏷️ Use Code BEAR10 for 10% Off At Checkout',
   '🔄 7-Day Doorstep Size Swaps & Instant Exchanges',
   '💬 Order & Track Direct via WhatsApp: +91 96052 10198',
 ];
+
+let activeMessages = [...DEFAULT_MESSAGES];
+
+// Fetch dynamic promotions from server
+async function loadPromotions() {
+  try {
+    const res = await fetch('http://localhost:4000/api/v1/promotions');
+    if (res.ok) {
+      const json = await res.json();
+      const msgs = json.data?.announcement_bar?.messages;
+      if (Array.isArray(msgs) && msgs.length > 0) {
+        activeMessages = msgs;
+      }
+    }
+  } catch {
+    // Keep DEFAULT_MESSAGES if server unreachable
+  }
+}
 
 export function mount(container) {
   if (dismissed) return;
@@ -36,7 +52,7 @@ export function mount(container) {
     messageEl.classList.add('opacity-0', '-translate-y-2');
 
     setTimeout(() => {
-      messageEl.textContent = VALUE_MESSAGES[index % VALUE_MESSAGES.length];
+      messageEl.textContent = activeMessages[index % activeMessages.length];
       messageEl.classList.remove('-translate-y-2');
       messageEl.classList.add('translate-y-2');
 
@@ -47,11 +63,17 @@ export function mount(container) {
     }, 200);
   }
 
-  messageEl.textContent = VALUE_MESSAGES[0];
+  messageEl.textContent = activeMessages[0];
+
+  loadPromotions().then(() => {
+    if (messageEl && activeMessages.length > 0) {
+      messageEl.textContent = activeMessages[currentIndex % activeMessages.length];
+    }
+  });
 
   // Rotate messages every 3.8 seconds
   intervalId = setInterval(() => {
-    currentIndex = (currentIndex + 1) % VALUE_MESSAGES.length;
+    currentIndex = (currentIndex + 1) % activeMessages.length;
     showMessage(currentIndex);
   }, 3800);
 
@@ -68,8 +90,13 @@ export function mount(container) {
     });
   });
 
-  container.appendChild(bar);
+  container.prepend(bar);
 }
 
-export default { mount };
+export function unmount() {
+  if (intervalId) clearInterval(intervalId);
+  const bar = document.querySelector('.announcement-bar');
+  if (bar) bar.remove();
+}
 
+export default { mount, unmount };

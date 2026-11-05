@@ -1,9 +1,16 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { validate } from '../middleware/validate.js';
-import { optionalAuth } from '../middleware/auth.js';
+import { optionalAuth, requireAuth, requireAdmin } from '../middleware/auth.js';
 import { sensitiveRateLimiter } from '../middleware/rateLimiter.js';
-import { handleCreateOrder, handleTrackOrder, handleConfirmOrder, handleCancelOrder } from '../controllers/orderController.js';
+import {
+  handleCreateOrder,
+  handleTrackOrder,
+  handleConfirmOrder,
+  handleCancelOrder,
+  handleValidateCoupon,
+  handleRequestCancellation,
+} from '../controllers/orderController.js';
 
 const router = Router();
 
@@ -23,6 +30,7 @@ const createOrderSchema = {
     deliveryState: z.string().trim().min(2, 'State must be at least 2 characters').max(100),
     deliveryPincode: z.string().trim().regex(/^[1-9][0-9]{5}$/, 'Must be a valid 6-digit Indian PIN code'),
     idempotencyKey: z.string().min(8, 'Idempotency key required').optional(),
+    couponCode: z.string().trim().optional().nullable(),
   }),
 };
 
@@ -33,17 +41,29 @@ const trackOrderSchema = {
   }),
 };
 
+const validateCouponSchema = {
+  body: z.object({
+    code: z.string().trim().min(2, 'Coupon code required'),
+    cartTotal: z.number().positive('Cart total must be positive'),
+  }),
+};
+
+// POST /api/v1/orders/validate-coupon - Server-side coupon verification
+router.post('/validate-coupon', sensitiveRateLimiter, validate(validateCouponSchema), handleValidateCoupon);
+
 // POST /api/v1/orders - Create an order request with inventory reservation
 router.post('/', sensitiveRateLimiter, optionalAuth, validate(createOrderSchema), handleCreateOrder);
 
 // GET /api/v1/orders/track - Protected guest order tracking
 router.get('/track', sensitiveRateLimiter, validate(trackOrderSchema), handleTrackOrder);
 
-// POST /api/v1/orders/:id/confirm - Admin / trusted backend order confirmation
-router.post('/:id/confirm', handleConfirmOrder);
+// POST /api/v1/orders/:id/confirm - Admin only confirmation (SEC-1 Fixed)
+router.post('/:id/confirm', requireAdmin, handleConfirmOrder);
 
-// POST /api/v1/orders/:id/cancel - Cancel pending reservation
-router.post('/:id/cancel', handleCancelOrder);
+// POST /api/v1/orders/:id/cancel - Authenticated cancellation with ownership check (SEC-1 Fixed)
+router.post('/:id/cancel', requireAuth, handleCancelOrder);
+
+// POST /api/v1/orders/:id/request-cancellation - Customer requests cancellation via desk
+router.post('/:id/request-cancellation', sensitiveRateLimiter, handleRequestCancellation);
 
 export default router;
-

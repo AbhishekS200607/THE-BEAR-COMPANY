@@ -7,8 +7,10 @@ import {
   handleUpdateProfile,
   handleGetAddresses,
   handleAddAddress,
+  handleUpdateAddress,
   handleDeleteAddress,
   handleGetCustomerOrders,
+  handleClaimGuestOrders,
 } from '../controllers/customerController.js';
 
 const router = Router();
@@ -37,6 +39,20 @@ const addressSchema = {
   }),
 };
 
+const updateAddressSchema = {
+  body: z.object({
+    label: z.string().trim().optional(),
+    fullName: z.string().trim().min(2).optional(),
+    phoneNumber: z.string().trim().regex(/^[0-9]{10}$/).optional(),
+    line1: z.string().trim().min(5).optional(),
+    line2: z.string().trim().optional().nullable(),
+    city: z.string().trim().min(2).optional(),
+    state: z.string().trim().min(2).optional(),
+    pincode: z.string().trim().regex(/^[1-9][0-9]{5}$/).optional(),
+    isDefault: z.boolean().optional(),
+  }),
+};
+
 // Profile endpoints
 router.get('/profile', handleGetProfile);
 router.patch('/profile', validate(updateProfileSchema), handleUpdateProfile);
@@ -44,10 +60,13 @@ router.patch('/profile', validate(updateProfileSchema), handleUpdateProfile);
 // Address endpoints
 router.get('/addresses', handleGetAddresses);
 router.post('/addresses', validate(addressSchema), handleAddAddress);
+router.put('/addresses/:id', validate(updateAddressSchema), handleUpdateAddress);
+router.patch('/addresses/:id', validate(updateAddressSchema), handleUpdateAddress);
 router.delete('/addresses/:id', handleDeleteAddress);
 
-// Order history
+// Order history & guest order migration
 router.get('/orders', handleGetCustomerOrders);
+router.post('/claim-orders', handleClaimGuestOrders);
 
 export default router;
 

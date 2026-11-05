@@ -2,6 +2,7 @@ import { getMode, subscribe } from '../state/store.js';
 import { getProducts } from '../services/productService.js';
 import { createProductCard } from '../components/productCard.js';
 import { renderEmptyIllustration } from '../components/emptyState.js';
+import { skeletonCollection } from '../utils/skeletons.js';
 
 export async function render(container) {
   let mode = getMode();
@@ -16,6 +17,8 @@ export async function render(container) {
 
   const page = document.createElement('div');
   page.className = 'w-full flex flex-col pt-20 md:pt-24 pb-32';
+
+  container.innerHTML = skeletonCollection();
 
   let currentFilteredProducts = [];
 
@@ -103,6 +106,9 @@ export async function render(container) {
           else if (type === 'size') selectedSizes = selectedSizes.filter((s) => s !== val);
           else if (type === 'colour') selectedColours = selectedColours.filter((c) => c !== val);
           syncCategoryButtons();
+          syncSizeButtons();
+          syncColourButtons();
+          syncFilterLabels();
           visibleCount = PAGE_SIZE;
           updateGrid();
         });
@@ -129,8 +135,7 @@ export async function render(container) {
         <div class="col-span-full py-16 text-center">
           ${renderEmptyIllustration('search')}
           <p class="font-headline text-base font-bold text-zinc-950">No products match your filters</p>
-          <p class="text-xs text-zinc-500 mt-1">Try resetting size or category filters to view all pieces.</p>
-          <button id="empty-reset-btn" class="mt-4 px-5 py-2 rounded-full bg-black text-white text-xs font-bold uppercase font-headline cursor-pointer">Reset All Filters</button>
+          <p class="text-xs text-zinc-500 mt-1">Try removing a filter above, or <button id="empty-reset-btn" class="underline font-bold cursor-pointer">reset all</button>.</p>
         </div>
       `;
       grid.querySelector('#empty-reset-btn')?.addEventListener('click', resetAllFilters);
@@ -160,6 +165,8 @@ export async function render(container) {
             loadMoreBtn.classList.add('hidden');
           } else {
             loadMoreBtn.classList.remove('hidden');
+            loadMoreBtn.textContent = 'Load More Garments';
+            loadMoreBtn.disabled = false;
           }
         }
       } else {
@@ -168,12 +175,40 @@ export async function render(container) {
     }
   }
 
+  function syncSizeButtons() {
+    page.querySelectorAll('.size-opt-btn').forEach((btn) => {
+      const active = selectedSizes.includes(btn.dataset.size);
+      btn.classList.toggle('bg-black', active);
+      btn.classList.toggle('text-white', active);
+      btn.classList.toggle('border-black', active);
+    });
+  }
+
+  function syncColourButtons() {
+    page.querySelectorAll('.colour-opt-btn').forEach((btn) => {
+      btn.classList.toggle('bg-zinc-200', selectedColours.includes(btn.dataset.colour));
+    });
+  }
+
+  function syncFilterLabels() {
+    const sizeLabel = page.querySelector('#size-btn-label');
+    const colourLabel = page.querySelector('#colour-btn-label');
+    if (sizeLabel) sizeLabel.textContent = selectedSizes.length > 0 ? `Size (${selectedSizes.length})` : 'Size';
+    if (colourLabel) colourLabel.textContent = selectedColours.length > 0 ? `Colour (${selectedColours.length})` : 'Colour';
+  }
+
   function resetAllFilters() {
     selectedCategory = 'all';
     selectedSizes = [];
     selectedColours = [];
+    sortOrder = 'featured';
     visibleCount = PAGE_SIZE;
+    const sortEl = page.querySelector('#sort-dropdown');
+    if (sortEl) sortEl.value = 'featured';
     syncCategoryButtons();
+    syncSizeButtons();
+    syncColourButtons();
+    syncFilterLabels();
     updateGrid();
   }
 
@@ -201,7 +236,8 @@ export async function render(container) {
       </section>
 
       <!-- Category Pills -->
-      <nav aria-label="Categories" class="pt-3 pb-2 px-5 overflow-x-auto no-scrollbar">
+      <nav aria-label="Categories" class="pt-3 pb-2 px-5 overflow-x-auto no-scrollbar relative">
+        <div class="absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-white to-transparent pointer-events-none z-10"></div>
         <div class="flex items-center space-x-2 w-max" id="category-pills-bar">
           <button class="cat-pill ${mode === 'sow' ? 'bg-[#80534C]' : 'bg-black'} text-white px-4 py-1.5 rounded-full text-xs font-semibold shadow-sm transition hover:opacity-90" data-cat="all">
             All
@@ -228,7 +264,7 @@ export async function render(container) {
           <div class="relative">
             <button id="size-dropdown-btn" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-md border border-zinc-200 bg-white text-zinc-800 font-medium hover:border-zinc-400 transition cursor-pointer">
               <span id="size-btn-label">Size</span>
-              <svg class="w-3 h-3 stroke-[2.2] text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg id="size-chevron" class="w-3 h-3 stroke-[2.2] text-zinc-500 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"></path>
               </svg>
             </button>
@@ -248,8 +284,8 @@ export async function render(container) {
           <!-- Colour Dropdown -->
           <div class="relative">
             <button id="colour-dropdown-btn" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-md border border-zinc-200 bg-white text-zinc-800 font-medium hover:border-zinc-400 transition cursor-pointer">
-              <span>Colour</span>
-              <svg class="w-3 h-3 stroke-[2.2] text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <span id="colour-btn-label">Colour</span>
+              <svg id="colour-chevron" class="w-3 h-3 stroke-[2.2] text-zinc-500 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"></path>
               </svg>
             </button>
@@ -286,16 +322,14 @@ export async function render(container) {
       <!-- Active Filter Summary Bar (Item 11) -->
       <div id="active-filters-bar" class="hidden px-5 py-2.5 bg-zinc-50 border-b border-zinc-200 flex items-center justify-between gap-3 text-xs flex-wrap">
         <div class="flex items-center gap-1.5 flex-wrap" id="active-chips-mount"></div>
-        <button id="clear-all-filters-btn" class="text-xs font-bold text-zinc-500 hover:text-black underline cursor-pointer shrink-0">
-          Clear All
-        </button>
+        <button id="clear-all-filters-btn" class="text-xs font-bold text-zinc-500 hover:text-black underline cursor-pointer shrink-0">Clear All</button>
       </div>
 
       <!-- Product Catalog Grid -->
       <main class="px-4 pt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-3.5 md:gap-4 flex-1" data-purpose="product-catalog-grid" id="collection-products-grid">
-        ${[1, 2, 3, 4].map(() => `
+        ${Array(PAGE_SIZE).fill(0).map(() => `
           <div class="rounded-xl sm:rounded-2xl border border-zinc-200/80 bg-white p-2.5 animate-pulse">
-            <div class="aspect-3/4 rounded-lg bg-zinc-200 mb-3"></div>
+            <div class="aspect-[3/4] rounded-lg bg-zinc-200 mb-3"></div>
             <div class="h-3 bg-zinc-200 rounded w-3/4 mb-2"></div>
             <div class="h-3 bg-zinc-200 rounded w-1/2"></div>
           </div>
@@ -334,10 +368,15 @@ export async function render(container) {
   const colourMenu = page.querySelector('#colour-dropdown-menu');
   const clearAllBtn = page.querySelector('#clear-all-filters-btn');
 
+  const sizeChevron = page.querySelector('#size-chevron');
+  const colourChevron = page.querySelector('#colour-chevron');
+
   sizeBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
-    sizeMenu?.classList.toggle('hidden');
+    const isOpen = !sizeMenu?.classList.toggle('hidden');
+    if (sizeChevron) sizeChevron.style.transform = isOpen ? 'rotate(180deg)' : '';
     colourMenu?.classList.add('hidden');
+    if (colourChevron) colourChevron.style.transform = '';
   });
 
   page.querySelectorAll('.size-opt-btn').forEach((btn) => {
@@ -346,11 +385,11 @@ export async function render(container) {
       const s = btn.dataset.size;
       if (selectedSizes.includes(s)) {
         selectedSizes = selectedSizes.filter((item) => item !== s);
-        btn.classList.remove('bg-black', 'text-white', 'border-black');
       } else {
         selectedSizes.push(s);
-        btn.classList.add('bg-black', 'text-white', 'border-black');
       }
+      syncSizeButtons();
+      syncFilterLabels();
       visibleCount = PAGE_SIZE;
       updateGrid();
     });
@@ -359,8 +398,10 @@ export async function render(container) {
   // Colour Dropdown Handlers
   colourBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
-    colourMenu?.classList.toggle('hidden');
+    const isOpen = !colourMenu?.classList.toggle('hidden');
+    if (colourChevron) colourChevron.style.transform = isOpen ? 'rotate(180deg)' : '';
     sizeMenu?.classList.add('hidden');
+    if (sizeChevron) sizeChevron.style.transform = '';
   });
 
   page.querySelectorAll('.colour-opt-btn').forEach((btn) => {
@@ -369,11 +410,11 @@ export async function render(container) {
       const c = btn.dataset.colour;
       if (selectedColours.includes(c)) {
         selectedColours = selectedColours.filter((item) => item !== c);
-        btn.classList.remove('bg-zinc-200');
       } else {
         selectedColours.push(c);
-        btn.classList.add('bg-zinc-200');
       }
+      syncColourButtons();
+      syncFilterLabels();
       visibleCount = PAGE_SIZE;
       updateGrid();
     });
@@ -385,6 +426,8 @@ export async function render(container) {
   document.addEventListener('click', () => {
     sizeMenu?.classList.add('hidden');
     colourMenu?.classList.add('hidden');
+    if (sizeChevron) sizeChevron.style.transform = '';
+    if (colourChevron) colourChevron.style.transform = '';
   });
 
   // Sort dropdown
@@ -404,7 +447,13 @@ export async function render(container) {
     }
   };
 
-  loadMoreBtn?.addEventListener('click', handleLoadMore);
+  loadMoreBtn?.addEventListener('click', () => {
+    if (loadMoreBtn) {
+      loadMoreBtn.textContent = 'Loading...';
+      loadMoreBtn.disabled = true;
+    }
+    setTimeout(handleLoadMore, 0);
+  });
 
   if (sentinel) {
     const sentinelObserver = new IntersectionObserver((entries) => {
@@ -423,13 +472,13 @@ export async function render(container) {
       updateGrid();
     }
   });
-  window.addEventListener('hashchange', () => unsub(), { once: true });
 
   container.innerHTML = '';
   container.appendChild(page);
 
-  // Initial grid population
   updateGrid();
+
+  return unsub;
 }
 
 export default { render };

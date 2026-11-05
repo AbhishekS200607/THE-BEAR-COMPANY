@@ -75,7 +75,23 @@ async function apiFetch(path, options = {}) {
 
 export async function getDashboard() {
   const data = await apiFetch('/dashboard');
-  if (data?.success) return { ...data.data, _mock: false };
+  if (data?.success) {
+    const d = data.data;
+    return {
+      totalRevenue: d.totalRevenue ?? 0,
+      totalOrders: d.totalOrders ?? 0,
+      pendingWhatsAppOrders: d.pendingWhatsApp ?? d.pendingWhatsAppOrders ?? 0,
+      lowStockCount: d.lowStockCount ?? 0,
+      recentOrders: (d.recentOrders || []).map(o => ({
+        customer_name: o.customerName ?? o.customer_name,
+        order_number: o.orderNumber ?? o.order_number,
+        status: o.status,
+        total_amount: o.totalAmount ?? o.total_amount,
+        created_at: o.createdAt ?? o.created_at,
+      })),
+      _mock: false,
+    };
+  }
   return { ...MOCK_DASHBOARD, _mock: true };
 }
 

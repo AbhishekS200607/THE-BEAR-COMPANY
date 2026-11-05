@@ -4,6 +4,8 @@
  * Compatible with all touchscreens, iOS Safari, Android Chrome, and desktop pointer emulators.
  */
 
+import { triggerOrderConfetti } from '../utils/animations.js';
+
 export function createSlideToConfirm({
   label = 'SLIDE TO CONFIRM ORDER',
   confirmedLabel = 'ORDER CONFIRMED',
@@ -114,6 +116,11 @@ export function createSlideToConfirm({
         // Ignore if blocked
       }
     }
+
+    // Trigger monochrome particle burst
+    try {
+      triggerOrderConfetti();
+    } catch {}
 
     // Trigger action
     onConfirm();

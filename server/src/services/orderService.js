@@ -2,6 +2,7 @@ import { supabaseAdmin } from '../config/supabase.js';
 import { env } from '../config/env.js';
 import { generateOrderFingerprint } from '../utils/crypto.js';
 import { generateWhatsAppHandoff } from './whatsappService.js';
+import { validateCouponCode, incrementCouponUsage } from './storePersistence.js';
 
 export async function createOrder({
   items,
@@ -14,9 +15,10 @@ export async function createOrder({
   deliveryPincode,
   profileId,
   idempotencyKey,
+  couponCode,
 }) {
   // 1. Generate unique human-readable order reference
-  const randomSuffix = String(Math.floor(100000 + Math.random() * 900000));
+  const randomSuffix = `${Date.now().toString().slice(-4)}${Math.floor(1000 + Math.random() * 9000)}`;
   const orderNumber = `BEAR-${new Date().getFullYear()}-${randomSuffix}`;
 
   // 2. Compute fingerprint of payload to prevent tampering
@@ -28,9 +30,10 @@ export async function createOrder({
   });
 
   // 3. Execute atomic PostgreSQL RPC on backend with service-role
+  const resolvedIdempotencyKey = idempotencyKey || `idemp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   const { data: orderId, error } = await supabaseAdmin.rpc('create_order_with_reservation', {
     p_order_number: orderNumber,
-    p_idempotency_key: idempotencyKey,
+    p_idempotency_key: resolvedIdempotencyKey,
     p_fingerprint: fingerprint,
     p_profile_id: profileId || null,
     p_customer_name: customerName,
@@ -41,7 +44,7 @@ export async function createOrder({
     p_delivery_state: deliveryState,
     p_delivery_pincode: deliveryPincode,
     p_items: items,
-    p_expiry_minutes: env.RESERVATION_EXPIRY_MINUTES,
+    p_expiry_minutes: env.RESERVATION_EXPIRY_MINUTES || 120,
   });
 
   if (error) {
@@ -84,6 +87,26 @@ export async function createOrder({
     throw new Error('Failed to retrieve created order record');
   }
 
+  // 4b. Apply validated coupon discount if provided
+  let discountPaise = 0;
+  if (couponCode) {
+    const val = validateCouponCode(couponCode, order.subtotal_paise / 100);
+    if (val.valid) {
+      discountPaise = val.discountPaise;
+      const totalPaise = Math.max(0, order.subtotal_paise - discountPaise);
+      await supabaseAdmin
+        .from('orders')
+        .update({
+          discount_paise: discountPaise,
+          total_paise: totalPaise,
+        })
+        .eq('id', orderId);
+      order.discount_paise = discountPaise;
+      order.total_paise = totalPaise;
+      incrementCouponUsage(couponCode);
+    }
+  }
+
   // 5. Generate WhatsApp Handoff details
   const whatsappHandoff = generateWhatsAppHandoff({
     ...order,
@@ -105,6 +128,7 @@ export async function createOrder({
         pincode: order.delivery_pincode,
       },
       subtotal: order.subtotal_paise / 100,
+      discount: (order.discount_paise || 0) / 100,
       deliveryFee: 0,
       total: order.total_paise / 100,
       reservationExpiresAt: order.reservation_expires_at,

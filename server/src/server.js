@@ -1,3 +1,6 @@
+import dns from 'node:dns';
+dns.setDefaultResultOrder('ipv4first');
+
 import { createApp } from './app.js';
 import { env } from './config/env.js';
 import { startReservationExpiryWorker, stopReservationExpiryWorker } from './workers/reservationWorker.js';
