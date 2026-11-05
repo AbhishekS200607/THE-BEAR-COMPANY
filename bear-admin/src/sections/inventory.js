@@ -95,6 +95,7 @@ export async function renderInventory(container) {
                     <td>
                       <div style="display:flex;gap:4px;">
                         <button class="admin-btn inv-dec" data-id="${v.variantId}" style="padding:3px 8px;font-size:14px;line-height:1;" title="Decrease 1 unit">−</button>
+                        <button class="admin-btn inv-set" data-id="${v.variantId}" data-qty="${v.quantityAvailable}" data-threshold="${v.lowStockThreshold}" data-reserved="${v.quantityReserved}" style="padding:3px 8px;font-size:11px;line-height:1;" title="Set exact quantity">Edit</button>
                         <button class="admin-btn inv-inc" data-id="${v.variantId}" style="padding:3px 8px;font-size:14px;line-height:1;" title="Increase 1 unit">+</button>
                       </div>
                     </td>
@@ -155,6 +156,92 @@ export async function renderInventory(container) {
         showToast(err.message, 'error');
         renderInventory(container);
       }
+    });
+  });
+
+  container.querySelectorAll('.inv-set').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const entry = qtyMap[id];
+      if (!entry) return;
+
+      const { overlay, panel, close } = openModal(`
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <p style="font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;color:#f4f4f5;">Edit Stock</p>
+          <button id="inv-edit-close" class="admin-btn" style="padding:4px 8px;font-size:11px;">✕</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div>
+            <label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;text-transform:uppercase;">Stock Available</label>
+            <input id="inv-edit-qty" type="number" class="admin-input" value="${entry.qty}" min="${entry.reserved}" max="99999" style="font-size:18px;font-weight:700;font-family:'Space Grotesk',sans-serif;" />
+            <p style="font-size:10px;color:#52525b;margin-top:3px;">${entry.reserved} units currently reserved — cannot set below this.</p>
+          </div>
+          <div>
+            <label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;text-transform:uppercase;">Low Stock Alert Threshold</label>
+            <input id="inv-edit-threshold" type="number" class="admin-input" value="${entry.threshold}" min="0" max="9999" />
+          </div>
+          <div id="inv-edit-err" style="display:none;color:#f87171;font-size:12px;"></div>
+          <button id="inv-edit-save" class="admin-btn primary" style="justify-content:center;padding:10px;">Save Stock</button>
+        </div>
+      `);
+
+      panel.style.maxWidth = '340px';
+      overlay.querySelector('#inv-edit-close')?.addEventListener('click', close);
+
+      overlay.querySelector('#inv-edit-save')?.addEventListener('click', async () => {
+        const newQty = parseInt(overlay.querySelector('#inv-edit-qty').value, 10);
+        const newThreshold = parseInt(overlay.querySelector('#inv-edit-threshold').value, 10);
+        const errEl = overlay.querySelector('#inv-edit-err');
+
+        if (isNaN(newQty) || newQty < 0) {
+          errEl.textContent = 'Please enter a valid stock quantity.';
+          errEl.style.display = 'block';
+          return;
+        }
+        if (newQty < entry.reserved) {
+          errEl.textContent = `Cannot set below reserved stock (${entry.reserved} units).`;
+          errEl.style.display = 'block';
+          return;
+        }
+
+        const saveBtn = overlay.querySelector('#inv-edit-save');
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+
+        try {
+          await updateInventory(id, {
+            quantityAvailable: newQty,
+            lowStockThreshold: isNaN(newThreshold) ? entry.threshold : newThreshold,
+          });
+
+          entry.qty = newQty;
+          if (!isNaN(newThreshold)) entry.threshold = newThreshold;
+
+          const row = container.querySelector(`tr[data-variant="${id}"]`);
+          if (row) {
+            const qtyEl = row.querySelector('.qty-cell');
+            const chipEl = row.querySelector('.chip-cell');
+            if (qtyEl) {
+              qtyEl.textContent = newQty;
+              qtyEl.style.color = newQty === 0 ? '#f87171' : newQty <= entry.threshold ? '#fbbf24' : '#f4f4f5';
+            }
+            if (chipEl) chipEl.innerHTML = stockChip(newQty - entry.reserved, entry.threshold);
+            const setBtn = row.querySelector('.inv-set');
+            if (setBtn) {
+              setBtn.dataset.qty = newQty;
+              setBtn.dataset.threshold = entry.threshold;
+            }
+          }
+
+          showToast('Stock updated successfully.');
+          close();
+        } catch (err) {
+          errEl.textContent = err.message || 'Failed to update stock.';
+          errEl.style.display = 'block';
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Stock';
+        }
+      });
     });
   });
 }

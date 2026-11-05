@@ -200,6 +200,7 @@ function openProductDrawer(product, onSave) {
         <div id="image-gallery-preview" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(95px, 1fr));gap:8px;margin-top:12px;"></div>
       </div>
 
+      ${isNew ? `
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <div>
           <label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;text-transform:uppercase;">Initial Stock per Size</label>
@@ -212,6 +213,11 @@ function openProductDrawer(product, onSave) {
           <p style="font-size:10px;color:#52525b;margin-top:3px;">Alert triggers when stock drops to this level.</p>
         </div>
       </div>
+      ` : `
+      <div style="background:#141417;border:1px solid #27272a;border-radius:4px;padding:10px 12px;">
+        <p style="font-size:11px;color:#71717a;">To update stock levels, go to the <strong style="color:#a1a1aa;">Inventory</strong> section.</p>
+      </div>
+      `}
 
       <div>
         <label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;text-transform:uppercase;">Colours (comma-separated)</label>
