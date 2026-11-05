@@ -436,7 +436,7 @@ export async function render(container) {
               <span>Garment GSM & size guide</span>
               <span>→</span>
             </a>
-            <a href="https://wa.me/919876543210" target="_blank" class="w-full text-left p-3.5 rounded-none sm:rounded-sm border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-medium flex items-center justify-between no-underline text-zinc-900">
+            <a href="https://wa.me/919605210198" target="_blank" class="w-full text-left p-3.5 rounded-none sm:rounded-sm border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-medium flex items-center justify-between no-underline text-zinc-900">
               <span>Contact WhatsApp support</span>
               <span>→</span>
             </a>

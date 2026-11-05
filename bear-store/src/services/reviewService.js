@@ -178,12 +178,47 @@ export async function fetchProductReviews(productId) {
   };
 }
 
+const MY_REVIEWS_KEY = 'bear_my_review_ids';
+
+export function getMyReviewIds() {
+  try {
+    const raw = localStorage.getItem(MY_REVIEWS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function recordMyReviewId(id) {
+  if (!id) return;
+  try {
+    const ids = new Set(getMyReviewIds());
+    ids.add(String(id));
+    localStorage.setItem(MY_REVIEWS_KEY, JSON.stringify(Array.from(ids)));
+  } catch {}
+}
+
+export function removeMyReviewId(id) {
+  if (!id) return;
+  try {
+    const ids = new Set(getMyReviewIds());
+    ids.delete(String(id));
+    localStorage.setItem(MY_REVIEWS_KEY, JSON.stringify(Array.from(ids)));
+  } catch {}
+}
+
+export function isMyReview(id) {
+  if (!id) return false;
+  return getMyReviewIds().includes(String(id));
+}
+
 /**
  * Dispatches verified review submission to the backend API and persists server-side.
  */
 export async function postProductReview(productId, reviewData) {
   if (!isUUID(productId)) {
     const localRev = submitProductReview(productId, reviewData);
+    if (localRev?.id) recordMyReviewId(localRev.id);
     const updatedReviews = getProductReviews(productId);
     return { review: localRev, metrics: calculateReviewMetrics(updatedReviews) };
   }
@@ -195,7 +230,67 @@ export async function postProductReview(productId, reviewData) {
         productId,
         productName: reviewData.productName || 'BEAR Garment',
         author: reviewData.author,
-        rating: Number(reviewData.rating) || 5,
+        rating: Math.round(Number(reviewData.rating) || 5),
+        fit: reviewData.fit || 'True to Size',
+        title: reviewData.title,
+        comment: reviewData.comment,
+      }),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.data) {
+        if (json.data.review?.id) recordMyReviewId(json.data.review.id);
+        return {
+          review: json.data.review,
+          metrics: json.data.metrics,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('[ReviewService] Backend submission failed, saving locally:', err.message);
+  }
+  // Local fallback
+  const localRev = submitProductReview(productId, reviewData);
+  if (localRev?.id) recordMyReviewId(localRev.id);
+  const updatedReviews = getProductReviews(productId);
+  return {
+    review: localRev,
+    metrics: calculateReviewMetrics(updatedReviews),
+  };
+}
+
+/**
+ * Updates an existing review (customer re-edit).
+ */
+export async function updateProductReview(reviewId, productId, reviewData) {
+  if (!isUUID(productId)) {
+    try {
+      const raw = localStorage.getItem(`${STORAGE_PREFIX}${productId}`);
+      const list = raw ? JSON.parse(raw) : [];
+      const idx = list.findIndex(r => r.id === reviewId);
+      if (idx !== -1) {
+        Object.assign(list[idx], {
+          rating: Math.round(Number(reviewData.rating) || list[idx].rating),
+          fit: reviewData.fit || list[idx].fit,
+          title: reviewData.title || list[idx].title,
+          comment: reviewData.comment || list[idx].comment,
+          author: reviewData.author || list[idx].author,
+          updatedAt: new Date().toISOString(),
+        });
+        localStorage.setItem(`${STORAGE_PREFIX}${productId}`, JSON.stringify(list));
+        return { review: list[idx], metrics: calculateReviewMetrics(getProductReviews(productId)) };
+      }
+    } catch {}
+    return null;
+  }
+
+  try {
+    const res = await fetch(`${API_URL}/${reviewId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        author: reviewData.author,
+        rating: Math.round(Number(reviewData.rating) || 5),
         fit: reviewData.fit || 'True to Size',
         title: reviewData.title,
         comment: reviewData.comment,
@@ -211,13 +306,43 @@ export async function postProductReview(productId, reviewData) {
       }
     }
   } catch (err) {
-    console.warn('[ReviewService] Backend submission failed, saving locally:', err.message);
+    console.warn('[ReviewService] Update failed:', err.message);
   }
-  // Local fallback
-  const localRev = submitProductReview(productId, reviewData);
-  const updatedReviews = getProductReviews(productId);
-  return {
-    review: localRev,
-    metrics: calculateReviewMetrics(updatedReviews),
-  };
+  return null;
+}
+
+/**
+ * Deletes a review.
+ */
+export async function deleteProductReview(reviewId, productId) {
+  removeMyReviewId(reviewId);
+
+  if (!isUUID(productId)) {
+    try {
+      const raw = localStorage.getItem(`${STORAGE_PREFIX}${productId}`);
+      const list = raw ? JSON.parse(raw) : [];
+      const filtered = list.filter(r => r.id !== reviewId);
+      localStorage.setItem(`${STORAGE_PREFIX}${productId}`, JSON.stringify(filtered));
+      return { success: true, metrics: calculateReviewMetrics(getProductReviews(productId)) };
+    } catch {}
+    return { success: true, metrics: calculateReviewMetrics(getProductReviews(productId)) };
+  }
+
+  try {
+    const res = await fetch(`${API_URL}/${reviewId}`, {
+      method: 'DELETE',
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success) {
+        return {
+          success: true,
+          metrics: json.data?.metrics,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('[ReviewService] Delete failed:', err.message);
+  }
+  return { success: false };
 }

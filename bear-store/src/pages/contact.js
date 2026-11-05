@@ -21,9 +21,9 @@ export function render(container) {
     {
       icon: 'chat',
       label: 'WhatsApp Concierge',
-      value: '+91 98765 43210',
+      value: '+91 96052 10198',
       sub: 'Fastest response · 7 days a week · 9 AM – 9 PM IST',
-      href: 'https://wa.me/919876543210',
+      href: 'https://wa.me/919605210198',
       cta: 'Open WhatsApp',
       external: true,
     },
@@ -39,7 +39,7 @@ export function render(container) {
     {
       icon: 'location_on',
       label: 'Design & Fulfillment Hub',
-      value: 'Peenya Industrial Area, Bengaluru — 560058',
+      value: 'Alappuzha, Kerala — India',
       sub: 'Not open for walk-ins · Dispatch & design only',
       href: null,
       cta: null,
@@ -159,7 +159,7 @@ export function render(container) {
               Our support team will respond to your WhatsApp or email within 4 business hours.
               For urgent order issues, ping us directly on WhatsApp for the fastest resolution.
             </p>
-            <a href="https://wa.me/919876543210" target="_blank" rel="noopener noreferrer"
+            <a href="https://wa.me/919605210198" target="_blank" rel="noopener noreferrer"
               class="inline-flex items-center gap-1.5 mt-3 px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-headline text-[11px] font-bold uppercase tracking-wider transition-colors">
               <span class="material-symbols-outlined text-[14px]">chat</span>
               <span>WhatsApp Us Now</span>

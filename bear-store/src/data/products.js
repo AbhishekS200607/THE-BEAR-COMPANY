@@ -16,7 +16,7 @@ export const products = [
     fit: 'Boxy drop-shoulder oversized fit. Model is 6\'1" wearing size L. Take true size for oversized aesthetic or size down for standard athletic fit.',
     fabric: '100% Combed Compact Cotton, 260 GSM Heavyweight Interlock Knit. Pre-shrunk for zero post-wash shrinkage.',
     care: 'Machine wash cold inside out. Hang dry or tumble dry low. Do not bleach or iron directly over printed typography.',
-    delivery: 'Free domestic express shipping over ₹1,999. Dispatches within 24 hours from Bengaluru hub. 7-day doorstep exchange.',
+    delivery: 'Free domestic express shipping over ₹1,999. Dispatches within 24 hours from Alappuzha hub. 7-day doorstep exchange.',
     colours: [
       { id: 'black', name: 'Jet Black', hex: '#111111' },
       { id: 'mist-grey', name: 'Heather Grey', hex: '#888888' },

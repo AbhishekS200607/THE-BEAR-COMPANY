@@ -11,7 +11,7 @@ export function render(container) {
       questions: [
         {
           q: 'How fast is BEAR air express shipping?',
-          a: 'All orders are dispatched within 24 hours from our fulfillment hub in Bengaluru. Metro cities (Mumbai, Delhi NCR, Bengaluru, Hyderabad, Chennai) receive delivery within 24-48 hours. Other regions take 2-4 business days across 19,000+ PIN codes.'
+          a: 'All orders are dispatched within 24 hours from our fulfillment hub in Alappuzha, Kerala. Metro cities (Mumbai, Delhi NCR, Bengaluru, Hyderabad, Chennai) receive delivery within 24-48 hours. Other regions take 2-4 business days across 19,000+ PIN codes.'
         },
         {
           q: 'Do you charge for shipping?',
@@ -36,7 +36,7 @@ export function render(container) {
         },
         {
           q: 'How do I initiate a return or exchange?',
-          a: 'Simply head to our #returns portal or send a message to our WhatsApp Concierge at +91 98765 43210 with your 4-digit order number.'
+          a: 'Simply head to our #returns portal or send a message to our WhatsApp Concierge at +91 96052 10198 with your 4-digit order number.'
         }
       ]
     },
@@ -119,7 +119,7 @@ export function render(container) {
         <h3 class="font-headline text-sm font-bold uppercase tracking-wide text-zinc-900">Still have questions?</h3>
         <p class="text-xs text-zinc-500 mt-0.5">Our athletes &amp; concierge team are live on WhatsApp 7 days a week.</p>
       </div>
-      <a href="https://wa.me/919876543210" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-emerald-600 text-white font-headline text-xs font-bold uppercase tracking-wider hover:bg-emerald-700 transition-colors shadow-xs">
+      <a href="https://wa.me/919605210198" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-emerald-600 text-white font-headline text-xs font-bold uppercase tracking-wider hover:bg-emerald-700 transition-colors shadow-xs">
         <span class="material-symbols-outlined text-[16px]">chat</span>
         <span>WhatsApp Concierge</span>
       </a>

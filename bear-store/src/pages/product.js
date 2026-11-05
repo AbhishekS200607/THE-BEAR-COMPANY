@@ -11,7 +11,15 @@ import { openSizeRecommender } from '../components/sizeRecommender.js';
 import { openRestockModal } from '../components/restockNotifyModal.js';
 import { skeletonProduct } from '../utils/skeletons.js';
 import { flyToCart } from '../utils/animations.js';
-import { fetchProductReviews, postProductReview, calculateReviewMetrics } from '../services/reviewService.js';
+import {
+  fetchProductReviews,
+  postProductReview,
+  updateProductReview,
+  deleteProductReview,
+  calculateReviewMetrics,
+  isMyReview,
+  recordMyReviewId,
+} from '../services/reviewService.js';
 
 export async function render(container, slug) {
   container.innerHTML = `<div class="w-full flex flex-col pt-20 md:pt-24">${skeletonProduct()}</div>`;
@@ -75,6 +83,47 @@ export async function render(container, slug) {
   let metrics = fetchedMetrics;
 
   const hasRealId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(product.id);
+
+  function renderReviewCardHTML(r) {
+    const mine = isMyReview(r.id);
+    const dateStr = r.date || (r.created_at || r.createdAt ? new Date(r.created_at || r.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recently');
+    const isVer = r.isVerified !== undefined ? r.isVerified : (r.verified !== undefined ? r.verified : true);
+    return `
+      <div class="review-card-item p-5 rounded-xl border ${mine ? 'border-zinc-900 bg-zinc-50/70 shadow-xs' : 'border-zinc-200 bg-white shadow-2xs'} flex flex-col justify-between transition-all" id="review-card-${r.id}" data-id="${r.id}">
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-1 text-amber-500">
+              ${Array.from({ length: r.rating || 5 }).map(() => `<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>`).join('')}
+            </div>
+            <div class="flex items-center gap-2">
+              ${mine ? `<span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-black text-white font-headline">Your Review</span>` : ''}
+              <span class="text-[11px] text-zinc-400 font-mono">${dateStr}</span>
+            </div>
+          </div>
+          <h3 class="font-headline text-sm font-bold text-zinc-950 mb-1 rev-card-title">${r.title || ''}</h3>
+          <p class="text-xs text-zinc-600 leading-relaxed mb-3 rev-card-comment">${r.comment || ''}</p>
+        </div>
+        <div>
+          <div class="flex items-center justify-between pt-2 border-t border-zinc-100 text-[11px] text-zinc-500">
+            <span class="font-bold text-zinc-900 rev-card-author">${r.author || 'Anonymous'} ${isVer ? '<span class="text-emerald-700 ml-1">✓ Verified Athlete</span>' : ''}</span>
+            <span class="px-2 py-0.5 rounded bg-zinc-100 text-zinc-700 font-medium rev-card-fit">${r.fit || 'True to Size'}</span>
+          </div>
+          ${mine ? `
+          <div class="flex items-center justify-end gap-3 pt-2.5 mt-2.5 border-t border-zinc-200/70">
+            <button class="edit-review-btn text-xs font-bold font-headline uppercase text-zinc-700 hover:text-black flex items-center gap-1 transition-colors cursor-pointer" data-id="${r.id}" type="button">
+              <span class="material-symbols-outlined text-[15px]">edit</span>
+              <span>Edit</span>
+            </button>
+            <button class="delete-review-btn text-xs font-bold font-headline uppercase text-red-600 hover:text-red-700 flex items-center gap-1 transition-colors cursor-pointer" data-id="${r.id}" type="button">
+              <span class="material-symbols-outlined text-[15px]">delete</span>
+              <span>Delete</span>
+            </button>
+          </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }
 
   const page = document.createElement('div');
   page.className = 'w-full flex flex-col pt-20 md:pt-24 pb-24 md:pb-16';
@@ -360,24 +409,7 @@ export async function render(container, slug) {
 
         <!-- Review Cards Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="reviews-list-container">
-          ${reviews.map((r) => `
-            <div class="p-5 rounded-xl border border-zinc-200 bg-white shadow-2xs flex flex-col justify-between">
-              <div>
-                <div class="flex items-center justify-between mb-2">
-                  <div class="flex items-center gap-1 text-amber-500">
-                    ${Array.from({ length: r.rating }).map(() => `<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>`).join('')}
-                  </div>
-                  <span class="text-[11px] text-zinc-400">${r.date}</span>
-                </div>
-                <h3 class="font-headline text-sm font-bold text-zinc-950 mb-1">${r.title}</h3>
-                <p class="text-xs text-zinc-600 leading-relaxed mb-3">${r.comment}</p>
-              </div>
-              <div class="flex items-center justify-between pt-2 border-t border-zinc-100 text-[11px] text-zinc-500">
-                <span class="font-bold text-zinc-900">${r.author} ${r.verified ? '<span class="text-emerald-700 ml-1">✓ Verified Athlete</span>' : ''}</span>
-                <span class="px-2 py-0.5 rounded bg-zinc-100 text-zinc-700 font-medium">${r.fit}</span>
-              </div>
-            </div>
-          `).join('')}
+          ${reviews.map(renderReviewCardHTML).join('')}
         </div>
       </section>
 
@@ -753,63 +785,217 @@ export async function render(container, slug) {
       // 2. Dynamically re-calculate metrics
       if (result?.metrics) {
         metrics = result.metrics;
+        updateMetricsDOM(metrics);
       }
       if (result?.review) {
         reviews.unshift(result.review);
+        recordMyReviewId(result.review.id);
+        const reviewsList = page.querySelector('#reviews-list-container');
+        if (reviewsList) {
+          const temp = document.createElement('div');
+          temp.innerHTML = renderReviewCardHTML(result.review);
+          const newCard = temp.firstElementChild;
+          if (newCard) {
+            newCard.classList.add('animate-in', 'fade-in', 'duration-300');
+            reviewsList.prepend(newCard);
+            bindReviewCardEvents(newCard, result.review);
+          }
+        }
       }
 
-      // 3. Update DOM metrics dynamically
-      const hdrRating = page.querySelector('#pdp-header-rating');
-      if (hdrRating) hdrRating.textContent = metrics.averageRating;
-      const hdrLink = page.querySelector('#pdp-header-reviews-link');
-      if (hdrLink) hdrLink.textContent = `(${metrics.totalCount} reviews)`;
-
-      const avgRatingEl = page.querySelector('#pdp-avg-rating');
-      if (avgRatingEl) avgRatingEl.textContent = metrics.averageRating;
-      const countEl = page.querySelector('#pdp-reviews-count');
-      if (countEl) countEl.textContent = `Based on ${metrics.totalCount} verified athlete purchases`;
-      const fitEl = page.querySelector('#pdp-fit-sentiment');
-      if (fitEl) fitEl.textContent = metrics.fitSentiment;
-
-      const breakdownEl = page.querySelector('#pdp-star-breakdown');
-      if (breakdownEl) {
-        breakdownEl.innerHTML = metrics.breakdown.map((r) => `
-          <div class="flex items-center gap-3 text-xs">
-            <span class="w-12 text-zinc-600 font-mono font-bold">${r.stars} Stars</span>
-            <div class="flex-1 h-2 rounded-full bg-zinc-200 overflow-hidden">
-              <div class="h-full bg-black rounded-full transition-all duration-500" style="width: ${r.pct}%"></div>
-            </div>
-            <span class="w-8 text-right text-zinc-400 font-mono text-[11px]">${r.pct}%</span>
-          </div>
-        `).join('');
-      }
-
-      // 4. Prepend new review card
-      const reviewsList = page.querySelector('#reviews-list-container');
-      if (reviewsList) {
-        const card = document.createElement('div');
-        card.className = 'p-5 rounded-xl border border-zinc-200 bg-white shadow-2xs flex flex-col justify-between animate-in fade-in duration-300';
-        card.innerHTML = `
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <div class="flex items-center gap-1 text-amber-500">
-                ${Array.from({ length: rating }).map(() => `<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>`).join('')}
-              </div>
-              <span class="text-[11px] text-zinc-400">Just now</span>
-            </div>
-            <h3 class="font-headline text-sm font-bold text-zinc-950 mb-1">${title}</h3>
-            <p class="text-xs text-zinc-600 leading-relaxed mb-3">${comment}</p>
-          </div>
-          <div class="flex items-center justify-between pt-2 border-t border-zinc-100 text-[11px] text-zinc-500">
-            <span class="font-bold text-zinc-900">${author} <span class="text-emerald-700 ml-1">✓ Verified Athlete</span></span>
-            <span class="px-2 py-0.5 rounded bg-zinc-100 text-zinc-700 font-medium">${fit}</span>
-          </div>
-        `;
-        reviewsList.prepend(card);
-      }
       reviewModal.close();
       showToast('Thank you! Your athlete review has been published.', 'success');
     });
+  });
+
+  function updateMetricsDOM(m) {
+    if (!m) return;
+    const hdrRating = page.querySelector('#pdp-header-rating');
+    if (hdrRating) hdrRating.textContent = m.averageRating;
+    const hdrLink = page.querySelector('#pdp-header-reviews-link');
+    if (hdrLink) hdrLink.textContent = `(${m.totalCount} reviews)`;
+
+    const avgRatingEl = page.querySelector('#pdp-avg-rating');
+    if (avgRatingEl) avgRatingEl.textContent = m.averageRating;
+    const countEl = page.querySelector('#pdp-reviews-count');
+    if (countEl) countEl.textContent = `Based on ${m.totalCount} verified athlete purchases`;
+    const fitEl = page.querySelector('#pdp-fit-sentiment');
+    if (fitEl) fitEl.textContent = m.fitSentiment;
+
+    const breakdownEl = page.querySelector('#pdp-star-breakdown');
+    if (breakdownEl && m.breakdown) {
+      breakdownEl.innerHTML = m.breakdown.map((r) => `
+        <div class="flex items-center gap-3 text-xs">
+          <span class="w-12 text-zinc-600 font-mono font-bold">${r.stars} Stars</span>
+          <div class="flex-1 h-2 rounded-full bg-zinc-200 overflow-hidden">
+            <div class="h-full bg-black rounded-full transition-all duration-500" style="width: ${r.pct}%"></div>
+          </div>
+          <span class="w-8 text-right text-zinc-400 font-mono text-[11px]">${r.pct}%</span>
+        </div>
+      `).join('');
+    }
+  }
+
+  function openEditReviewModal(r) {
+    const editModal = createModal({
+      id: 'edit-review-modal',
+      title: 'Edit Your Review',
+      content: `
+        <form id="edit-review-form" class="space-y-4">
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1 font-headline">Athlete Name *</label>
+            <input type="text" id="edit-rev-name" required value="${r.author || ''}" class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs focus:outline-none focus:border-black" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1 font-headline">Rating *</label>
+            <select id="edit-rev-rating" class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs bg-white focus:outline-none focus:border-black">
+              <option value="5" ${r.rating === 5 ? 'selected' : ''}>★★★★★ (5/5) — Exceptional Quality</option>
+              <option value="4" ${r.rating === 4 ? 'selected' : ''}>★★★★☆ (4/5) — Very Good</option>
+              <option value="3" ${r.rating === 3 ? 'selected' : ''}>★★★☆☆ (3/5) — Average</option>
+              <option value="2" ${r.rating === 2 ? 'selected' : ''}>★★☆☆☆ (2/5) — Fair</option>
+              <option value="1" ${r.rating === 1 ? 'selected' : ''}>★☆☆☆☆ (1/5) — Poor</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1 font-headline">Fit Assessment *</label>
+            <select id="edit-rev-fit" class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs bg-white focus:outline-none focus:border-black">
+              <option value="True to Size" ${r.fit === 'True to Size' ? 'selected' : ''}>True to Size</option>
+              <option value="Runs Slightly Large" ${r.fit === 'Runs Slightly Large' ? 'selected' : ''}>Runs Slightly Large</option>
+              <option value="Runs Slightly Small" ${r.fit === 'Runs Slightly Small' ? 'selected' : ''}>Runs Slightly Small</option>
+              <option value="Perfect Athletic Cut" ${r.fit === 'Perfect Athletic Cut' ? 'selected' : ''}>Perfect Athletic Cut</option>
+              <option value="Relaxed Oversized" ${r.fit === 'Relaxed Oversized' ? 'selected' : ''}>Relaxed Oversized</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1 font-headline">Review Headline *</label>
+            <input type="text" id="edit-rev-title" required value="${r.title || ''}" class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs focus:outline-none focus:border-black" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1 font-headline">Detailed Feedback *</label>
+            <textarea id="edit-rev-comment" required rows="3" class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs focus:outline-none focus:border-black">${r.comment || ''}</textarea>
+          </div>
+          <button type="submit" id="save-edit-review-btn" class="w-full py-3 bg-black text-white rounded-full text-xs font-bold uppercase font-headline tracking-wider hover:bg-zinc-800 transition-colors shadow-md cursor-pointer">
+            Save Changes
+          </button>
+        </form>
+      `,
+    });
+    editModal.open();
+
+    const editForm = document.getElementById('edit-review-form');
+    editForm?.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const author = document.getElementById('edit-rev-name')?.value.trim();
+      const title = document.getElementById('edit-rev-title')?.value.trim();
+      const comment = document.getElementById('edit-rev-comment')?.value.trim();
+      const rating = Math.round(Number(document.getElementById('edit-rev-rating')?.value || 5));
+      const fit = document.getElementById('edit-rev-fit')?.value || 'True to Size';
+
+      const saveBtn = document.getElementById('save-edit-review-btn');
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+      }
+
+      const res = await updateProductReview(r.id, product.id, {
+        author,
+        title,
+        comment,
+        rating,
+        fit,
+      });
+
+      if (res?.review) {
+        Object.assign(r, res.review);
+        const oldCard = page.querySelector(`#review-card-${r.id}`);
+        if (oldCard) {
+          const temp = document.createElement('div');
+          temp.innerHTML = renderReviewCardHTML(r);
+          const replacement = temp.firstElementChild;
+          oldCard.replaceWith(replacement);
+          bindReviewCardEvents(replacement, r);
+        }
+        if (res.metrics) {
+          metrics = res.metrics;
+          updateMetricsDOM(metrics);
+        }
+        editModal.close();
+        showToast('Your review has been updated.', 'success');
+      } else {
+        showToast('Failed to update review. Please try again.', 'error');
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Changes';
+        }
+      }
+    });
+  }
+
+  function openDeleteConfirm(r) {
+    const confirmModal = createModal({
+      id: 'delete-review-modal',
+      title: 'Delete Review',
+      content: `
+        <div class="space-y-4">
+          <p class="text-xs text-zinc-600 leading-relaxed">
+            Are you sure you want to delete your review for <strong>${product.name}</strong>? This action cannot be undone.
+          </p>
+          <div class="flex items-center gap-2 pt-2">
+            <button type="button" id="confirm-del-btn" class="flex-1 py-2.5 bg-red-600 text-white rounded-full text-xs font-bold uppercase font-headline tracking-wider hover:bg-red-700 transition-colors shadow-sm cursor-pointer">
+              Yes, Delete
+            </button>
+            <button type="button" id="cancel-del-btn" class="flex-1 py-2.5 bg-zinc-100 text-zinc-800 rounded-full text-xs font-bold uppercase font-headline tracking-wider hover:bg-zinc-200 transition-colors cursor-pointer">
+              Cancel
+            </button>
+          </div>
+        </div>
+      `,
+    });
+    confirmModal.open();
+
+    document.getElementById('cancel-del-btn')?.addEventListener('click', () => confirmModal.close());
+    document.getElementById('confirm-del-btn')?.addEventListener('click', async () => {
+      const btn = document.getElementById('confirm-del-btn');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Deleting...';
+      }
+
+      const res = await deleteProductReview(r.id, product.id);
+      if (res?.success) {
+        const card = page.querySelector(`#review-card-${r.id}`);
+        if (card) {
+          card.style.opacity = '0';
+          card.style.transform = 'scale(0.95)';
+          setTimeout(() => card.remove(), 250);
+        }
+        reviews = reviews.filter((item) => item.id !== r.id);
+        if (res.metrics) {
+          metrics = res.metrics;
+          updateMetricsDOM(metrics);
+        }
+        confirmModal.close();
+        showToast('Your review has been deleted.', 'info');
+      } else {
+        showToast('Could not delete review. Please try again.', 'error');
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Yes, Delete';
+        }
+      }
+    });
+  }
+
+  function bindReviewCardEvents(card, r) {
+    card.querySelector('.edit-review-btn')?.addEventListener('click', () => openEditReviewModal(r));
+    card.querySelector('.delete-review-btn')?.addEventListener('click', () => openDeleteConfirm(r));
+  }
+
+  // Bind edit & delete actions on initial review cards
+  page.querySelectorAll('.review-card-item').forEach((card) => {
+    const id = card.dataset.id;
+    const revObj = reviews.find((x) => String(x.id) === String(id));
+    if (revObj) bindReviewCardEvents(card, revObj);
   });
 
   // Render Related Products (Item 9)

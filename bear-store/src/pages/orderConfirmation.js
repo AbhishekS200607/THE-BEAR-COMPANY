@@ -184,7 +184,7 @@ export function render(container, orderData = null) {
       <a href="#account" class="flex-1 py-3 rounded-full border border-zinc-300 hover:border-black text-zinc-800 hover:text-black font-headline text-xs font-bold uppercase tracking-wider transition-colors text-center">
         View My Orders
       </a>
-      <a href="https://wa.me/919876543210" target="_blank" rel="noopener noreferrer"
+      <a href="https://wa.me/919605210198" target="_blank" rel="noopener noreferrer"
         class="flex-1 py-3 rounded-full border border-emerald-300 hover:border-emerald-600 text-emerald-700 hover:text-emerald-800 font-headline text-xs font-bold uppercase tracking-wider transition-colors text-center flex items-center justify-center gap-1.5">
         <span class="material-symbols-outlined text-[14px]">chat</span>
         <span>WhatsApp Support</span>
