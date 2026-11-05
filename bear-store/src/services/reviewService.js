@@ -1,9 +1,11 @@
 /**
  * BEAR Store — Review & Rating Engine
  * 
- * Manages authentic athlete reviews, persistent user submissions in LocalStorage,
- * and dynamic calculations for star breakdown, fit sentiment, and weighted ratings.
+ * Manages authentic athlete reviews via backend REST API (/api/v1/reviews)
+ * with real-time recalculation of star distribution, fit sentiment, and weighted ratings.
  */
+
+const API_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000') + '/api/v1/reviews';
 
 const SEED_REVIEWS = [
   {
@@ -51,16 +53,42 @@ const SEED_REVIEWS = [
 const STORAGE_PREFIX = 'bear_product_reviews_';
 
 /**
- * Retrieves all reviews for a product (built-in seeds + user submitted reviews).
+ * Local cache fallback
  */
 export function getProductReviews(productId) {
   try {
     const raw = localStorage.getItem(`${STORAGE_PREFIX}${productId}`);
     const userReviews = raw ? JSON.parse(raw) : [];
-    // User reviews appear first (newest), followed by seed reviews
     return [...userReviews, ...SEED_REVIEWS];
   } catch (e) {
     return SEED_REVIEWS;
+  }
+}
+
+/**
+ * Local submission fallback
+ */
+export function submitProductReview(productId, review) {
+  try {
+    const raw = localStorage.getItem(`${STORAGE_PREFIX}${productId}`);
+    const existing = raw ? JSON.parse(raw) : [];
+    const newEntry = {
+      id: `rev-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      author: review.author || 'Anonymous Athlete',
+      rating: Number(review.rating) || 5,
+      date: 'Just now',
+      verified: true,
+      fit: review.fit || 'True to Size',
+      title: review.title || 'Verified Purchase Feedback',
+      comment: review.comment || '',
+      createdAt: new Date().toISOString(),
+    };
+    existing.unshift(newEntry);
+    localStorage.setItem(`${STORAGE_PREFIX}${productId}`, JSON.stringify(existing));
+    return newEntry;
+  } catch (err) {
+    console.error('Failed to store review:', err);
+    return null;
   }
 }
 
@@ -88,7 +116,6 @@ export function calculateReviewMetrics(reviews = []) {
   const sumRating = reviews.reduce((acc, r) => acc + (Number(r.rating) || 5), 0);
   const avg = (sumRating / total).toFixed(1);
 
-  // Star breakdown counts
   const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
   let trueToSizeCount = 0;
 
@@ -119,28 +146,65 @@ export function calculateReviewMetrics(reviews = []) {
 }
 
 /**
- * Saves a new verified athlete review into persistent storage.
+ * Fetches real reviews and metrics from the backend API, falling back to cache.
  */
-export function submitProductReview(productId, review) {
+export async function fetchProductReviews(productId) {
   try {
-    const raw = localStorage.getItem(`${STORAGE_PREFIX}${productId}`);
-    const existing = raw ? JSON.parse(raw) : [];
-    const newEntry = {
-      id: `rev-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      author: review.author || 'Anonymous Athlete',
-      rating: Number(review.rating) || 5,
-      date: 'Just now',
-      verified: true,
-      fit: review.fit || 'True to Size',
-      title: review.title || 'Verified Purchase Feedback',
-      comment: review.comment || '',
-      createdAt: new Date().toISOString(),
-    };
-    existing.unshift(newEntry);
-    localStorage.setItem(`${STORAGE_PREFIX}${productId}`, JSON.stringify(existing));
-    return newEntry;
+    const res = await fetch(`${API_URL}?productId=${encodeURIComponent(productId)}`);
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.data) {
+        return {
+          reviews: json.data.reviews || [],
+          metrics: json.data.metrics || calculateReviewMetrics(json.data.reviews),
+        };
+      }
+    }
   } catch (err) {
-    console.error('Failed to store review:', err);
-    return null;
+    console.warn('[ReviewService] Backend fetch failed, falling back to local seed/cache:', err.message);
   }
+  const fallback = getProductReviews(productId);
+  return {
+    reviews: fallback,
+    metrics: calculateReviewMetrics(fallback),
+  };
+}
+
+/**
+ * Dispatches verified review submission to the backend API and persists server-side.
+ */
+export async function postProductReview(productId, reviewData) {
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        productId,
+        productName: reviewData.productName || 'BEAR Garment',
+        author: reviewData.author,
+        rating: Number(reviewData.rating) || 5,
+        fit: reviewData.fit || 'True to Size',
+        title: reviewData.title,
+        comment: reviewData.comment,
+      }),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.data) {
+        return {
+          review: json.data.review,
+          metrics: json.data.metrics,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('[ReviewService] Backend submission failed, saving locally:', err.message);
+  }
+  // Local fallback
+  const localRev = submitProductReview(productId, reviewData);
+  const updatedReviews = getProductReviews(productId);
+  return {
+    review: localRev,
+    metrics: calculateReviewMetrics(updatedReviews),
+  };
 }

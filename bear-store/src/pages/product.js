@@ -11,7 +11,7 @@ import { openSizeRecommender } from '../components/sizeRecommender.js';
 import { openRestockModal } from '../components/restockNotifyModal.js';
 import { skeletonProduct } from '../utils/skeletons.js';
 import { flyToCart } from '../utils/animations.js';
-import { getProductReviews, calculateReviewMetrics, submitProductReview } from '../services/reviewService.js';
+import { fetchProductReviews, postProductReview, calculateReviewMetrics } from '../services/reviewService.js';
 
 export async function render(container, slug) {
   container.innerHTML = `<div class="w-full flex flex-col pt-20 md:pt-24">${skeletonProduct()}</div>`;
@@ -40,9 +40,10 @@ export async function render(container, slug) {
     'https://lh3.googleusercontent.com/aida-public/AB6AXuC0A_M4HqJNIIAusW1iTMaL94tnVHUlB2_7uyMjBw5mHw6BLBMJonDYlpbl1ks7zxdtF5jLW3oxBMrz9ZUSoacdbiSztre6lZoDTkvo9Apt6qGtxTxL2PLQibuZAUxKdZJVQD8YhaWaEAhApqCJQHkOjxDW8K-juFBWPSJxhzNXraK5jbwy0Vfos7iF5tBILTs-ByqMTeXYzQYYE66yCKJF6mcKz8kT6DF0rxTO3w'
   ];
 
-  // Authentic product reviews and calculated metrics
-  let reviews = getProductReviews(product.id);
-  let metrics = calculateReviewMetrics(reviews);
+  // Authentic product reviews and calculated metrics from server
+  const { reviews: fetchedReviews, metrics: fetchedMetrics } = await fetchProductReviews(product.id);
+  let reviews = fetchedReviews;
+  let metrics = fetchedMetrics;
 
   const page = document.createElement('div');
   page.className = 'w-full flex flex-col pt-20 md:pt-24 pb-24 md:pb-16';
@@ -654,7 +655,7 @@ export async function render(container, slug) {
     reviewModal.open();
 
     const form = document.getElementById('submit-review-form');
-    form?.addEventListener('submit', (e) => {
+    form?.addEventListener('submit', async (e) => {
       e.preventDefault();
       const author = document.getElementById('rev-name')?.value.trim();
       const title = document.getElementById('rev-title')?.value.trim();
@@ -662,12 +663,23 @@ export async function render(container, slug) {
       const rating = Number(document.getElementById('rev-rating')?.value || 5);
       const fit = document.getElementById('rev-fit')?.value || 'True to Size';
 
-      // 1. Persist review into storage
-      submitProductReview(product.id, { author, title, comment, rating, fit });
+      // 1. Persist review into server database
+      const result = await postProductReview(product.id, {
+        productName: product.name,
+        author,
+        title,
+        comment,
+        rating,
+        fit,
+      });
 
       // 2. Dynamically re-calculate metrics
-      reviews = getProductReviews(product.id);
-      metrics = calculateReviewMetrics(reviews);
+      if (result?.metrics) {
+        metrics = result.metrics;
+      }
+      if (result?.review) {
+        reviews.unshift(result.review);
+      }
 
       // 3. Update DOM metrics dynamically
       const hdrRating = page.querySelector('#pdp-header-rating');

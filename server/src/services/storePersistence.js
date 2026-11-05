@@ -244,3 +244,204 @@ export function saveReadNotificationIds(ids) {
   safeWriteJson(NOTIF_READS_FILE, merged);
   return merged;
 }
+
+// ── 5. Product Reviews & Ratings (Persistent Server Storage) ─────────────────
+
+const REVIEWS_FILE = path.join(DATA_DIR, 'reviews.json');
+
+const DEFAULT_REVIEWS = [
+  {
+    id: 'rev-001',
+    productId: 'bear-001',
+    productName: 'Essential Oversized Tee',
+    author: 'Vikram Mehta',
+    rating: 5,
+    fit: 'True to Size',
+    title: 'Unbelievable fabric density and drape',
+    comment: 'The 260 GSM heavyweight compact cotton holds its structure through intense lifting sessions and washes. Easily on par with international activewear brands that charge 3x the price.',
+    isVerified: true,
+    isPublished: true,
+    createdAt: new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'rev-002',
+    productId: 'sow-001',
+    productName: 'Sculpt High-Waist Ribbed Leggings',
+    author: 'Ananya Deshmukh',
+    rating: 5,
+    fit: 'True to Size',
+    title: 'Flattering compression without pinching',
+    comment: 'SOW activewear has completely replaced my imported tights. High-waisted contour stays firmly locked during HIIT and squats. Breathable and luxurious hand-feel.',
+    isVerified: true,
+    isPublished: true,
+    createdAt: new Date(Date.now() - 21 * 24 * 3600 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 21 * 24 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'rev-003',
+    productId: 'bear-001',
+    productName: 'Essential Oversized Tee',
+    author: 'Rohit Shenoy',
+    rating: 5,
+    fit: 'Runs Slightly Large',
+    title: 'Best oversized gym tee in India',
+    comment: 'Drop shoulders and heavy ribbed collar never sag after repeated washes. Dispatched fast with BlueDart directly to Bengaluru in 48 hours.',
+    isVerified: true,
+    isPublished: true,
+    createdAt: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'rev-004',
+    productId: 'bear-002',
+    productName: 'Training Tee',
+    author: 'Karanvir S.',
+    rating: 4,
+    fit: 'True to Size',
+    title: 'Premium stitching and clean aesthetics',
+    comment: 'Clean minimalist branding and reinforced twin-needle hems. Very satisfied with the fit and quality.',
+    isVerified: true,
+    isPublished: true,
+    createdAt: new Date(Date.now() - 35 * 24 * 3600 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 35 * 24 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'rev-005',
+    productId: 'sow-002',
+    productName: 'Ribbed Contour Crop Top',
+    author: 'Meera Rao',
+    rating: 5,
+    fit: 'True to Size',
+    title: 'Buttery soft and holds chest comfortably',
+    comment: 'No chafe underarms during running. The ribbed waistband does not roll up when doing pushups or yoga.',
+    isVerified: true,
+    isPublished: true,
+    createdAt: new Date(Date.now() - 10 * 24 * 3600 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 10 * 24 * 3600 * 1000).toISOString(),
+  },
+];
+
+export function getStoredReviews(filters = {}) {
+  const reviews = safeReadJson(REVIEWS_FILE, DEFAULT_REVIEWS);
+  return reviews.filter((r) => {
+    if (filters.productId && r.productId !== filters.productId) return false;
+    if (filters.rating && r.rating !== Number(filters.rating)) return false;
+    if (filters.isPublished !== undefined && r.isPublished !== filters.isPublished) return false;
+    if (filters.search) {
+      const q = filters.search.toLowerCase();
+      const match =
+        (r.author && r.author.toLowerCase().includes(q)) ||
+        (r.title && r.title.toLowerCase().includes(q)) ||
+        (r.comment && r.comment.toLowerCase().includes(q)) ||
+        (r.productName && r.productName.toLowerCase().includes(q));
+      if (!match) return false;
+    }
+    return true;
+  });
+}
+
+export function createStoredReview(data) {
+  const reviews = safeReadJson(REVIEWS_FILE, DEFAULT_REVIEWS);
+  const newReview = {
+    id: data.id || `rev-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    productId: data.productId || 'general',
+    productName: data.productName || 'BEAR Garment',
+    author: data.author || 'Anonymous Athlete',
+    rating: Math.max(1, Math.min(5, Math.round(Number(data.rating) || 5))),
+    fit: data.fit || 'True to Size',
+    title: data.title || 'Verified Athlete Review',
+    comment: data.comment || '',
+    isVerified: data.isVerified !== undefined ? Boolean(data.isVerified) : true,
+    isPublished: data.isPublished !== undefined ? Boolean(data.isPublished) : true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  reviews.unshift(newReview);
+  safeWriteJson(REVIEWS_FILE, reviews);
+  return newReview;
+}
+
+export function updateStoredReview(id, updates) {
+  const reviews = safeReadJson(REVIEWS_FILE, DEFAULT_REVIEWS);
+  const idx = reviews.findIndex((r) => r.id === id);
+  if (idx === -1) return null;
+
+  const current = reviews[idx];
+  const updated = {
+    ...current,
+    ...(updates.author !== undefined && { author: updates.author }),
+    ...(updates.rating !== undefined && { rating: Math.max(1, Math.min(5, Math.round(Number(updates.rating)))) }),
+    ...(updates.fit !== undefined && { fit: updates.fit }),
+    ...(updates.title !== undefined && { title: updates.title }),
+    ...(updates.comment !== undefined && { comment: updates.comment }),
+    ...(updates.isVerified !== undefined && { isVerified: Boolean(updates.isVerified) }),
+    ...(updates.isPublished !== undefined && { isPublished: Boolean(updates.isPublished) }),
+    ...(updates.productName !== undefined && { productName: updates.productName }),
+    updatedAt: new Date().toISOString(),
+  };
+
+  reviews[idx] = updated;
+  safeWriteJson(REVIEWS_FILE, reviews);
+  return updated;
+}
+
+export function deleteStoredReview(id) {
+  const reviews = safeReadJson(REVIEWS_FILE, DEFAULT_REVIEWS);
+  const idx = reviews.findIndex((r) => r.id === id);
+  if (idx === -1) return false;
+
+  reviews.splice(idx, 1);
+  safeWriteJson(REVIEWS_FILE, reviews);
+  return true;
+}
+
+export function calculateStoredReviewMetrics(reviews = []) {
+  if (!reviews || reviews.length === 0) {
+    return {
+      averageRating: '5.0',
+      totalCount: 0,
+      fitSentiment: '100% of buyers say "True to Size"',
+      trueToSizePercent: 100,
+      breakdown: [
+        { stars: 5, count: 0, pct: 100 },
+        { stars: 4, count: 0, pct: 0 },
+        { stars: 3, count: 0, pct: 0 },
+        { stars: 2, count: 0, pct: 0 },
+        { stars: 1, count: 0, pct: 0 },
+      ],
+    };
+  }
+
+  const total = reviews.length;
+  const sumRating = reviews.reduce((acc, r) => acc + (Number(r.rating) || 5), 0);
+  const avg = (sumRating / total).toFixed(1);
+
+  const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+  let trueToSizeCount = 0;
+
+  reviews.forEach((r) => {
+    const star = Math.max(1, Math.min(5, Math.round(Number(r.rating) || 5)));
+    counts[star] = (counts[star] || 0) + 1;
+    if (r.fit === 'True to Size' || !r.fit) {
+      trueToSizeCount++;
+    }
+  });
+
+  const breakdown = [5, 4, 3, 2, 1].map((stars) => {
+    const count = counts[stars] || 0;
+    const pct = Math.round((count / total) * 100);
+    return { stars, count, pct };
+  });
+
+  const trueToSizePct = Math.round((trueToSizeCount / total) * 100);
+
+  return {
+    averageRating: avg,
+    totalCount: total,
+    fitSentiment: `${trueToSizePct}% of buyers say "True to Size"`,
+    trueToSizePercent: trueToSizePct,
+    breakdown,
+  };
+}

@@ -11,6 +11,11 @@ import {
   saveStoredSettings,
   getReadNotificationIds,
   saveReadNotificationIds,
+  getStoredReviews,
+  createStoredReview,
+  updateStoredReview,
+  deleteStoredReview,
+  calculateStoredReviewMetrics,
 } from '../services/storePersistence.js';
 
 export async function handleGetAdminMe(req, res) {
@@ -1444,6 +1449,124 @@ export async function handleUploadImage(req, res, next) {
       size: buffer.length,
       contentType: 'image/webp',
     }, 201, 'Image uploaded and stored in Supabase WebP bucket successfully');
+  } catch (err) {
+    return next(err);
+  }
+}
+
+// ── 11. Admin Review Moderation & Management ─────────────────────────────────
+
+export async function handleGetAdminReviews(req, res, next) {
+  try {
+    const { productId, rating, search, status } = req.query;
+
+    let isPublished;
+    if (status === 'published') isPublished = true;
+    if (status === 'hidden') isPublished = false;
+
+    const reviews = getStoredReviews({
+      productId: productId && productId !== 'all' ? String(productId) : undefined,
+      rating: rating && rating !== 'all' ? Number(rating) : undefined,
+      search: search ? String(search) : undefined,
+      isPublished,
+    });
+
+    const allReviews = getStoredReviews();
+    const metrics = calculateStoredReviewMetrics(reviews);
+    const publishedCount = allReviews.filter((r) => r.isPublished).length;
+    const hiddenCount = allReviews.filter((r) => !r.isPublished).length;
+
+    return successResponse(res, {
+      reviews,
+      metrics,
+      stats: {
+        total: allReviews.length,
+        filteredCount: reviews.length,
+        publishedCount,
+        hiddenCount,
+        averageRating: metrics.averageRating,
+      },
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+export async function handleCreateAdminReview(req, res, next) {
+  try {
+    const { productId, productName, author, rating, fit, title, comment, isVerified, isPublished } = req.body;
+
+    const review = createStoredReview({
+      productId,
+      productName,
+      author,
+      rating,
+      fit,
+      title,
+      comment,
+      isVerified,
+      isPublished,
+    });
+
+    await logAdminAction({
+      adminId: req.user?.id,
+      action: 'CREATE_PRODUCT_REVIEW',
+      targetEntity: 'reviews',
+      targetId: review.id,
+      changes: { productId, author, rating, title },
+      ipAddress: req.ip,
+    });
+
+    return successResponse(res, review, 201, 'Product review created successfully');
+  } catch (err) {
+    return next(err);
+  }
+}
+
+export async function handleUpdateAdminReview(req, res, next) {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    const updated = updateStoredReview(id, updates);
+    if (!updated) {
+      return errorResponse(res, 'Review not found', 404);
+    }
+
+    await logAdminAction({
+      adminId: req.user?.id,
+      action: 'UPDATE_PRODUCT_REVIEW',
+      targetEntity: 'reviews',
+      targetId: id,
+      changes: updates,
+      ipAddress: req.ip,
+    });
+
+    return successResponse(res, updated, 200, 'Product review updated successfully');
+  } catch (err) {
+    return next(err);
+  }
+}
+
+export async function handleDeleteAdminReview(req, res, next) {
+  try {
+    const { id } = req.params;
+
+    const deleted = deleteStoredReview(id);
+    if (!deleted) {
+      return errorResponse(res, 'Review not found', 404);
+    }
+
+    await logAdminAction({
+      adminId: req.user?.id,
+      action: 'DELETE_PRODUCT_REVIEW',
+      targetEntity: 'reviews',
+      targetId: id,
+      changes: { deletedId: id },
+      ipAddress: req.ip,
+    });
+
+    return successResponse(res, { id, deleted: true }, 200, 'Product review deleted successfully');
   } catch (err) {
     return next(err);
   }

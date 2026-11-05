@@ -7,6 +7,7 @@ import { renderCancellations } from './sections/cancellations.js';
 import { renderInventory } from './sections/inventory.js';
 import { renderProducts } from './sections/products.js';
 import { renderCategories } from './sections/categories.js';
+import { renderReviews } from './sections/reviews.js';
 import { renderShipping } from './sections/shipping.js';
 import { renderCustomers } from './sections/customers.js';
 import { renderDiscounts } from './sections/discounts.js';
@@ -21,6 +22,7 @@ const SECTIONS = {
   dashboard:     { label: 'Dashboard',            icon: 'grid_view',        render: renderDashboard, role: 'admin' },
   products:      { label: 'Products',             icon: 'inventory_2',      render: renderProducts, role: 'admin' },
   categories:    { label: 'Categories',           icon: 'category',         render: renderCategories, role: 'admin' },
+  reviews:       { label: 'Customer Reviews',     icon: 'rate_review',      render: renderReviews, role: 'admin' },
   inventory:     { label: 'Inventory Matrix',     icon: 'warehouse',        render: renderInventory, role: 'admin' },
   orders:        { label: 'Orders Queue',         icon: 'shopping_bag',     render: renderOrders, role: 'admin' },
   cancellations: { label: 'Cancellations',        icon: 'cancel_presentation', render: renderCancellations, role: 'admin' },
@@ -106,6 +108,7 @@ function renderShell() {
               ${renderNavLink('categories')}
               ${renderNavLink('inventory')}
               ${renderNavLink('orders')}
+              ${renderNavLink('reviews')}
               ${renderNavLink('customers')}
               ${renderNavLink('shipping')}
             </div>

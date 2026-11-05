@@ -15,6 +15,9 @@ describe('BEAR REST API Server Tests', () => {
   let superAdminToken;
   let adminToken;
   let customerToken;
+  let clientSA;
+  let clientAdm;
+  let clientCust;
 
   before(async () => {
     const app = createApp();
@@ -27,9 +30,9 @@ describe('BEAR REST API Server Tests', () => {
     });
 
     // Obtain real Supabase JWT tokens using isolated clients
-    const clientSA = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
-    const clientAdm = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
-    const clientCust = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
+    clientSA = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
+    clientAdm = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
+    clientCust = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
 
     const [saRes, admRes, custRes] = await Promise.all([
       clientSA.auth.signInWithPassword({
@@ -677,11 +680,16 @@ describe('BEAR REST API Server Tests', () => {
 
   test('Customer Address CRUD — Create, Read, Update (PUT), Delete', async () => {
     // 1. Create Address
+    const cToken = (await clientCust.auth.signInWithPassword({
+      email: env.TEST_CUSTOMER_EMAIL,
+      password: env.TEST_CUSTOMER_PASSWORD,
+    })).data?.session?.access_token || customerToken;
+
     const addRes = await fetch(`${baseUrl}/customer/addresses`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${customerToken}`,
+        'Authorization': `Bearer ${cToken}`,
       },
       body: JSON.stringify({
         label: 'Home',
@@ -701,7 +709,7 @@ describe('BEAR REST API Server Tests', () => {
 
     // 2. Read Addresses
     const listRes = await fetch(`${baseUrl}/customer/addresses`, {
-      headers: { 'Authorization': `Bearer ${customerToken}` },
+      headers: { 'Authorization': `Bearer ${cToken}` },
     });
     assert.strictEqual(listRes.status, 200);
     const listJson = await listRes.json();
@@ -712,7 +720,7 @@ describe('BEAR REST API Server Tests', () => {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${customerToken}`,
+        'Authorization': `Bearer ${cToken}`,
       },
       body: JSON.stringify({
         label: 'Office',
@@ -731,8 +739,80 @@ describe('BEAR REST API Server Tests', () => {
     // 4. Delete Address
     const delRes = await fetch(`${baseUrl}/customer/addresses/${addressId}`, {
       method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${customerToken}` },
+      headers: { 'Authorization': `Bearer ${cToken}` },
     });
     assert.strictEqual(delRes.status, 200);
+  });
+
+  test('Stage 3: Product Reviews & Moderation CRUD with Metrics Calculations', async () => {
+    // 1. Public GET reviews and dynamic metrics calculation
+    const pubGet = await fetch(`${baseUrl}/reviews?productId=bear-001`);
+    assert.strictEqual(pubGet.status, 200);
+    const pubGetJson = await pubGet.json();
+    assert.strictEqual(pubGetJson.success, true);
+    assert.ok(pubGetJson.data.metrics);
+    assert.ok(Array.isArray(pubGetJson.data.reviews));
+
+    // 2. Public Customer Review Submission
+    const postRes = await fetch(`${baseUrl}/reviews`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        productId: 'bear-001',
+        productName: 'Essential Oversized Tee',
+        author: 'Athlete Reviewer',
+        rating: 5,
+        fit: 'True to Size',
+        title: 'Outstanding fabric durability',
+        comment: 'Discipline in every stitch. Heavyweight drape feels premium.',
+      }),
+    });
+    assert.strictEqual(postRes.status, 201);
+    const postJson = await postRes.json();
+    assert.strictEqual(postJson.success, true);
+    assert.ok(postJson.data.review.id);
+    const createdReviewId = postJson.data.review.id;
+
+    // 3. Admin GET Reviews with filter
+    const saToken = (await clientSA.auth.signInWithPassword({
+      email: env.TEST_ADMIN_EMAIL,
+      password: env.TEST_ADMIN_PASSWORD,
+    })).data?.session?.access_token || superAdminToken;
+
+    const adminGet = await fetch(`${baseUrl}/admin/reviews?productId=bear-001`, {
+      headers: { 'Authorization': `Bearer ${saToken}` },
+    });
+    assert.strictEqual(adminGet.status, 200);
+    const adminGetJson = await adminGet.json();
+    assert.ok(adminGetJson.data.stats.total > 0);
+    assert.ok(adminGetJson.data.reviews.some((r) => r.id === createdReviewId));
+
+    // 4. Admin PATCH Review (Update rating & hide)
+    const adminPatch = await fetch(`${baseUrl}/admin/reviews/${createdReviewId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${saToken}`,
+      },
+      body: JSON.stringify({
+        isPublished: false,
+        rating: 4,
+        fit: 'Runs Slightly Large',
+      }),
+    });
+    assert.strictEqual(adminPatch.status, 200);
+    const adminPatchJson = await adminPatch.json();
+    assert.strictEqual(adminPatchJson.data.isPublished, false);
+    assert.strictEqual(adminPatchJson.data.rating, 4);
+    assert.strictEqual(adminPatchJson.data.fit, 'Runs Slightly Large');
+
+    // 5. Admin DELETE Review
+    const adminDel = await fetch(`${baseUrl}/admin/reviews/${createdReviewId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${saToken}` },
+    });
+    assert.strictEqual(adminDel.status, 200);
+    const adminDelJson = await adminDel.json();
+    assert.strictEqual(adminDelJson.data.deleted, true);
   });
 });

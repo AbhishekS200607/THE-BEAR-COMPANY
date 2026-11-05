@@ -1,9 +1,9 @@
 import { supabaseAnon, supabaseAdmin } from '../config/supabase.js';
 import { errorResponse } from '../utils/response.js';
 
-// Short-lived in-memory cache to prevent hammering Supabase Auth endpoint on rapid bursts
+// In-memory cache (5 mins) to prevent hammering Supabase Auth endpoint on rapid bursts & tests
 const tokenCache = new Map();
-const CACHE_TTL_MS = 30000; // 30 seconds
+const CACHE_TTL_MS = 300000; // 5 minutes (300,000ms)
 
 function getCachedAuth(token) {
   const cached = tokenCache.get(token);

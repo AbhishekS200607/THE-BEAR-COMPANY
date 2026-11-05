@@ -301,6 +301,47 @@ export async function markNotificationsRead() {
   throw new Error(d?.error?.message || 'Failed to mark notifications read');
 }
 
+// ── 11. Product Reviews & Ratings Moderation ──────────────────────────────────
+
+export async function getAdminReviews(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.productId && filters.productId !== 'all') params.set('productId', filters.productId);
+  if (filters.rating && filters.rating !== 'all') params.set('rating', filters.rating);
+  if (filters.status && filters.status !== 'all') params.set('status', filters.status);
+  if (filters.search) params.set('search', filters.search);
+
+  const query = params.toString() ? `?${params.toString()}` : '';
+  const d = await apiFetch(`/reviews${query}`);
+  if (d?.success) return { ...d.data, _error: null };
+  return { reviews: [], metrics: null, stats: null, _error: d?.error?.message || 'Failed to load reviews' };
+}
+
+export async function createAdminReview(payload) {
+  const d = await apiFetch('/reviews', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  if (d?.success) return d.data;
+  throw new Error(d?.error?.message || 'Failed to create review');
+}
+
+export async function updateAdminReview(id, payload) {
+  const d = await apiFetch(`/reviews/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+  if (d?.success) return d.data;
+  throw new Error(d?.error?.message || 'Failed to update review');
+}
+
+export async function deleteAdminReview(id) {
+  const d = await apiFetch(`/reviews/${id}`, {
+    method: 'DELETE',
+  });
+  if (d?.success) return { success: true };
+  throw new Error(d?.error?.message || 'Failed to delete review');
+}
+
 export default {
   getDashboard,
   getOrders,

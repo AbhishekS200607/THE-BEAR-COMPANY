@@ -35,6 +35,10 @@ import {
   handleGetNotifications,
   handleMarkNotificationsRead,
   handleUploadImage,
+  handleGetAdminReviews,
+  handleCreateAdminReview,
+  handleUpdateAdminReview,
+  handleDeleteAdminReview,
 } from '../controllers/adminController.js';
 
 const router = Router();
@@ -242,5 +246,41 @@ router.get('/audit-logs', requireSuperAdmin, handleGetAuditLogs);
 // 10. Notifications
 router.get('/notifications', handleGetNotifications);
 router.post('/notifications/mark-read', handleMarkNotificationsRead);
+
+// 11. Reviews & Ratings Moderation
+const createAdminReviewSchema = {
+  body: z.object({
+    productId: z.string().trim().min(1),
+    productName: z.string().trim().optional(),
+    author: z.string().trim().min(2),
+    rating: z.number().int().min(1).max(5),
+    fit: z.string().trim().optional(),
+    title: z.string().trim().min(2),
+    comment: z.string().trim().min(5),
+    isVerified: z.boolean().optional(),
+    isPublished: z.boolean().optional(),
+  }),
+};
+
+const updateAdminReviewSchema = {
+  params: z.object({
+    id: z.string().trim().min(1),
+  }),
+  body: z.object({
+    author: z.string().trim().min(2).optional(),
+    rating: z.number().int().min(1).max(5).optional(),
+    fit: z.string().trim().optional(),
+    title: z.string().trim().min(2).optional(),
+    comment: z.string().trim().min(5).optional(),
+    isVerified: z.boolean().optional(),
+    isPublished: z.boolean().optional(),
+    productName: z.string().trim().optional(),
+  }),
+};
+
+router.get('/reviews', handleGetAdminReviews);
+router.post('/reviews', validate(createAdminReviewSchema), handleCreateAdminReview);
+router.patch('/reviews/:id', validate(updateAdminReviewSchema), handleUpdateAdminReview);
+router.delete('/reviews/:id', handleDeleteAdminReview);
 
 export default router;
