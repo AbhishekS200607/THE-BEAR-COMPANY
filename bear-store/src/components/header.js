@@ -124,45 +124,45 @@ export function mount(container) {
         </div>
       </div>
 
-      <div class="hidden md:flex h-16 max-w-[1360px] mx-auto px-gutter-desktop items-center justify-center">
-        <div class="w-full max-w-2xl bg-surface-container-lowest/95 backdrop-blur-xl shadow-[0_8px_24px_rgba(0,0,0,0.06)] rounded-full px-4 py-1 flex items-center justify-between border border-outline-variant/30">
+      <div class="hidden md:flex h-14 max-w-[1360px] mx-auto px-gutter-desktop items-center justify-center">
+        <div class="w-full max-w-xl bg-surface-container-lowest/95 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.06)] rounded-full px-3.5 py-1 flex items-center justify-between border border-outline-variant/30">
 
-          <!-- Left: Nav links — flex-1 so it takes equal third -->
-          <nav class="flex items-center gap-3 flex-1">
-            <a href="#" class="px-3 py-1.5 rounded-full font-label-pill text-label-pill font-semibold transition-all ${
+          <!-- Left: Nav links -->
+          <nav class="flex items-center gap-1.5 flex-1">
+            <a href="#" class="px-3 py-1 rounded-full text-[12px] font-bold tracking-wide uppercase transition-all ${
                 isHome ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
-              }" ${isHome ? 'aria-current="page"' : ''}>HOME</a>
-            <a href="#collection" class="px-3 py-1.5 rounded-full font-label-pill text-label-pill font-semibold transition-all ${
+              }" ${isHome ? 'aria-current="page"' : ''}>Home</a>
+            <a href="#collection" class="px-3 py-1 rounded-full text-[12px] font-bold tracking-wide uppercase transition-all ${
                 isCollection ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
-              }" ${isCollection ? 'aria-current="page"' : ''}>COLLECTION</a>
+              }" ${isCollection ? 'aria-current="page"' : ''}>Collection</a>
           </nav>
 
-          <!-- Center: Logo — flex-1 centered -->
+          <!-- Center: Logo -->
           <div class="flex items-center justify-center flex-1">
-            <a href="#" class="font-headline tracking-tighter font-bold uppercase text-black text-base no-underline">
+            <a href="#" class="font-headline tracking-tighter font-bold uppercase text-black text-[15px] no-underline">
               BEAR<span class="${mode === 'sow' ? 'text-[#80534C]' : 'text-black'}">.</span>
             </a>
           </div>
 
-          <!-- Right: Controls — flex-1 right-aligned, gap-3 between every item -->
-          <div class="flex items-center justify-end gap-3 flex-1">
-            <div class="bg-surface-container p-1 rounded-full flex items-center border border-outline-variant/20">
-              <button id="header-bear-btn" class="px-3 py-1 rounded-full font-label-caps text-label-caps uppercase transition-all font-bold ${
+          <!-- Right: Controls -->
+          <div class="flex items-center justify-end gap-2 flex-1">
+            <div class="bg-surface-container px-0.5 py-0.5 rounded-full flex items-center border border-outline-variant/20">
+              <button id="header-bear-btn" class="px-2.5 py-1 rounded-full text-[11px] uppercase tracking-wide transition-all font-bold ${
                   mode === 'bear' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
                 }" type="button">BEAR</button>
-              <button id="header-sow-btn" class="px-3 py-1 rounded-full font-label-caps text-label-caps uppercase transition-all font-bold ${
+              <button id="header-sow-btn" class="px-2.5 py-1 rounded-full text-[11px] uppercase tracking-wide transition-all font-bold ${
                   mode === 'sow' ? 'bg-[#80534C] text-white shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
                 }" type="button">SOW</button>
             </div>
             <button id="header-search-btn" aria-label="Search" class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all cursor-pointer" type="button">
-              <span class="material-symbols-outlined text-[18px]">search</span>
+              <span class="material-symbols-outlined text-[17px]">search</span>
             </button>
             <button id="header-cart-btn" aria-label="Cart" class="relative w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all cursor-pointer" type="button">
-              <span class="material-symbols-outlined text-[18px]">shopping_bag</span>
+              <span class="material-symbols-outlined text-[17px]">shopping_bag</span>
               ${cartCount > 0 ? `<span class="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-primary text-on-primary font-label-caps text-[8px] flex items-center justify-center font-bold">${cartCount > 9 ? '9+' : cartCount}</span>` : ''}
             </button>
             <a href="#account" class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary hover:opacity-90 transition-opacity" title="My Account" aria-label="My Account">
-              <svg class="w-4 h-4 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-3.5 h-3.5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </a>

@@ -120,3 +120,4 @@ export async function compressImageToWebP(file, options = {}) {
     img.src = objectUrl;
   });
 }
+

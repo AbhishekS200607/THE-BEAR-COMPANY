@@ -11,6 +11,7 @@ import { openSizeRecommender } from '../components/sizeRecommender.js';
 import { openRestockModal } from '../components/restockNotifyModal.js';
 import { skeletonProduct } from '../utils/skeletons.js';
 import { flyToCart } from '../utils/animations.js';
+import { getProductReviews, calculateReviewMetrics, submitProductReview } from '../services/reviewService.js';
 
 export async function render(container, slug) {
   container.innerHTML = `<div class="w-full flex flex-col pt-20 md:pt-24">${skeletonProduct()}</div>`;
@@ -39,45 +40,9 @@ export async function render(container, slug) {
     'https://lh3.googleusercontent.com/aida-public/AB6AXuC0A_M4HqJNIIAusW1iTMaL94tnVHUlB2_7uyMjBw5mHw6BLBMJonDYlpbl1ks7zxdtF5jLW3oxBMrz9ZUSoacdbiSztre6lZoDTkvo9Apt6qGtxTxL2PLQibuZAUxKdZJVQD8YhaWaEAhApqCJQHkOjxDW8K-juFBWPSJxhzNXraK5jbwy0Vfos7iF5tBILTs-ByqMTeXYzQYYE66yCKJF6mcKz8kT6DF0rxTO3w'
   ];
 
-  // Authentic product reviews mock database
-  const reviews = [
-    {
-      author: 'Vikram Mehta',
-      rating: 5,
-      date: '2 weeks ago',
-      verified: true,
-      fit: 'True to Size',
-      title: 'Unbelievable fabric density and drape',
-      comment: 'The 260 GSM heavyweight cotton holds its structure through intense lifting sessions and washes. Easily on par with international activewear brands that charge 3x the price.',
-    },
-    {
-      author: 'Ananya Deshmukh',
-      rating: 5,
-      date: '3 weeks ago',
-      verified: true,
-      fit: 'Perfect Athletic Cut',
-      title: 'Flattering compression without pinching',
-      comment: 'SOW activewear has completely replaced my imported tights. High-waisted contour stays firmly locked during HIIT and squats. Breathable and luxurious hand-feel.',
-    },
-    {
-      author: 'Rohit Shenoy',
-      rating: 5,
-      date: 'Last month',
-      verified: true,
-      fit: 'Relaxed Oversized',
-      title: 'Best oversized gym tee in India',
-      comment: 'Drop shoulders and heavy ribbed collar never sag after repeated washes. Dispatched fast with BlueDart directly to Bengaluru in 48 hours.',
-    },
-    {
-      author: 'Karanvir S.',
-      rating: 4,
-      date: '1 month ago',
-      verified: true,
-      fit: 'True to Size',
-      title: 'Premium stitching and clean aesthetics',
-      comment: 'Clean minimalist branding and reinforced twin-needle hems. Very satisfied with the fit and quality.',
-    },
-  ];
+  // Authentic product reviews and calculated metrics
+  let reviews = getProductReviews(product.id);
+  let metrics = calculateReviewMetrics(reviews);
 
   const page = document.createElement('div');
   page.className = 'w-full flex flex-col pt-20 md:pt-24 pb-24 md:pb-16';
@@ -174,8 +139,8 @@ export async function render(container, slug) {
           <div class="flex items-center gap-3 pb-3 mb-4 border-b border-zinc-100 text-xs">
             <div class="flex items-center gap-1 text-zinc-900">
               <span class="material-symbols-outlined text-[17px] text-amber-500" style="font-variation-settings: 'FILL' 1;">star</span>
-              <span class="font-headline font-bold">${product.rating || '4.9'}</span>
-              <a href="#customer-reviews-section" class="text-zinc-500 hover:text-black underline ml-1 cursor-pointer">(${reviews.length} reviews)</a>
+              <span class="font-headline font-bold" id="pdp-header-rating">${metrics.averageRating}</span>
+              <a href="#customer-reviews-section" id="pdp-header-reviews-link" class="text-zinc-500 hover:text-black underline ml-1 cursor-pointer">(${metrics.totalCount} reviews)</a>
             </div>
             <span class="text-zinc-300">•</span>
             <span class="text-emerald-700 font-bold uppercase text-[11px] font-headline">Free Pan-India Air Express</span>
@@ -328,31 +293,25 @@ export async function render(container, slug) {
         <div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-start mb-10 bg-zinc-50 p-6 rounded-2xl border border-zinc-200">
           <!-- Left: Score & Fit Gauge -->
           <div class="md:col-span-4 text-center md:text-left md:border-r md:border-zinc-200 md:pr-6">
-            <div class="font-headline text-5xl font-black text-zinc-950">${product.rating || '4.9'}</div>
+            <div class="font-headline text-5xl font-black text-zinc-950" id="pdp-avg-rating">${metrics.averageRating}</div>
             <div class="flex items-center justify-center md:justify-start gap-0.5 text-amber-500 my-1">
               ${[1, 2, 3, 4, 5].map(() => `<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">star</span>`).join('')}
             </div>
-            <p class="text-xs text-zinc-500 font-medium">Based on ${reviews.length} verified athlete purchases</p>
+            <p class="text-xs text-zinc-500 font-medium" id="pdp-reviews-count">Based on ${metrics.totalCount} verified athlete purchases</p>
             <div class="mt-4 pt-3 border-t border-zinc-200/80">
               <span class="text-[11px] font-bold uppercase text-zinc-700 font-headline">Fit Sentiment:</span>
-              <p class="text-xs text-emerald-800 font-semibold mt-0.5">96% of buyers say "True to Size"</p>
+              <p class="text-xs text-emerald-800 font-semibold mt-0.5" id="pdp-fit-sentiment">${metrics.fitSentiment}</p>
             </div>
           </div>
 
           <!-- Right: Star Breakdown -->
-          <div class="md:col-span-8 space-y-2">
-            ${[
-              { stars: 5, pct: 88 },
-              { stars: 4, pct: 12 },
-              { stars: 3, pct: 0 },
-              { stars: 2, pct: 0 },
-              { stars: 1, pct: 0 },
-            ].map(
+          <div class="md:col-span-8 space-y-2" id="pdp-star-breakdown">
+            ${metrics.breakdown.map(
               (r) => `
               <div class="flex items-center gap-3 text-xs">
                 <span class="w-12 text-zinc-600 font-mono font-bold">${r.stars} Stars</span>
                 <div class="flex-1 h-2 rounded-full bg-zinc-200 overflow-hidden">
-                  <div class="h-full bg-black rounded-full" style="width: ${r.pct}%"></div>
+                  <div class="h-full bg-black rounded-full transition-all duration-500" style="width: ${r.pct}%"></div>
                 </div>
                 <span class="w-8 text-right text-zinc-400 font-mono text-[11px]">${r.pct}%</span>
               </div>
@@ -703,6 +662,40 @@ export async function render(container, slug) {
       const rating = Number(document.getElementById('rev-rating')?.value || 5);
       const fit = document.getElementById('rev-fit')?.value || 'True to Size';
 
+      // 1. Persist review into storage
+      submitProductReview(product.id, { author, title, comment, rating, fit });
+
+      // 2. Dynamically re-calculate metrics
+      reviews = getProductReviews(product.id);
+      metrics = calculateReviewMetrics(reviews);
+
+      // 3. Update DOM metrics dynamically
+      const hdrRating = page.querySelector('#pdp-header-rating');
+      if (hdrRating) hdrRating.textContent = metrics.averageRating;
+      const hdrLink = page.querySelector('#pdp-header-reviews-link');
+      if (hdrLink) hdrLink.textContent = `(${metrics.totalCount} reviews)`;
+
+      const avgRatingEl = page.querySelector('#pdp-avg-rating');
+      if (avgRatingEl) avgRatingEl.textContent = metrics.averageRating;
+      const countEl = page.querySelector('#pdp-reviews-count');
+      if (countEl) countEl.textContent = `Based on ${metrics.totalCount} verified athlete purchases`;
+      const fitEl = page.querySelector('#pdp-fit-sentiment');
+      if (fitEl) fitEl.textContent = metrics.fitSentiment;
+
+      const breakdownEl = page.querySelector('#pdp-star-breakdown');
+      if (breakdownEl) {
+        breakdownEl.innerHTML = metrics.breakdown.map((r) => `
+          <div class="flex items-center gap-3 text-xs">
+            <span class="w-12 text-zinc-600 font-mono font-bold">${r.stars} Stars</span>
+            <div class="flex-1 h-2 rounded-full bg-zinc-200 overflow-hidden">
+              <div class="h-full bg-black rounded-full transition-all duration-500" style="width: ${r.pct}%"></div>
+            </div>
+            <span class="w-8 text-right text-zinc-400 font-mono text-[11px]">${r.pct}%</span>
+          </div>
+        `).join('');
+      }
+
+      // 4. Prepend new review card
       const reviewsList = page.querySelector('#reviews-list-container');
       if (reviewsList) {
         const card = document.createElement('div');
