@@ -54,3 +54,4 @@ GRANT SELECT ON public.promotions TO anon, authenticated;
 GRANT SELECT ON public.store_settings TO anon, authenticated;
 
 COMMIT;
+

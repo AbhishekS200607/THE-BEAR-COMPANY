@@ -142,18 +142,25 @@ function formatProductResponse(p) {
     }
   });
 
-  // Group sizes and compute real-time in-stock status (quantity_available - quantity_reserved > 0)
-  const sizes = (p.product_variants || []).map((v) => {
+  // Deduplicate sizes — one entry per size, picking the first available variant for that size.
+  // Multiple colour variants per size would otherwise cause duplicate size buttons in the UI.
+  const sizeMap = new Map();
+  (p.product_variants || []).forEach((v) => {
     const inv = v.inventory && v.inventory[0] ? v.inventory[0] : v.inventory;
     const availableUnreserved = inv ? inv.quantity_available - inv.quantity_reserved : 0;
-    return {
+    const entry = {
       variantId: v.id,
       sku: v.sku,
       size: v.size,
       colour: v.colour_name,
       available: availableUnreserved > 0,
     };
+    // Keep the first variant for this size, but prefer an available one over an out-of-stock one
+    if (!sizeMap.has(v.size) || (!sizeMap.get(v.size).available && entry.available)) {
+      sizeMap.set(v.size, entry);
+    }
   });
+  const sizes = Array.from(sizeMap.values());
 
   return {
     id: p.id,

@@ -1,7 +1,10 @@
-import { get, set } from '../utils/storage.js';
+import { get, set, TTL } from '../utils/storage.js';
 import { API_V1 } from '../config/api.js';
 
 const API_BASE = API_V1;
+
+const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || 'https://flxccuowqflxtwtynvml.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || 'sb_publishable_a97yBCvUiIhQOGxpnXG2MA_Z9OVx83s';
 
 const STORAGE_KEYS = {
   addresses: 'bear_addresses',
@@ -30,20 +33,122 @@ const defaultUser = {
   bearPoints: 0,
 };
 
-function getAuthHeader() {
-  const session = get('bear_auth_session');
-  if (session?.access_token) {
-    return {
-      'Authorization': `Bearer ${session.access_token}`,
-      'Content-Type': 'application/json',
-    };
-  }
-  return { 'Content-Type': 'application/json' };
+let refreshPromise = null;
+
+/**
+ * Proactively refreshes the Supabase access_token using the stored refresh_token.
+ * Safely clears stale sessions if the refresh token is expired or revoked.
+ */
+export async function refreshSession() {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    const session = get('bear_auth_session');
+    if (!session?.refresh_token) {
+      clearInvalidSession();
+      return null;
+    }
+
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY },
+        body: JSON.stringify({ refresh_token: session.refresh_token }),
+      });
+
+      if (!res.ok) {
+        clearInvalidSession();
+        return null;
+      }
+
+      const newSession = await res.json();
+      if (!newSession?.access_token) {
+        clearInvalidSession();
+        return null;
+      }
+
+      set('bear_auth_session', newSession, TTL.SESSION);
+      return newSession;
+    } catch {
+      return null;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
 }
 
-function hasAuth() {
+/**
+ * Safely removes invalid or expired auth session data from storage & cookie.
+ */
+export function clearInvalidSession() {
+  try {
+    localStorage.removeItem('bear_auth_session');
+    localStorage.removeItem('bear_auth_mode');
+    document.cookie = 'bear_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+  } catch {}
+}
+
+/**
+ * Returns a valid access_token, refreshing automatically if expired or expiring within 60 seconds.
+ */
+export async function getValidToken() {
+  const session = get('bear_auth_session');
+  if (!session?.access_token) return null;
+
+  const expiresAt = session.expires_at;
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const isExpiring = expiresAt && (expiresAt - nowSeconds) < 60;
+
+  if (isExpiring) {
+    const refreshed = await refreshSession();
+    return refreshed?.access_token || null;
+  }
+
+  return session.access_token;
+}
+
+export function hasAuth() {
   const session = get('bear_auth_session');
   return !!session?.access_token;
+}
+
+/**
+ * Authenticated fetch helper:
+ * 1. Attaches fresh bearer token
+ * 2. On 401, attempts token refresh and single retry
+ * 3. Gracefully clears invalid sessions without unhandled errors
+ */
+export async function authFetch(url, options = {}) {
+  let token = await getValidToken();
+  if (!token) return null;
+
+  const headers = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+    ...(options.headers || {}),
+  };
+
+  try {
+    let res = await fetch(url, { ...options, headers });
+
+    if (res.status === 401) {
+      const refreshed = await refreshSession();
+      if (refreshed?.access_token) {
+        headers.Authorization = `Bearer ${refreshed.access_token}`;
+        res = await fetch(url, { ...options, headers });
+      } else {
+        clearInvalidSession();
+        return null;
+      }
+    }
+
+    return res;
+  } catch (err) {
+    console.warn('[BEAR Account] Request error:', err.message);
+    return null;
+  }
 }
 
 export async function getDemoUser() {
@@ -52,16 +157,14 @@ export async function getDemoUser() {
 
   if (hasAuth()) {
     try {
-      const res = await fetch(`${API_BASE}/customer/profile`, {
-        headers: getAuthHeader(),
-      });
-      if (res.ok) {
+      const res = await authFetch(`${API_BASE}/customer/profile`);
+      if (res && res.ok) {
         const json = await res.json();
         if (json.success && json.data) {
           const profile = json.data;
           const merged = {
-            name: profile.full_name || stored?.name || session.user?.user_metadata?.full_name || 'Customer',
-            email: session.user?.email || stored?.email || '',
+            name: profile.full_name || stored?.name || session?.user?.user_metadata?.full_name || 'Customer',
+            email: session?.user?.email || stored?.email || '',
             phone: profile.phone_number || stored?.phone || '',
             avatar: null,
             role: profile.role || 'customer',
@@ -87,10 +190,8 @@ export async function getDemoUser() {
 export async function getDemoAddresses() {
   if (hasAuth()) {
     try {
-      const res = await fetch(`${API_BASE}/customer/addresses`, {
-        headers: getAuthHeader(),
-      });
-      if (res.ok) {
+      const res = await authFetch(`${API_BASE}/customer/addresses`);
+      if (res && res.ok) {
         const json = await res.json();
         if (json.success && Array.isArray(json.data)) {
           const mapped = json.data.map((a) => ({
@@ -125,9 +226,8 @@ export async function getDemoAddresses() {
 
           if (matchingGuestAddr) {
             try {
-              const saveRes = await fetch(`${API_BASE}/customer/addresses`, {
+              const saveRes = await authFetch(`${API_BASE}/customer/addresses`, {
                 method: 'POST',
-                headers: getAuthHeader(),
                 body: JSON.stringify({
                   label: matchingGuestAddr.label || 'Home',
                   fullName: matchingGuestAddr.fullName,
@@ -140,22 +240,24 @@ export async function getDemoAddresses() {
                   isDefault: true,
                 }),
               });
-              const saveJson = await saveRes.json();
-              if (saveJson.success && saveJson.data) {
-                const migrated = [{
-                  id: saveJson.data.id,
-                  fullName: saveJson.data.full_name,
-                  phone: saveJson.data.phone_number,
-                  line1: saveJson.data.line1,
-                  line2: saveJson.data.line2 || '',
-                  city: saveJson.data.city,
-                  state: saveJson.data.state,
-                  pincode: saveJson.data.pincode,
-                  label: saveJson.data.label || 'Home',
-                  default: true,
-                }];
-                set(STORAGE_KEYS.addresses, migrated);
-                return migrated;
+              if (saveRes && saveRes.ok) {
+                const saveJson = await saveRes.json();
+                if (saveJson.success && saveJson.data) {
+                  const migrated = [{
+                    id: saveJson.data.id,
+                    fullName: saveJson.data.full_name,
+                    phone: saveJson.data.phone_number,
+                    line1: saveJson.data.line1,
+                    line2: saveJson.data.line2 || '',
+                    city: saveJson.data.city,
+                    state: saveJson.data.state,
+                    pincode: saveJson.data.pincode,
+                    label: saveJson.data.label || 'Home',
+                    default: true,
+                  }];
+                  set(STORAGE_KEYS.addresses, migrated);
+                  return migrated;
+                }
               }
             } catch (migrateErr) {
               console.warn('[BEAR Account] Could not auto-migrate guest address:', migrateErr.message);
@@ -189,9 +291,8 @@ export function addAddress(address) {
   set(STORAGE_KEYS.addresses, updated);
 
   if (hasAuth()) {
-    fetch(`${API_BASE}/customer/addresses`, {
+    authFetch(`${API_BASE}/customer/addresses`, {
       method: 'POST',
-      headers: getAuthHeader(),
       body: JSON.stringify({
         label: address.label || 'Home',
         fullName: address.fullName,
@@ -204,10 +305,9 @@ export function addAddress(address) {
         isDefault: !!address.default,
       }),
     })
-      .then((r) => r.json())
+      .then((r) => r?.json())
       .then((json) => {
-        if (json.success && json.data) {
-          // Replace temp ID with backend UUID
+        if (json?.success && json.data) {
           const current = get(STORAGE_KEYS.addresses) || [];
           const idx = current.findIndex((a) => a.id === tempId);
           if (idx >= 0) {
@@ -242,9 +342,8 @@ export function updateAddress(id, patch) {
     if (patch.pincode !== undefined) payload.pincode = patch.pincode;
     if (patch.default !== undefined) payload.isDefault = !!patch.default;
 
-    fetch(`${API_BASE}/customer/addresses/${id}`, {
+    authFetch(`${API_BASE}/customer/addresses/${id}`, {
       method: 'PUT',
-      headers: getAuthHeader(),
       body: JSON.stringify(payload),
     }).catch((e) => console.warn('[BEAR Account] Error updating address on backend:', e.message));
   }
@@ -261,9 +360,8 @@ export function deleteAddress(id) {
   set(STORAGE_KEYS.addresses, addresses);
 
   if (hasAuth() && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
-    fetch(`${API_BASE}/customer/addresses/${id}`, {
+    authFetch(`${API_BASE}/customer/addresses/${id}`, {
       method: 'DELETE',
-      headers: getAuthHeader(),
     }).catch((e) => console.warn('[BEAR Account] Error deleting address from backend:', e.message));
   }
 
@@ -282,18 +380,15 @@ export async function getDemoOrders() {
         const currentUser = get(STORAGE_KEYS.user);
         const phoneNumber = currentUser?.phone || undefined;
 
-        await fetch(`${API_BASE}/customer/claim-orders`, {
+        await authFetch(`${API_BASE}/customer/claim-orders`, {
           method: 'POST',
-          headers: getAuthHeader(),
           body: JSON.stringify({ orderNumbers, phoneNumber }),
-        }).catch(() => {});
+        });
       }
 
       // 2. Query all authenticated orders belonging to this customer from the database
-      const res = await fetch(`${API_BASE}/customer/orders`, {
-        headers: getAuthHeader(),
-      });
-      if (res.ok) {
+      const res = await authFetch(`${API_BASE}/customer/orders`);
+      if (res && res.ok) {
         const json = await res.json();
         if (json.success && Array.isArray(json.data)) {
           const remoteOrders = json.data.map((o) => ({
@@ -315,7 +410,6 @@ export async function getDemoOrders() {
             trackingUrl: o.trackingUrl,
           }));
 
-          // Synchronize local storage to strictly mirror the authenticated user's database records
           set(STORAGE_KEYS.orders, remoteOrders);
           return remoteOrders;
         }
@@ -366,15 +460,10 @@ export async function cancelOrder(orderId, reason = 'Customer cancelled') {
   set(STORAGE_KEYS.orders, orders);
 
   if (hasAuth() && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId)) {
-    try {
-      await fetch(`${API_BASE}/orders/${orderId}/cancel`, {
-        method: 'POST',
-        headers: getAuthHeader(),
-        body: JSON.stringify({ reason }),
-      });
-    } catch (err) {
-      console.warn('[BEAR Account] Error cancelling order on backend:', err.message);
-    }
+    authFetch(`${API_BASE}/orders/${orderId}/cancel`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }).catch((err) => console.warn('[BEAR Account] Error cancelling order on backend:', err.message));
   }
 
   return orders;
@@ -389,15 +478,10 @@ export async function requestCancellation(orderId, reason = 'Customer requested 
   );
   set(STORAGE_KEYS.orders, orders);
 
-  try {
-    await fetch(`${API_BASE}/orders/${orderId}/request-cancellation`, {
-      method: 'POST',
-      headers: getAuthHeader(),
-      body: JSON.stringify({ reason, notes }),
-    });
-  } catch (err) {
-    console.warn('[BEAR Account] Error recording cancellation request on backend:', err.message);
-  }
+  authFetch(`${API_BASE}/orders/${orderId}/request-cancellation`, {
+    method: 'POST',
+    body: JSON.stringify({ reason, notes }),
+  }).catch((err) => console.warn('[BEAR Account] Error recording cancellation request on backend:', err.message));
 
   return orders;
 }
@@ -421,7 +505,7 @@ export function generateWhatsAppCancellationMessage(order, reason, notes) {
     ...(notes ? [`• Additional Notes: ${notes}`] : []),
     ``,
     `*Order Items:*`,
-    itemsText || '• Order items on record',
+    `• Order items on record`,
     ``,
     `*Total Due / Paid:*`,
     `₹${(order.total || 0).toLocaleString('en-IN')}`,
@@ -444,4 +528,9 @@ export default {
   cancelOrder,
   requestCancellation,
   generateWhatsAppCancellationMessage,
+  refreshSession,
+  getValidToken,
+  clearInvalidSession,
+  hasAuth,
+  authFetch,
 };
