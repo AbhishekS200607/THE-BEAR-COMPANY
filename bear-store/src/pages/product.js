@@ -453,12 +453,42 @@ export async function render(container, slug) {
   }
 
   // Color selection
+  function updateSizesForColour(colourName) {
+    if (!product.variants || product.variants.length === 0) return;
+    const colourVariants = product.variants.filter((v) => !v.colour || v.colour.toLowerCase() === colourName.toLowerCase());
+    page.querySelectorAll('.pdp-size-btn').forEach((btn) => {
+      const sizeVal = btn.dataset.size;
+      const match = colourVariants.find((v) => v.size === sizeVal);
+      const isAvail = match ? match.available : true;
+      btn.dataset.available = isAvail ? 'true' : 'false';
+      if (!isAvail) {
+        btn.className = 'pdp-size-btn h-12 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center border font-headline opacity-40 line-through bg-zinc-100 text-zinc-400 border-zinc-200 cursor-pointer';
+        btn.title = 'Sold out - Click to get notified';
+        if (!btn.querySelector('.notify-badge')) {
+          const badge = document.createElement('span');
+          badge.className = 'text-[8px] no-underline notify-badge';
+          badge.textContent = 'Notify';
+          btn.appendChild(badge);
+        }
+      } else {
+        btn.title = '';
+        btn.querySelector('.notify-badge')?.remove();
+        if (sizeVal === selectedSize) {
+          btn.className = 'pdp-size-btn h-12 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center border font-headline bg-black text-white border-black shadow-sm';
+        } else {
+          btn.className = 'pdp-size-btn h-12 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center border font-headline bg-white hover:border-zinc-400 text-zinc-900 border-zinc-200';
+        }
+      }
+    });
+  }
+
   page.querySelectorAll('#pdp-colors-row button').forEach((btn) => {
     btn.addEventListener('click', () => {
       page.querySelectorAll('#pdp-colors-row button').forEach((b) => b.classList.remove('ring-2', 'ring-black', 'ring-offset-2'));
       btn.classList.add('ring-2', 'ring-black', 'ring-offset-2');
       selectedColour = btn.dataset.color;
       page.querySelector('#color-name-display').textContent = selectedColour;
+      updateSizesForColour(selectedColour);
     });
   });
 

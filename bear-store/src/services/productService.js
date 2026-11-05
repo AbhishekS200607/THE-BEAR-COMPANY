@@ -21,15 +21,40 @@ async function fetchAllLiveProducts() {
 }
 
 function normalizeProduct(p) {
+  const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
+  const sizeMap = new Map();
+
+  (p.sizes || []).forEach((s) => {
+    const sizeName = typeof s === 'string' ? s : s.size;
+    if (!sizeName) return;
+    const isAvail = s.available !== undefined ? Boolean(s.available) : true;
+    if (!sizeMap.has(sizeName)) {
+      sizeMap.set(sizeName, {
+        size: sizeName,
+        variantId: s.variantId || null,
+        available: isAvail,
+        sku: s.sku || null,
+      });
+    } else if (isAvail) {
+      sizeMap.get(sizeName).available = true;
+    }
+  });
+
+  const uniqueSizes = Array.from(sizeMap.values()).sort((a, b) => {
+    const idxA = SIZE_ORDER.indexOf(a.size);
+    const idxB = SIZE_ORDER.indexOf(b.size);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a.size.localeCompare(b.size);
+  });
+
   return {
     ...p,
     rating: p.rating || 4.8,
     reviewCount: p.reviewCount || 128,
-    sizes: (p.sizes || []).map((s) => ({
-      ...s,
-      variantId: s.variantId || null,
-      available: s.available !== undefined ? s.available : true,
-    })),
+    sizes: uniqueSizes,
+    variants: p.variants || p.sizes || [],
   };
 }
 

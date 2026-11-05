@@ -142,25 +142,42 @@ function formatProductResponse(p) {
     }
   });
 
-  // Deduplicate sizes — one entry per size, picking the first available variant for that size.
-  // Multiple colour variants per size would otherwise cause duplicate size buttons in the UI.
-  const sizeMap = new Map();
-  (p.product_variants || []).forEach((v) => {
+  // Extract all variants with stock status
+  const variants = (p.product_variants || []).map((v) => {
     const inv = v.inventory && v.inventory[0] ? v.inventory[0] : v.inventory;
     const availableUnreserved = inv ? inv.quantity_available - inv.quantity_reserved : 0;
-    const entry = {
+    return {
       variantId: v.id,
       sku: v.sku,
       size: v.size,
       colour: v.colour_name,
       available: availableUnreserved > 0,
     };
-    // Keep the first variant for this size, but prefer an available one over an out-of-stock one
-    if (!sizeMap.has(v.size) || (!sizeMap.get(v.size).available && entry.available)) {
-      sizeMap.set(v.size, entry);
+  });
+
+  // Deduplicate sizes — one entry per unique size (S, M, L, XL, XXL) in canonical order
+  const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
+  const sizeMap = new Map();
+  variants.forEach((v) => {
+    if (!sizeMap.has(v.size)) {
+      sizeMap.set(v.size, {
+        size: v.size,
+        variantId: v.variantId,
+        available: v.available,
+      });
+    } else if (v.available) {
+      sizeMap.get(v.size).available = true;
     }
   });
-  const sizes = Array.from(sizeMap.values());
+
+  const sizes = Array.from(sizeMap.values()).sort((a, b) => {
+    const idxA = SIZE_ORDER.indexOf(a.size);
+    const idxB = SIZE_ORDER.indexOf(b.size);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a.size.localeCompare(b.size);
+  });
 
   return {
     id: p.id,
@@ -181,6 +198,7 @@ function formatProductResponse(p) {
     images,
     colours: Array.from(colourMap.values()),
     sizes,
+    variants,
   };
 }
 
