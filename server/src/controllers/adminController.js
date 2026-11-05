@@ -486,6 +486,8 @@ export async function handleCreateProduct(req, res, next) {
       colours = [],
       sizes = [],
       images = [],
+      initialStock = 30,
+      lowStockThreshold = 5,
     } = req.body;
 
     const resolvedCategory = category || categoryName;
@@ -539,9 +541,9 @@ export async function handleCreateProduct(req, res, next) {
       if (!varErr && variant) {
         await supabaseAdmin.from('inventory').insert({
           variant_id: variant.id,
-          quantity_available: 30,
+          quantity_available: Math.max(0, parseInt(initialStock, 10) || 30),
           quantity_reserved: 0,
-          low_stock_threshold: 5,
+          low_stock_threshold: Math.max(0, parseInt(lowStockThreshold, 10) || 5),
         });
       }
     }
