@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { validate } from '../middleware/validate.js';
-import { requireAdmin } from '../middleware/auth.js';
+import { requireAdmin, requireSuperAdmin } from '../middleware/auth.js';
 import {
+  handleGetAdminMe,
   handleGetDashboard,
   handleGetOrders,
   handleUpdateOrderStatus,
@@ -39,6 +40,9 @@ const router = Router();
 
 // All admin routes strictly require valid admin JWT authentication
 router.use(requireAdmin);
+
+// 0. Authenticated Admin Profile & Roles
+router.get('/me', handleGetAdminMe);
 
 const updateOrderStatusSchema = {
   params: z.object({
@@ -217,21 +221,21 @@ router.get('/promotions', handleGetPromotions);
 router.put('/promotions', handleSavePromotions);
 router.patch('/promotions', handleSavePromotions);
 
-// 8. Settings
-router.get('/settings', handleGetSettings);
-router.put('/settings', handleSaveSettings);
-router.patch('/settings', handleSaveSettings);
+// 8. Settings (Super Admin Only)
+router.get('/settings', requireSuperAdmin, handleGetSettings);
+router.put('/settings', requireSuperAdmin, handleSaveSettings);
+router.patch('/settings', requireSuperAdmin, handleSaveSettings);
 
-// 9. Staff & Roles
-router.get('/staff', handleGetStaff);
-router.post('/staff/invite', validate({
+// 9. Staff & Roles (Super Admin Only)
+router.get('/staff', requireSuperAdmin, handleGetStaff);
+router.post('/staff/invite', requireSuperAdmin, validate({
   body: z.object({
     email: z.string().email(),
     role: z.enum(['admin', 'super_admin']).default('admin'),
   }),
 }), handleInviteStaff);
-router.delete('/staff/:id', handleRevokeStaff);
-router.get('/audit-logs', handleGetAuditLogs);
+router.delete('/staff/:id', requireSuperAdmin, handleRevokeStaff);
+router.get('/audit-logs', requireSuperAdmin, handleGetAuditLogs);
 
 // 10. Notifications
 router.get('/notifications', handleGetNotifications);

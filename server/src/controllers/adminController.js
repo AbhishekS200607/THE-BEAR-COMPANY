@@ -13,6 +13,16 @@ import {
   saveReadNotificationIds,
 } from '../services/storePersistence.js';
 
+export async function handleGetAdminMe(req, res) {
+  return successResponse(res, {
+    id: req.user?.id,
+    email: req.user?.email,
+    fullName: req.adminProfile?.full_name || 'Staff Member',
+    role: req.adminProfile?.role || 'admin',
+    isSuperAdmin: req.adminProfile?.role === 'super_admin',
+  });
+}
+
 export async function handleGetDashboard(req, res, next) {
   try {
     const stats = await getDashboardStats();

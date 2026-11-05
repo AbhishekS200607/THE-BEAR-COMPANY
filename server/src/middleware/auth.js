@@ -127,3 +127,16 @@ export async function requireAdmin(req, res, next) {
   }
 }
 
+/**
+ * Required Super Admin Authorization middleware
+ * Enforces strictly role === 'super_admin'. Managers with 'admin' role are rejected with 403.
+ */
+export async function requireSuperAdmin(req, res, next) {
+  return requireAdmin(req, res, () => {
+    if (req.adminProfile?.role !== 'super_admin') {
+      return errorResponse(res, 'Super-admin privileges required for this action', 403);
+    }
+    next();
+  });
+}
+

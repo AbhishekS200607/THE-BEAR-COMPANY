@@ -38,6 +38,14 @@ async function apiFetch(path, opts = {}) {
   }
 }
 
+// ── 0. Current Admin Profile ───────────────────────────────────────────────
+
+export async function getAdminMe() {
+  const d = await apiFetch('/me');
+  if (d?.success) return d.data;
+  return null;
+}
+
 // ── 1. Dashboard ─────────────────────────────────────────────────────────────
 
 export async function getDashboard() {

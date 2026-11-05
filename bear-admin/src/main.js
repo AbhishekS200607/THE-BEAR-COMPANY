@@ -1,5 +1,6 @@
 import './styles.css';
 import { isAuthenticated, logout, renderAuthGate } from './auth.js';
+import { getAdminMe } from './services/adminService.js';
 import { renderDashboard } from './sections/dashboard.js';
 import { renderOrders } from './sections/orders.js';
 import { renderCancellations } from './sections/cancellations.js';
@@ -17,22 +18,23 @@ import { renderSettings } from './sections/settings.js';
 const app = document.getElementById('app');
 
 const SECTIONS = {
-  dashboard:     { label: 'Dashboard',            icon: 'grid_view',        render: renderDashboard },
-  products:      { label: 'Products',             icon: 'inventory_2',      render: renderProducts },
-  categories:    { label: 'Categories',           icon: 'category',         render: renderCategories },
-  inventory:     { label: 'Inventory Matrix',     icon: 'warehouse',        render: renderInventory },
-  orders:        { label: 'Orders Queue',         icon: 'shopping_bag',     render: renderOrders },
-  cancellations: { label: 'Cancellations',        icon: 'cancel_presentation', render: renderCancellations },
-  customers:     { label: 'Customer CRM',         icon: 'group',            render: renderCustomers },
-  shipping:      { label: 'Shipping & Logistics', icon: 'local_shipping',   render: renderShipping },
-  discounts:     { label: 'Discounts & Coupons',  icon: 'loyalty',          render: renderDiscounts },
-  promotions:    { label: 'Promotions & Banners', icon: 'campaign',         render: renderPromotions },
-  notifications: { label: 'Notifications',        icon: 'notifications',    render: renderNotifications },
-  staff:         { label: 'Staff & Audit Logs',   icon: 'badge',            render: renderStaff },
-  settings:      { label: 'Store Settings',       icon: 'settings',         render: renderSettings },
+  dashboard:     { label: 'Dashboard',            icon: 'grid_view',        render: renderDashboard, role: 'admin' },
+  products:      { label: 'Products',             icon: 'inventory_2',      render: renderProducts, role: 'admin' },
+  categories:    { label: 'Categories',           icon: 'category',         render: renderCategories, role: 'admin' },
+  inventory:     { label: 'Inventory Matrix',     icon: 'warehouse',        render: renderInventory, role: 'admin' },
+  orders:        { label: 'Orders Queue',         icon: 'shopping_bag',     render: renderOrders, role: 'admin' },
+  cancellations: { label: 'Cancellations',        icon: 'cancel_presentation', render: renderCancellations, role: 'admin' },
+  customers:     { label: 'Customer CRM',         icon: 'group',            render: renderCustomers, role: 'admin' },
+  shipping:      { label: 'Shipping & Logistics', icon: 'local_shipping',   render: renderShipping, role: 'admin' },
+  discounts:     { label: 'Discounts & Coupons',  icon: 'loyalty',          render: renderDiscounts, role: 'admin' },
+  promotions:    { label: 'Promotions & Banners', icon: 'campaign',         render: renderPromotions, role: 'admin' },
+  notifications: { label: 'Notifications',        icon: 'notifications',    render: renderNotifications, role: 'admin' },
+  staff:         { label: 'Staff & Audit Logs',   icon: 'badge',            render: renderStaff, role: 'super_admin' },
+  settings:      { label: 'Store Settings',       icon: 'settings',         render: renderSettings, role: 'super_admin' },
 };
 
 let currentSection = 'dashboard';
+let currentAdmin = null;
 let clockInterval = null;
 
 async function init() {
@@ -43,9 +45,23 @@ async function init() {
     return;
   }
 
-  // Determine initial section from URL hash or default to dashboard
+  // Fetch verified profile from backend
+  currentAdmin = await getAdminMe();
+  if (!currentAdmin) {
+    await logout();
+    renderAuthGate(app, () => init());
+    return;
+  }
+
+  // Role guard: if user is not super_admin and tries to access system screens, redirect to dashboard
   const hash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
-  currentSection = SECTIONS[hash] ? hash : 'dashboard';
+  const isSuperAdmin = currentAdmin.isSuperAdmin;
+  if (!isSuperAdmin && (hash === 'staff' || hash === 'settings')) {
+    currentSection = 'dashboard';
+    window.location.hash = '#dashboard';
+  } else {
+    currentSection = SECTIONS[hash] ? hash : 'dashboard';
+  }
 
   renderShell();
 }
@@ -104,25 +120,33 @@ function renderShell() {
               ${renderNavLink('notifications')}
             </div>
 
-            <!-- Group 4: SYSTEM -->
-            <div>
-              <p style="font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#52525b;padding:0 8px 6px 8px;">
-                SYSTEM
-              </p>
-              ${renderNavLink('staff')}
-              ${renderNavLink('settings')}
-            </div>
+            <!-- Group 4: SYSTEM (Super Admin Only) -->
+            ${currentAdmin.isSuperAdmin ? `
+              <div>
+                <p style="font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#52525b;padding:0 8px 6px 8px;">
+                  SYSTEM & SECURITY
+                </p>
+                ${renderNavLink('staff')}
+                ${renderNavLink('settings')}
+              </div>
+            ` : ''}
           </nav>
         </div>
 
         <!-- Sidebar Footer & Admin User Card -->
         <div style="padding:14px;border-top:1px solid #1f1f23;background:#0d0d0f;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-            <div>
-              <p style="font-size:12px;font-weight:600;color:#f4f4f5;font-family:'Space Grotesk',sans-serif;">Store Administrator</p>
-              <p style="font-size:10px;color:#71717a;">admin@bear.in</p>
+            <div style="overflow:hidden;padding-right:8px;">
+              <p style="font-size:12px;font-weight:600;color:#f4f4f5;font-family:'Space Grotesk',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                ${currentAdmin.fullName || 'Store Staff'}
+              </p>
+              <p style="font-size:10px;color:#71717a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                ${currentAdmin.email}
+              </p>
             </div>
-            <span class="badge badge-amber" style="font-size:9px;">SUPER ADMIN</span>
+            ${currentAdmin.isSuperAdmin 
+              ? '<span class="badge badge-amber" style="font-size:9px;white-space:nowrap;">SUPER ADMIN</span>' 
+              : '<span class="badge badge-blue" style="font-size:9px;white-space:nowrap;">OPS MANAGER</span>'}
           </div>
 
           <div style="display:flex;gap:6px;">
@@ -241,6 +265,10 @@ function startLiveClock() {
 window.addEventListener('hashchange', () => {
   const hash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
   if (SECTIONS[hash] && hash !== currentSection) {
+    if (!currentAdmin?.isSuperAdmin && (hash === 'staff' || hash === 'settings')) {
+      window.location.hash = '#dashboard';
+      return;
+    }
     currentSection = hash;
     updateActiveLink();
     loadActiveSection();
