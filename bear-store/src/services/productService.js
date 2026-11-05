@@ -2,7 +2,7 @@ import { products as fallbackProducts } from '../data/products.js';
 import { collections } from '../data/collections.js';
 import { remember } from './cacheService.js';
 
-const API_BASE = 'http://localhost:4000/api/v1';
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000') + '/api/v1';
 
 async function fetchAllLiveProducts() {
   try {

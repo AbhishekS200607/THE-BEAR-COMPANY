@@ -3,6 +3,8 @@ import { getCart, getCartTotal } from '../state/store.js';
 import { get } from '../utils/storage.js';
 import { addOrder } from './accountService.js';
 
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000') + '/api/v1';
+
 let orderInProgress = false;
 
 export function validateBag() {
@@ -24,7 +26,7 @@ async function resolveCartVariantId(item) {
   try {
     const slugCandidates = [item.slug, item.id].filter(Boolean);
     for (const slug of slugCandidates) {
-      const res = await fetch(`http://localhost:4000/api/v1/products/${encodeURIComponent(slug)}`);
+      const res = await fetch(`${API_BASE}/products/${encodeURIComponent(slug)}`);
       if (res.ok) {
         const json = await res.json();
         if (json.data && Array.isArray(json.data.sizes)) {
@@ -39,14 +41,14 @@ async function resolveCartVariantId(item) {
 
     // Fallback: search catalog by name
     if (item.name) {
-      const searchRes = await fetch(`http://localhost:4000/api/v1/products?search=${encodeURIComponent(item.name)}`);
+      const searchRes = await fetch(`${API_BASE}/products?search=${encodeURIComponent(item.name)}`);
       if (searchRes.ok) {
         const searchJson = await searchRes.json();
         const found = (searchJson.data?.products || searchJson.data || []).find(
           (p) => p.name?.toLowerCase() === item.name?.toLowerCase() || p.slug === item.slug
         );
         if (found?.slug) {
-          const detailRes = await fetch(`http://localhost:4000/api/v1/products/${encodeURIComponent(found.slug)}`);
+          const detailRes = await fetch(`${API_BASE}/products/${encodeURIComponent(found.slug)}`);
           if (detailRes.ok) {
             const detailJson = await detailRes.json();
             if (detailJson.data && Array.isArray(detailJson.data.sizes)) {
@@ -116,7 +118,7 @@ export async function submitOrder(bagData, detailsData, couponCode = null) {
       headers['Authorization'] = `Bearer ${session.access_token}`;
     }
 
-    const res = await fetch('http://localhost:4000/api/v1/orders', {
+    const res = await fetch(`${API_BASE}/orders`, {
       method: 'POST',
       headers,
       body: JSON.stringify(apiPayload),
