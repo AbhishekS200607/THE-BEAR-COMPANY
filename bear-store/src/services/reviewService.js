@@ -11,48 +11,7 @@ const isUUID = (id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f
 
 const API_URL = `${API_V1}/reviews`;
 
-const SEED_REVIEWS = [
-  {
-    id: 'rev-seed-1',
-    author: 'Vikram Mehta',
-    rating: 5,
-    date: '2 weeks ago',
-    verified: true,
-    fit: 'True to Size',
-    title: 'Unbelievable fabric density and drape',
-    comment: 'The heavyweight compact cotton holds its structure through intense lifting sessions and washes. Easily on par with international activewear brands that charge 3x the price.',
-  },
-  {
-    id: 'rev-seed-2',
-    author: 'Ananya Deshmukh',
-    rating: 5,
-    date: '3 weeks ago',
-    verified: true,
-    fit: 'True to Size',
-    title: 'Flattering compression without pinching',
-    comment: 'SOW activewear has completely replaced my imported tights. High-waisted contour stays firmly locked during HIIT and squats. Breathable and luxurious hand-feel.',
-  },
-  {
-    id: 'rev-seed-3',
-    author: 'Rohit Shenoy',
-    rating: 5,
-    date: 'Last month',
-    verified: true,
-    fit: 'Runs Slightly Large',
-    title: 'Best oversized gym tee in India',
-    comment: 'Drop shoulders and heavy ribbed collar never sag after repeated washes. Dispatched fast with BlueDart directly to Bengaluru in 48 hours.',
-  },
-  {
-    id: 'rev-seed-4',
-    author: 'Karanvir S.',
-    rating: 4,
-    date: '1 month ago',
-    verified: true,
-    fit: 'True to Size',
-    title: 'Premium stitching and clean aesthetics',
-    comment: 'Clean minimalist branding and reinforced twin-needle hems. Very satisfied with the fit and quality.',
-  },
-];
+const SEED_REVIEWS = [];
 
 const STORAGE_PREFIX = 'bear_product_reviews_';
 
@@ -62,10 +21,9 @@ const STORAGE_PREFIX = 'bear_product_reviews_';
 export function getProductReviews(productId) {
   try {
     const raw = localStorage.getItem(`${STORAGE_PREFIX}${productId}`);
-    const userReviews = raw ? JSON.parse(raw) : [];
-    return [...userReviews, ...SEED_REVIEWS];
+    return raw ? JSON.parse(raw) : [];
   } catch (e) {
-    return SEED_REVIEWS;
+    return [];
   }
 }
 
@@ -102,12 +60,12 @@ export function submitProductReview(productId, review) {
 export function calculateReviewMetrics(reviews = []) {
   if (!reviews || reviews.length === 0) {
     return {
-      averageRating: '5.0',
+      averageRating: '0.0',
       totalCount: 0,
-      fitSentiment: '100% of buyers say "True to Size"',
-      trueToSizePercent: 100,
+      fitSentiment: 'No athlete fit feedback yet',
+      trueToSizePercent: 0,
       breakdown: [
-        { stars: 5, count: 0, pct: 100 },
+        { stars: 5, count: 0, pct: 0 },
         { stars: 4, count: 0, pct: 0 },
         { stars: 3, count: 0, pct: 0 },
         { stars: 2, count: 0, pct: 0 },

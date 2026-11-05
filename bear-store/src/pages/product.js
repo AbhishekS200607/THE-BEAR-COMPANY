@@ -219,9 +219,9 @@ export async function render(container, slug) {
 
           <div class="flex items-center gap-3 pb-3 mb-4 border-b border-zinc-100 text-xs">
             <div class="flex items-center gap-1 text-zinc-900">
-              <span class="material-symbols-outlined text-[17px] text-amber-500" style="font-variation-settings: 'FILL' 1;">star</span>
-              <span class="font-headline font-bold" id="pdp-header-rating">${metrics.averageRating}</span>
-              <a href="#customer-reviews-section" id="pdp-header-reviews-link" class="text-zinc-500 hover:text-black underline ml-1 cursor-pointer">(${metrics.totalCount} reviews)</a>
+              <span class="material-symbols-outlined text-[17px] text-amber-500" style="${Number(metrics.averageRating) > 0 ? "font-variation-settings: 'FILL' 1;" : "color: #d4d4d8;"}">star</span>
+              <span class="font-headline font-bold" id="pdp-header-rating">${Number(metrics.averageRating) > 0 ? metrics.averageRating : 'New'}</span>
+              <a href="#customer-reviews-section" id="pdp-header-reviews-link" class="text-zinc-500 hover:text-black underline ml-1 cursor-pointer">(${metrics.totalCount > 0 ? `${metrics.totalCount} reviews` : 'Write a Review'})</a>
             </div>
             <span class="text-zinc-300">•</span>
             <span class="text-emerald-700 font-bold uppercase text-[11px] font-headline">Free Pan-India Air Express</span>
@@ -380,11 +380,11 @@ export async function render(container, slug) {
         <div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-start mb-10 bg-zinc-50 p-6 rounded-2xl border border-zinc-200">
           <!-- Left: Score & Fit Gauge -->
           <div class="md:col-span-4 text-center md:text-left md:border-r md:border-zinc-200 md:pr-6">
-            <div class="font-headline text-5xl font-black text-zinc-950" id="pdp-avg-rating">${metrics.averageRating}</div>
+            <div class="font-headline text-5xl font-black text-zinc-950" id="pdp-avg-rating">${Number(metrics.averageRating) > 0 ? metrics.averageRating : '—'}</div>
             <div class="flex items-center justify-center md:justify-start gap-0.5 text-amber-500 my-1">
-              ${[1, 2, 3, 4, 5].map(() => `<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">star</span>`).join('')}
+              ${[1, 2, 3, 4, 5].map((s) => `<span class="material-symbols-outlined text-[20px]" style="${Number(metrics.averageRating) >= s ? "font-variation-settings: 'FILL' 1;" : "color: #e4e4e7;"}">star</span>`).join('')}
             </div>
-            <p class="text-xs text-zinc-500 font-medium" id="pdp-reviews-count">Based on ${metrics.totalCount} verified athlete purchases</p>
+            <p class="text-xs text-zinc-500 font-medium" id="pdp-reviews-count">${metrics.totalCount > 0 ? `Based on ${metrics.totalCount} verified athlete purchases` : 'No reviews submitted yet'}</p>
             <div class="mt-4 pt-3 border-t border-zinc-200/80">
               <span class="text-[11px] font-bold uppercase text-zinc-700 font-headline">Fit Sentiment:</span>
               <p class="text-xs text-emerald-800 font-semibold mt-0.5" id="pdp-fit-sentiment">${metrics.fitSentiment}</p>
@@ -409,7 +409,15 @@ export async function render(container, slug) {
 
         <!-- Review Cards Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="reviews-list-container">
-          ${reviews.map(renderReviewCardHTML).join('')}
+          ${reviews.length > 0
+            ? reviews.map(renderReviewCardHTML).join('')
+            : `
+            <div id="no-reviews-placeholder" class="col-span-1 md:col-span-2 py-10 px-6 rounded-2xl border border-dashed border-zinc-200 text-center bg-zinc-50/50">
+              <span class="material-symbols-outlined text-[32px] text-zinc-400 mb-2">rate_review</span>
+              <p class="font-headline text-sm font-bold uppercase text-zinc-900">No athlete reviews yet</p>
+              <p class="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">Be the first athlete to test and review this garment in training.</p>
+            </div>
+          `}
         </div>
       </section>
 
@@ -792,6 +800,8 @@ export async function render(container, slug) {
         recordMyReviewId(result.review.id);
         const reviewsList = page.querySelector('#reviews-list-container');
         if (reviewsList) {
+          const placeholder = reviewsList.querySelector('#no-reviews-placeholder');
+          if (placeholder) placeholder.remove();
           const temp = document.createElement('div');
           temp.innerHTML = renderReviewCardHTML(result.review);
           const newCard = temp.firstElementChild;
@@ -810,15 +820,17 @@ export async function render(container, slug) {
 
   function updateMetricsDOM(m) {
     if (!m) return;
+    const isZero = !m.totalCount || Number(m.averageRating) === 0;
+
     const hdrRating = page.querySelector('#pdp-header-rating');
-    if (hdrRating) hdrRating.textContent = m.averageRating;
+    if (hdrRating) hdrRating.textContent = isZero ? 'New' : m.averageRating;
     const hdrLink = page.querySelector('#pdp-header-reviews-link');
-    if (hdrLink) hdrLink.textContent = `(${m.totalCount} reviews)`;
+    if (hdrLink) hdrLink.textContent = isZero ? '(Write a Review)' : `(${m.totalCount} reviews)`;
 
     const avgRatingEl = page.querySelector('#pdp-avg-rating');
-    if (avgRatingEl) avgRatingEl.textContent = m.averageRating;
+    if (avgRatingEl) avgRatingEl.textContent = isZero ? '—' : m.averageRating;
     const countEl = page.querySelector('#pdp-reviews-count');
-    if (countEl) countEl.textContent = `Based on ${m.totalCount} verified athlete purchases`;
+    if (countEl) countEl.textContent = isZero ? 'No reviews submitted yet' : `Based on ${m.totalCount} verified athlete purchases`;
     const fitEl = page.querySelector('#pdp-fit-sentiment');
     if (fitEl) fitEl.textContent = m.fitSentiment;
 
@@ -967,7 +979,21 @@ export async function render(container, slug) {
         if (card) {
           card.style.opacity = '0';
           card.style.transform = 'scale(0.95)';
-          setTimeout(() => card.remove(), 250);
+          setTimeout(() => {
+            card.remove();
+            if (reviews.length === 0) {
+              const reviewsList = page.querySelector('#reviews-list-container');
+              if (reviewsList && !reviewsList.querySelector('#no-reviews-placeholder')) {
+                reviewsList.innerHTML = `
+                  <div id="no-reviews-placeholder" class="col-span-1 md:col-span-2 py-10 px-6 rounded-2xl border border-dashed border-zinc-200 text-center bg-zinc-50/50">
+                    <span class="material-symbols-outlined text-[32px] text-zinc-400 mb-2">rate_review</span>
+                    <p class="font-headline text-sm font-bold uppercase text-zinc-900">No athlete reviews yet</p>
+                    <p class="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">Be the first athlete to test and review this garment in training.</p>
+                  </div>
+                `;
+              }
+            }
+          }, 250);
         }
         reviews = reviews.filter((item) => item.id !== r.id);
         if (res.metrics) {

@@ -29,8 +29,16 @@ export function addItem(productOrItem, colour, size, quantity = 1) {
     const chosenSize = size || (productOrItem?.sizes && productOrItem.sizes[0]?.size) || 'M';
     const chosenColour = colour || (productOrItem?.colours && productOrItem.colours[0]?.name) || 'Standard';
 
-    // Resolve real Supabase variantId
+    // Resolve real Supabase variantId (checking variants first for exact colour+size match)
     let resolvedVariantId = productOrItem?.variantId || null;
+    if (!resolvedVariantId && Array.isArray(productOrItem?.variants)) {
+      const match = productOrItem.variants.find(
+        (v) => v.size === chosenSize && (!v.colour || v.colour.toLowerCase() === chosenColour.toLowerCase())
+      );
+      if (match?.variantId) {
+        resolvedVariantId = match.variantId;
+      }
+    }
     if (!resolvedVariantId && Array.isArray(productOrItem?.sizes)) {
       const match =
         productOrItem.sizes.find((s) => s.size === chosenSize && (!s.colour || s.colour === chosenColour)) ||
