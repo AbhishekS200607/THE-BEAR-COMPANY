@@ -52,3 +52,4 @@ CREATE POLICY "Admin full review management"
     ));
 
 COMMIT;
+

@@ -1,12 +1,13 @@
 import { getAccessToken } from '../auth.js';
+import { API_ADMIN } from '../config/api.js';
 
 /**
  * BEAR Admin — Unified Service Layer
- * Directly interfaces with Express REST API on Port 4000.
+ * Directly interfaces with Express REST API.
  * Eliminates production mock-data fallbacks.
  */
 
-const BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000') + '/api/v1/admin';
+const BASE = API_ADMIN;
 const TIMEOUT = 8000;
 
 async function apiFetch(path, opts = {}) {

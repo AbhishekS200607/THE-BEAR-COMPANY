@@ -16,18 +16,19 @@ export function createApp() {
     })
   );
 
-  // Flexible Local & Configured Production CORS
+  // Flexible Local, Vercel & Configured Production CORS
   const allowedOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim());
   const isLocalDevOrigin = (o) => /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o);
+  const isVercelOrigin = (o) => /^https?:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(o);
 
   app.use(
     cors({
       origin: (origin, callback) => {
-        // Allow requests with no origin (e.g. mobile apps, curl, server-to-server), matched origins, or any localhost dev port
-        if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*') || isLocalDevOrigin(origin)) {
+        // Allow requests with no origin, matched origins, localhost dev ports, or any Vercel domain
+        if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*') || isLocalDevOrigin(origin) || isVercelOrigin(origin)) {
           return callback(null, true);
         }
-        return callback(new Error('Blocked by CORS policy'));
+        return callback(null, false);
       },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

@@ -6,6 +6,7 @@
 import { getDemoOrders } from '../services/accountService.js';
 import { formatCurrency } from '../utils/formatCurrency.js';
 import { showToast } from '../components/toast.js';
+import { API_V1 } from '../config/api.js';
 
 export function render(container) {
   const page = document.createElement('div');
@@ -158,7 +159,7 @@ export function render(container) {
     // Query live backend API first
     let liveOrder = null;
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/orders/track?orderNumber=${encodeURIComponent(orderIdInput)}&phone=${encodeURIComponent(phoneInput)}`);
+      const res = await fetch(`${API_V1}/orders/track?orderNumber=${encodeURIComponent(orderIdInput)}&phone=${encodeURIComponent(phoneInput)}`);
       if (res.ok) {
         const json = await res.json();
         if (json.success && json.data) {

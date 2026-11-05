@@ -1,4 +1,5 @@
 import { getMode, setMode, getCartCount, subscribe, setState } from '../state/store.js';
+import { API_V1 } from '../config/api.js';
 
 let promoMessages = [
   'COMPLIMENTARY EXPRESS AIR SHIPPING ACROSS INDIA (₹0)',
@@ -12,7 +13,7 @@ let promoFetched = false;
 
 async function loadPromotions(onUpdate) {
   try {
-    const res = await fetch('http://localhost:4000/api/v1/promotions');
+    const res = await fetch(`${API_V1}/promotions`);
     if (res.ok) {
       const json = await res.json();
       const bar = json.data?.announcement_bar;

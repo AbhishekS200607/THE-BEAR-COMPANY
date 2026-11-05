@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { API_ADMIN } from './config/api.js';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -114,7 +115,7 @@ export function renderAuthGate(container, onSuccess) {
       cachedSession = data.session;
 
       // Verify admin role directly against backend
-      const checkRes = await fetch('http://localhost:4000/api/v1/admin/dashboard', {
+      const checkRes = await fetch(`${API_ADMIN}/dashboard`, {
         headers: {
           'Authorization': `Bearer ${data.session.access_token}`,
         },

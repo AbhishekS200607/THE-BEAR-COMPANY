@@ -1,3 +1,5 @@
+import { API_V1 } from '../config/api.js';
+
 let currentIndex = 0;
 let intervalId = null;
 let dismissed = false;
@@ -14,7 +16,7 @@ let activeMessages = [...DEFAULT_MESSAGES];
 // Fetch dynamic promotions from server
 async function loadPromotions() {
   try {
-    const res = await fetch('http://localhost:4000/api/v1/promotions');
+    const res = await fetch(`${API_V1}/promotions`);
     if (res.ok) {
       const json = await res.json();
       const msgs = json.data?.announcement_bar?.messages;

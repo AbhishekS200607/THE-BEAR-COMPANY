@@ -2,8 +2,9 @@ import { validateCheckoutDetails } from '../utils/validation.js';
 import { getCart, getCartTotal } from '../state/store.js';
 import { get } from '../utils/storage.js';
 import { addOrder } from './accountService.js';
+import { API_V1 } from '../config/api.js';
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000') + '/api/v1';
+const API_BASE = API_V1;
 
 let orderInProgress = false;
 

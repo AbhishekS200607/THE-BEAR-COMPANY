@@ -8,6 +8,7 @@ import { showToast } from '../components/toast.js';
 import { get, set, TTL } from '../utils/storage.js';
 import { setSessionCookie } from '../services/cookieService.js';
 import { shakeInput } from '../utils/animations.js';
+import { API_V1 } from '../config/api.js';
 
 const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || 'https://flxccuowqflxtwtynvml.supabase.co';
 const SUPABASE_ANON_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || 'sb_publishable_a97yBCvUiIhQOGxpnXG2MA_Z9OVx83s';
@@ -29,7 +30,7 @@ async function supabaseSignUp(email, password, fullName, phoneNumber = null) {
     const payload = { email, password, fullName };
     if (phoneNumber) payload.phoneNumber = phoneNumber;
 
-    const res = await fetch('http://localhost:4000/api/v1/auth/signup', {
+    const res = await fetch(`${API_V1}/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

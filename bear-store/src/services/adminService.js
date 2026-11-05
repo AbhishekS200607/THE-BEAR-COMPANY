@@ -3,7 +3,9 @@
  * Wraps /api/v1/admin/* endpoints with mock fallback when backend is offline.
  */
 
-const BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000') + '/api/v1/admin';
+import { API_V1 } from '../config/api.js';
+
+const BASE = `${API_V1}/admin`;
 const TIMEOUT_MS = 3000;
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────

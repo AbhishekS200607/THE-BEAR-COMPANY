@@ -5,7 +5,9 @@
  * with real-time recalculation of star distribution, fit sentiment, and weighted ratings.
  */
 
-const API_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000') + '/api/v1/reviews';
+import { API_V1 } from '../config/api.js';
+
+const API_URL = `${API_V1}/reviews`;
 
 const SEED_REVIEWS = [
   {

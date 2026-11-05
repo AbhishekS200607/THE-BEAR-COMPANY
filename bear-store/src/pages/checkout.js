@@ -5,6 +5,7 @@ import { confirmOrder, cancelOrder, getDemoAddresses, addAddress } from '../serv
 import { showToast } from '../components/toast.js';
 import { createSlideToConfirm } from '../components/slideToConfirm.js';
 import { triggerOrderConfetti } from '../utils/animations.js';
+import { API_V1 } from '../config/api.js';
 
 const INDIAN_STATES = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat', 'Haryana',
@@ -339,7 +340,7 @@ export async function render(container) {
     }
 
     try {
-      const res = await fetch('http://localhost:4000/api/v1/orders/validate-coupon', {
+      const res = await fetch(`${API_V1}/orders/validate-coupon`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: cleanCode, cartTotal: subtotal }),
