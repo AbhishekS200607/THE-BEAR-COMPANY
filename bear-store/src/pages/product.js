@@ -628,6 +628,8 @@ export async function render(container, slug) {
               <option value="5">★★★★★ (5/5) — Exceptional Quality</option>
               <option value="4">★★★★☆ (4/5) — Very Good</option>
               <option value="3">★★★☆☆ (3/5) — Average</option>
+              <option value="2">★★☆☆☆ (2/5) — Fair</option>
+              <option value="1">★☆☆☆☆ (1/5) — Poor</option>
             </select>
           </div>
           <div>
@@ -636,6 +638,8 @@ export async function render(container, slug) {
               <option value="True to Size">True to Size</option>
               <option value="Runs Slightly Large">Runs Slightly Large</option>
               <option value="Runs Slightly Small">Runs Slightly Small</option>
+              <option value="Perfect Athletic Cut">Perfect Athletic Cut</option>
+              <option value="Relaxed Oversized">Relaxed Oversized</option>
             </select>
           </div>
           <div>
@@ -660,7 +664,7 @@ export async function render(container, slug) {
       const author = document.getElementById('rev-name')?.value.trim();
       const title = document.getElementById('rev-title')?.value.trim();
       const comment = document.getElementById('rev-comment')?.value.trim();
-      const rating = Number(document.getElementById('rev-rating')?.value || 5);
+      const rating = Math.round(Number(document.getElementById('rev-rating')?.value || 5));
       const fit = document.getElementById('rev-fit')?.value || 'True to Size';
 
       // 1. Persist review into server database
