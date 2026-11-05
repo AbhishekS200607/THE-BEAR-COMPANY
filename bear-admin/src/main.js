@@ -150,7 +150,7 @@ function renderShell() {
           </div>
 
           <div style="display:flex;gap:6px;">
-            <a href="http://localhost:5173" target="_blank" rel="noopener" class="admin-btn" style="flex:1;justify-content:center;padding:5px 8px;font-size:10px;text-decoration:none;">
+            <a href="/" target="_blank" rel="noopener" class="admin-btn" style="flex:1;justify-content:center;padding:5px 8px;font-size:10px;text-decoration:none;">
               <span class="material-symbols-outlined" style="font-size:14px;">open_in_new</span>
               <span>Storefront</span>
             </a>
