@@ -1,12 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { API_ADMIN } from './config/api.js';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.error('[BEAR Admin] Missing Supabase environment configuration (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY).');
-}
+const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || 'https://flxccuowqflxtwtynvml.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || 'sb_publishable_a97yBCvUiIhQOGxpnXG2MA_Z9OVx83s';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
