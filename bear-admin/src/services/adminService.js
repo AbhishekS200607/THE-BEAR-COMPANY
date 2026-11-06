@@ -8,9 +8,9 @@ import { API_ADMIN } from '../config/api.js';
  */
 
 const BASE = API_ADMIN;
-const TIMEOUT = 8000;
+const TIMEOUT = 25000; // 25s timeout to comfortably absorb Vercel cold starts and Supabase pooling
 
-async function apiFetch(path, opts = {}) {
+async function apiFetch(path, opts = {}, retries = 1) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), TIMEOUT);
   try {
@@ -35,6 +35,11 @@ async function apiFetch(path, opts = {}) {
     return json;
   } catch (err) {
     clearTimeout(t);
+    if (retries > 0) {
+      // Small pause before retry to let cold start complete
+      await new Promise((r) => setTimeout(r, 600));
+      return apiFetch(path, opts, retries - 1);
+    }
     return { success: false, error: { message: err.name === 'AbortError' ? 'Request timed out' : 'Failed to connect to backend' } };
   }
 }
