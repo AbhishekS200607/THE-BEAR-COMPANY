@@ -16,11 +16,11 @@ const createReviewSchema = {
   body: z.object({
     productId: z.string().trim().min(1, 'Product ID is required'),
     productName: z.string().trim().optional(),
-    author: z.string().trim().min(2, 'Name must be at least 2 characters'),
-    rating: z.number().int().min(1).max(5),
-    fit: z.enum(['True to Size', 'Runs Slightly Large', 'Runs Slightly Small', 'Perfect Athletic Cut', 'Relaxed Oversized']).optional(),
-    title: z.string().trim().min(2, 'Headline must be at least 2 characters'),
-    comment: z.string().trim().min(5, 'Review feedback must be at least 5 characters'),
+    author: z.string().trim().min(1).default('Athlete'),
+    rating: z.coerce.number().int().min(1).max(5).default(5),
+    fit: z.string().trim().optional().default('True to Size'),
+    title: z.string().trim().optional().default('Verified Athlete Review'),
+    comment: z.string().trim().min(1).default('Verified athletic fit.'),
   }),
 };
 
@@ -29,11 +29,11 @@ const updateReviewSchema = {
     id: z.string().trim().min(1, 'Review ID is required'),
   }),
   body: z.object({
-    author: z.string().trim().min(2).optional(),
-    rating: z.number().int().min(1).max(5).optional(),
-    fit: z.enum(['True to Size', 'Runs Slightly Large', 'Runs Slightly Small', 'Perfect Athletic Cut', 'Relaxed Oversized']).optional(),
-    title: z.string().trim().min(2, 'Headline must be at least 2 characters').optional(),
-    comment: z.string().trim().min(5, 'Review feedback must be at least 5 characters').optional(),
+    author: z.string().trim().optional(),
+    rating: z.coerce.number().int().min(1).max(5).optional(),
+    fit: z.string().trim().optional(),
+    title: z.string().trim().optional(),
+    comment: z.string().trim().optional(),
   }),
 };
 
