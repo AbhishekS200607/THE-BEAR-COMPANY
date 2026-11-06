@@ -41,19 +41,11 @@ export function createApp() {
   app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
   // Root health & status endpoints for deployment verification
-  app.get('/', (req, res) => {
+  app.get(['/', '/api', '/health', '/api/health'], (req, res) => {
     res.json({
       status: 'online',
       service: 'BEAR Performance API',
       version: '1.0.0',
-      timestamp: new Date().toISOString(),
-    });
-  });
-
-  app.get('/health', (req, res) => {
-    res.json({
-      status: 'healthy',
-      service: 'BEAR Performance API',
       timestamp: new Date().toISOString(),
     });
   });
