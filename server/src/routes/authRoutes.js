@@ -122,7 +122,9 @@ router.post('/signup/verify-otp', sensitiveRateLimiter, validate(signupVerifyOtp
     }
 
     if (new Date(pending.expires_at).getTime() < Date.now()) {
-      await supabaseAdmin.from('pending_signups').delete().eq('email', cleanEmail).catch(() => {});
+      try {
+        await supabaseAdmin.from('pending_signups').delete().eq('email', cleanEmail);
+      } catch {}
       return errorResponse(res, 'Signup request has expired. Please sign up again.', 400);
     }
 
@@ -157,7 +159,9 @@ router.post('/signup/verify-otp', sensitiveRateLimiter, validate(signupVerifyOtp
 
     if (createError) {
       if (createError.message?.toLowerCase().includes('already registered') || createError.message?.toLowerCase().includes('already exists')) {
-        await supabaseAdmin.from('pending_signups').delete().eq('email', cleanEmail).catch(() => {});
+        try {
+          await supabaseAdmin.from('pending_signups').delete().eq('email', cleanEmail);
+        } catch {}
         return errorResponse(res, 'An account with this email already exists. Try signing in instead.', 409);
       }
       return errorResponse(res, createError.message || 'Failed to create account', 400);
@@ -191,7 +195,9 @@ router.post('/signup/verify-otp', sensitiveRateLimiter, validate(signupVerifyOtp
     }
 
     // 7. Delete consumed pending signup record
-    await supabaseAdmin.from('pending_signups').delete().eq('email', cleanEmail).catch(() => {});
+    try {
+      await supabaseAdmin.from('pending_signups').delete().eq('email', cleanEmail);
+    } catch {}
 
     // 8. Immediately sign in to generate session tokens
     const { data: authData, error: signInError } = await supabaseAnon.auth.signInWithPassword({

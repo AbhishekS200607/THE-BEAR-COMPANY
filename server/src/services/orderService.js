@@ -94,11 +94,12 @@ export async function createOrder({
 
   // 4b. Ensure customer_email is saved in order record if RPC had legacy signature
   if (customerEmail && !order.customer_email) {
-    await supabaseAdmin
-      .from('orders')
-      .update({ customer_email: customerEmail.toLowerCase().trim() })
-      .eq('id', orderId)
-      .catch(() => {});
+    try {
+      await supabaseAdmin
+        .from('orders')
+        .update({ customer_email: customerEmail.toLowerCase().trim() })
+        .eq('id', orderId);
+    } catch {}
     order.customer_email = customerEmail.toLowerCase().trim();
   }
 
