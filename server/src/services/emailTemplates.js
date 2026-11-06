@@ -512,8 +512,7 @@ BEAR Performance Wear Pvt. Ltd.`;
 export function renderShipmentDispatchedEmail({
   customerName,
   orderNumber,
-  carrierName,
-  courierName,
+  carrierName = 'BlueDart Express',
   trackingNumber,
   trackingUrl,
   storeTrackingUrl,
@@ -522,7 +521,7 @@ export function renderShipmentDispatchedEmail({
 }) {
   const safeName = escapeHtml(customerName || 'Athlete');
   const safeOrderNumber = escapeHtml(orderNumber);
-  const safeCarrier = escapeHtml(carrierName || courierName || 'BlueDart Express');
+  const safeCarrier = escapeHtml(carrierName);
   const safeAwb = escapeHtml(trackingNumber || 'Available via BlueDart Portal');
   const safeSupport = escapeHtml(supportEmail);
   const safeDate = new Date(dispatchedAt).toLocaleDateString('en-IN', {
@@ -667,7 +666,7 @@ export function renderAdminTestEmail({ adminEmail, timestamp = new Date().toISOS
         <tr>
           <td align="center" style="padding-bottom: 8px;">
             <h1 style="margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.02em; color: #f4f4f5; text-transform: uppercase;">
-              BEAR SMTP Diagnostic Test
+              SMTP Diagnostic Test Successful
             </h1>
           </td>
         </tr>
@@ -720,3 +719,4 @@ export default {
   renderAdminTestEmail,
   escapeHtml,
 };
+

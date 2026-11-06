@@ -66,3 +66,4 @@ CREATE POLICY "No public access to email otps"
     USING (FALSE);
 
 COMMIT;
+
