@@ -222,8 +222,6 @@ export function mount(container) {
             <a href="#returns" class="${textMutedClass} ${hoverTextClass} transition-colors no-underline focus-visible:outline-2">Return &amp; Refund Policy</a>
             <span class="opacity-40">·</span>
             <a href="#returns" class="${textMutedClass} ${hoverTextClass} transition-colors no-underline focus-visible:outline-2">Cancellation Policy</a>
-            <span class="opacity-40">·</span>
-            <a href="#admin" class="${textMutedClass} hover:text-zinc-400 transition-colors no-underline focus-visible:outline-2 opacity-40 hover:opacity-70 text-[10px]">Admin</a>
           </div>
         </div>
 

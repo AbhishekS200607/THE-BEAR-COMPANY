@@ -245,10 +245,6 @@ async function router(options = {}) {
       setPageMeta({ title: 'BEAR. — Order Confirmed' });
       const { render } = await import('./pages/orderConfirmation.js');
       render(pageContainer);
-    } else if (path === 'admin') {
-      setPageMeta({ title: 'BEAR. — Admin Portal' });
-      const { render } = await import('./pages/admin.js');
-      render(pageContainer);
     } else {
       // 404 Not Found fallback
       setPageMeta({ title: 'BEAR. — Page Not Found' });
