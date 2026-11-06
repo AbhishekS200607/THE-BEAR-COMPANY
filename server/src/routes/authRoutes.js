@@ -172,15 +172,18 @@ router.post('/signup/verify-otp', sensitiveRateLimiter, validate(signupVerifyOtp
       return errorResponse(res, 'User creation failed', 500);
     }
 
-    // 5. Upsert customer profile in public.profiles
-    await supabaseAdmin.from('profiles').upsert({
+    // 5. Upsert customer profile in public.profiles (public.profiles does not have an email column)
+    const { error: profileUpsertErr } = await supabaseAdmin.from('profiles').upsert({
       id: userId,
-      email: cleanEmail,
       full_name: pending.full_name,
       phone_number: pending.phone_number || null,
       role: 'customer',
       updated_at: new Date().toISOString(),
     });
+
+    if (profileUpsertErr) {
+      console.warn('[AuthRoutes] Warning on profile upsert:', profileUpsertErr.message);
+    }
 
     // 6. Link eligible guest orders matching this mobile number
     if (pending.phone_number) {

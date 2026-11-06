@@ -3,14 +3,43 @@ import { successResponse, errorResponse } from '../utils/response.js';
 
 export async function handleGetProfile(req, res, next) {
   try {
-    const { data: profile, error } = await supabaseAdmin
+    let { data: profile, error } = await supabaseAdmin
       .from('profiles')
       .select('id, full_name, phone_number, role, created_at')
       .eq('id', req.user.id)
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
-    return successResponse(res, profile);
+
+    if (!profile) {
+      const fullName = req.user.user_metadata?.full_name || 'Athlete';
+      const cleanPhone = (req.user.phone || '').replace(/[^0-9]/g, '').slice(-10) || null;
+
+      const { data: healedProfile } = await supabaseAdmin
+        .from('profiles')
+        .upsert({
+          id: req.user.id,
+          full_name: fullName,
+          phone_number: cleanPhone,
+          role: 'customer',
+          updated_at: new Date().toISOString(),
+        })
+        .select('id, full_name, phone_number, role, created_at')
+        .maybeSingle();
+
+      profile = healedProfile || {
+        id: req.user.id,
+        full_name: fullName,
+        phone_number: cleanPhone,
+        role: 'customer',
+        created_at: new Date().toISOString(),
+      };
+    }
+
+    return successResponse(res, {
+      ...profile,
+      email: req.user.email || null,
+    });
   } catch (err) {
     return next(err);
   }

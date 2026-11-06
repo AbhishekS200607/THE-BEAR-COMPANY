@@ -32,6 +32,29 @@ export async function createOrder({
     pincode: deliveryPincode,
   });
 
+  // 2b. Ensure profile exists in public.profiles to satisfy foreign key constraint if profileId is passed
+  if (profileId) {
+    const { data: existingProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .eq('id', profileId)
+      .maybeSingle();
+
+    if (!existingProfile) {
+      try {
+        await supabaseAdmin.from('profiles').upsert({
+          id: profileId,
+          full_name: customerName || 'Athlete',
+          phone_number: customerPhone ? customerPhone.replace(/[^0-9]/g, '').slice(-10) : null,
+          role: 'customer',
+          updated_at: new Date().toISOString(),
+        });
+      } catch (profErr) {
+        console.warn('[OrderService] Could not pre-create profile record:', profErr.message);
+      }
+    }
+  }
+
   // 3. Execute atomic PostgreSQL RPC on backend with service-role
   const resolvedIdempotencyKey = idempotencyKey || `idemp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   const { data: orderId, error } = await supabaseAdmin.rpc('create_order_with_reservation', {
