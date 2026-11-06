@@ -48,6 +48,7 @@ export async function createOrder({
     p_delivery_pincode: deliveryPincode,
     p_items: items,
     p_expiry_minutes: env.RESERVATION_EXPIRY_MINUTES || 120,
+    p_customer_email: customerEmail || null,
   });
 
   if (error) {
@@ -65,6 +66,7 @@ export async function createOrder({
       order_number,
       status,
       customer_name,
+      customer_email,
       customer_phone,
       delivery_line1,
       delivery_line2,
@@ -90,7 +92,17 @@ export async function createOrder({
     throw new Error('Failed to retrieve created order record');
   }
 
-  // 4b. Apply validated coupon discount if provided
+  // 4b. Ensure customer_email is saved in order record if RPC had legacy signature
+  if (customerEmail && !order.customer_email) {
+    await supabaseAdmin
+      .from('orders')
+      .update({ customer_email: customerEmail.toLowerCase().trim() })
+      .eq('id', orderId)
+      .catch(() => {});
+    order.customer_email = customerEmail.toLowerCase().trim();
+  }
+
+  // 4c. Apply validated coupon discount if provided
   let discountPaise = 0;
   if (couponCode) {
     const val = validateCouponCode(couponCode, order.subtotal_paise / 100);
@@ -116,70 +128,13 @@ export async function createOrder({
     items: order.order_items,
   });
 
-  // 6. Asynchronously dispatch order confirmation email (non-blocking)
-  (async () => {
-    try {
-      let recipientEmail = customerEmail;
-      if (!recipientEmail && profileId) {
-        try {
-          const { data: userRecord } = await supabaseAdmin.auth.admin.getUserById(profileId);
-          if (userRecord?.user?.email) {
-            recipientEmail = userRecord.user.email;
-          }
-        } catch {}
-      }
-
-      if (recipientEmail) {
-        const storefrontBase = env.STOREFRONT_URL || 'https://the-bear-company.vercel.app';
-        const cleanBase = storefrontBase.endsWith('/') ? storefrontBase.slice(0, -1) : storefrontBase;
-        const trackingLink = `${cleanBase}/#/track-order?orderNumber=${encodeURIComponent(order.order_number)}`;
-
-        const { html, text } = renderOrderConfirmationEmail({
-          customerName: order.customer_name,
-          orderNumber: order.order_number,
-          items: (order.order_items || []).map((i) => ({
-            productName: i.product_name,
-            colour: i.colour_name,
-            size: i.size,
-            quantity: i.quantity,
-            totalPrice: i.total_price_paise / 100,
-          })),
-          deliveryAddress: {
-            line1: order.delivery_line1,
-            line2: order.delivery_line2,
-            city: order.delivery_city,
-            state: order.delivery_state,
-            pincode: order.delivery_pincode,
-          },
-          subtotal: order.subtotal_paise / 100,
-          discount: (order.discount_paise || 0) / 100,
-          total: order.total_paise / 100,
-          status: order.status,
-          trackingUrl: trackingLink,
-          supportEmail: env.EMAIL_REPLY_TO || env.EMAIL_FROM_ADDRESS || 'support@thebearcompany.com',
-        });
-
-        await sendEmail({
-          to: recipientEmail,
-          subject: `Order Confirmed - ${order.order_number} | BEAR Performance Wear`,
-          html,
-          text,
-          eventType: 'order_confirmation',
-          idempotencyKey: `order:${order.id}:confirmation`,
-          payload: { orderId: order.id, orderNumber: order.order_number },
-        });
-      }
-    } catch (emailErr) {
-      console.warn('[OrderService] Async order confirmation email error:', emailErr.message);
-    }
-  })();
-
   return {
     order: {
       id: order.id,
       orderNumber: order.order_number,
       status: order.status,
       customerName: order.customer_name,
+      customerEmail: order.customer_email || customerEmail || null,
       customerPhone: order.customer_phone,
       deliveryAddress: {
         line1: order.delivery_line1,
@@ -259,6 +214,7 @@ export async function trackOrder({ orderNumber, phone }) {
 
 /**
  * Confirm order inventory upon admin WhatsApp verification
+ * and dispatch "Order Confirmed" transactional email upon real status transition.
  */
 export async function confirmOrder(orderId) {
   const { error } = await supabaseAdmin.rpc('confirm_order_inventory', {
@@ -272,7 +228,111 @@ export async function confirmOrder(orderId) {
     throw err;
   }
 
+  // Asynchronously dispatch "Order Confirmed" email on actual confirmed transition
+  sendOrderConfirmedEmail(orderId).catch((err) => {
+    console.warn('[OrderService] Async order confirmation email error:', err.message);
+  });
+
   return { confirmed: true, orderId };
+}
+
+/**
+ * Dispatches Order Confirmation email on actual status transition to 'confirmed'.
+ * Uses idempotency key order:{orderId}:confirmation to guarantee single delivery.
+ */
+export async function sendOrderConfirmedEmail(orderId) {
+  try {
+    const { data: order, error } = await supabaseAdmin
+      .from('orders')
+      .select(`
+        id,
+        order_number,
+        status,
+        customer_name,
+        customer_email,
+        customer_phone,
+        profile_id,
+        delivery_line1,
+        delivery_line2,
+        delivery_city,
+        delivery_state,
+        delivery_pincode,
+        subtotal_paise,
+        discount_paise,
+        total_paise,
+        order_items (
+          product_name,
+          colour_name,
+          size,
+          quantity,
+          unit_price_paise,
+          total_price_paise
+        )
+      `)
+      .eq('id', orderId)
+      .single();
+
+    if (error || !order) {
+      console.warn('[OrderService] Could not find order for confirmation email:', orderId);
+      return;
+    }
+
+    let recipientEmail = order.customer_email;
+    if (!recipientEmail && order.profile_id) {
+      try {
+        const { data: userRecord } = await supabaseAdmin.auth.admin.getUserById(order.profile_id);
+        if (userRecord?.user?.email) {
+          recipientEmail = userRecord.user.email;
+        }
+      } catch {}
+    }
+
+    if (!recipientEmail) {
+      console.log(`[OrderService] No customer email available for confirmation: ${order.order_number}`);
+      return;
+    }
+
+    const storefrontBase = env.STOREFRONT_URL || 'https://the-bear-company.vercel.app';
+    const cleanBase = storefrontBase.endsWith('/') ? storefrontBase.slice(0, -1) : storefrontBase;
+    const trackingLink = `${cleanBase}/#/track-order?orderNumber=${encodeURIComponent(order.order_number)}`;
+
+    const { html, text } = renderOrderConfirmationEmail({
+      customerName: order.customer_name,
+      orderNumber: order.order_number,
+      items: (order.order_items || []).map((i) => ({
+        productName: i.product_name,
+        colour: i.colour_name,
+        size: i.size,
+        quantity: i.quantity,
+        totalPrice: i.total_price_paise / 100,
+      })),
+      deliveryAddress: {
+        line1: order.delivery_line1,
+        line2: order.delivery_line2,
+        city: order.delivery_city,
+        state: order.delivery_state,
+        pincode: order.delivery_pincode,
+      },
+      subtotal: order.subtotal_paise / 100,
+      discount: (order.discount_paise || 0) / 100,
+      total: order.total_paise / 100,
+      status: order.status || 'confirmed',
+      trackingUrl: trackingLink,
+      supportEmail: env.EMAIL_REPLY_TO || env.EMAIL_FROM_ADDRESS || 'bearwearindia@gmail.com',
+    });
+
+    await sendEmail({
+      to: recipientEmail,
+      subject: `Order Confirmed - ${order.order_number} | BEAR Performance Wear`,
+      html,
+      text,
+      eventType: 'order_confirmation',
+      idempotencyKey: `order:${order.id}:confirmation`,
+      payload: { orderId: order.id, orderNumber: order.order_number },
+    });
+  } catch (err) {
+    console.warn('[OrderService] sendOrderConfirmedEmail warning:', err.message);
+  }
 }
 
 /**

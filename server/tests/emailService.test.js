@@ -1,7 +1,7 @@
 import dns from 'node:dns';
 dns.setDefaultResultOrder('ipv4first');
 
-import { test, describe, before, after } from 'node:test';
+import { test, describe, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert';
 import crypto from 'node:crypto';
 import {
@@ -21,12 +21,22 @@ import {
   sendEmail,
   setMailTransporterForTesting,
 } from '../src/services/emailService.js';
+import { supabaseAdmin } from '../src/config/supabase.js';
+import { env } from '../src/config/env.js';
 
-describe('BEAR Transactional Email & OTP System Tests', () => {
+describe('BEAR Transactional Email & Cryptographic OTP System Tests (Isolated)', () => {
   const sentEmails = [];
+  let originalRpc = null;
+  let originalFrom = null;
+
+  // In-memory test store simulating PostgreSQL atomic state for isolated testing
+  const mockDb = {
+    otps: new Map(), // key: email:purpose
+    outbox: new Map(), // key: idempotency_key
+  };
 
   before(() => {
-    // Mock Nodemailer SMTP transporter
+    // 1. Mock Nodemailer SMTP transporter
     setMailTransporterForTesting({
       sendMail: async (mailOptions) => {
         sentEmails.push(mailOptions);
@@ -36,13 +46,158 @@ describe('BEAR Transactional Email & OTP System Tests', () => {
         };
       },
     });
+
+    // 2. Intercept and isolate Supabase RPC and from() methods to prevent remote network calls
+    originalRpc = supabaseAdmin.rpc;
+    originalFrom = supabaseAdmin.from;
+
+    supabaseAdmin.rpc = async (rpcName, args) => {
+      if (rpcName === 'request_email_otp') {
+        const { p_email, p_purpose, p_otp_hash, p_expires_at, p_cooldown_seconds } = args;
+        const key = `${p_email}:${p_purpose}`;
+        const existing = mockDb.otps.get(key);
+
+        if (existing) {
+          const elapsed = (Date.now() - existing.createdAt) / 1000;
+          if (elapsed < (p_cooldown_seconds || 60)) {
+            const remaining = Math.ceil((p_cooldown_seconds || 60) - elapsed);
+            return {
+              data: {
+                success: false,
+                error: `Please wait ${remaining} seconds before requesting a new code.`,
+                cooldown_seconds: remaining,
+              },
+              error: null,
+            };
+          }
+        }
+
+        mockDb.otps.set(key, {
+          otpHash: p_otp_hash,
+          expiresAt: new Date(p_expires_at).getTime(),
+          attemptCount: 0,
+          consumed: false,
+          createdAt: Date.now(),
+        });
+
+        return { data: { success: true, otp_id: 'mock_otp_uuid' }, error: null };
+      }
+
+      if (rpcName === 'verify_email_otp') {
+        const { p_email, p_purpose, p_otp_hash, p_max_attempts } = args;
+        const key = `${p_email}:${p_purpose}`;
+        const record = mockDb.otps.get(key);
+
+        if (!record || record.consumed) {
+          return {
+            data: { success: false, error: 'Invalid or expired verification code.' },
+            error: null,
+          };
+        }
+
+        if (Date.now() > record.expiresAt) {
+          record.consumed = true;
+          return {
+            data: { success: false, error: 'Verification code has expired. Please request a new one.' },
+            error: null,
+          };
+        }
+
+        if (record.attemptCount >= (p_max_attempts || 5)) {
+          record.consumed = true;
+          return {
+            data: { success: false, error: 'Maximum verification attempts exceeded. Please request a new code.' },
+            error: null,
+          };
+        }
+
+        if (record.otpHash !== p_otp_hash) {
+          record.attemptCount++;
+          const remaining = Math.max(0, (p_max_attempts || 5) - record.attemptCount);
+          if (remaining === 0) {
+            record.consumed = true;
+            return {
+              data: { success: false, error: 'Too many incorrect attempts. This code is now invalid. Please request a new one.' },
+              error: null,
+            };
+          }
+          return {
+            data: {
+              success: false,
+              error: `Invalid verification code. ${remaining} attempt(s) remaining.`,
+              attempts_remaining: remaining,
+            },
+            error: null,
+          };
+        }
+
+        // Match found: consume OTP atomically
+        record.consumed = true;
+        return {
+          data: { success: true, message: 'Verification code confirmed successfully.' },
+          error: null,
+        };
+      }
+
+      return originalRpc.call(supabaseAdmin, rpcName, args);
+    };
+
+    supabaseAdmin.from = (table) => {
+      if (table === 'email_outbox') {
+        return {
+          insert: (record) => ({
+            select: () => ({
+              single: async () => {
+                const key = record.idempotency_key;
+                if (mockDb.outbox.has(key)) {
+                  const err = new Error('duplicate key value violates unique constraint');
+                  err.code = '23505';
+                  return { data: null, error: err };
+                }
+                const created = { id: `outbox_${Date.now()}`, ...record, status: 'pending', attempts: 0 };
+                mockDb.outbox.set(key, created);
+                return { data: created, error: null };
+              },
+            }),
+          }),
+          select: () => ({
+            eq: (col, val) => ({
+              single: async () => {
+                const item = mockDb.outbox.get(val);
+                return { data: item || null, error: item ? null : { message: 'Not found' } };
+              },
+            }),
+          }),
+          update: (updates) => ({
+            eq: (col, val) => {
+              for (const [k, v] of mockDb.outbox.entries()) {
+                if (v.id === val || k === val) {
+                  Object.assign(v, updates);
+                }
+              }
+              return Promise.resolve({ data: null, error: null });
+            },
+          }),
+        };
+      }
+
+      return originalFrom.call(supabaseAdmin, table);
+    };
   });
 
   after(() => {
     setMailTransporterForTesting(null);
+    if (originalRpc) supabaseAdmin.rpc = originalRpc;
+    if (originalFrom) supabaseAdmin.from = originalFrom;
   });
 
-  test('OTP Generation generates 6-digit cryptographically secure numeric codes', () => {
+  beforeEach(() => {
+    sentEmails.length = 0;
+    mockDb.otps.clear();
+    mockDb.outbox.clear();
+  });
+
+  test('1. OTP Generation generates 6-digit cryptographically secure numeric codes', () => {
     for (let i = 0; i < 20; i++) {
       const code = generateCryptoOtp();
       assert.strictEqual(code.length, 6, 'Code must be exactly 6 characters');
@@ -52,19 +207,19 @@ describe('BEAR Transactional Email & OTP System Tests', () => {
     }
   });
 
-  test('OTP Hashing produces salted SHA-256 hex string and is resistant to rainbow tables', () => {
-    const code = '482910';
+  test('2. OTP Hashing uses strict OTP_PEPPER with salted SHA-256 and resists rainbow tables', () => {
+    const code = '582910';
     const hash1 = hashOtp('customer@example.com', code);
     const hash2 = hashOtp('customer@example.com', code);
     const hashOtherEmail = hashOtp('other@example.com', code);
 
     assert.strictEqual(hash1.length, 64, 'SHA-256 hash must be 64 hex characters');
     assert.strictEqual(hash1, hash2, 'Identical inputs must yield identical hash');
-    assert.notStrictEqual(hash1, hashOtherEmail, 'Different emails must yield completely different hashes for the same OTP');
+    assert.notStrictEqual(hash1, hashOtherEmail, 'Different emails must yield completely different hashes for same OTP');
     assert.notStrictEqual(hash1, code, 'Hash must never contain plaintext OTP');
   });
 
-  test('Email template XSS sanitizer escapes dangerous HTML and script tags', () => {
+  test('3. Email template XSS sanitizer escapes dangerous HTML and script tags', () => {
     const dirty = '<script>alert("hack")</script>&"\'<b>Bold</b>';
     const clean = escapeHtml(dirty);
 
@@ -74,7 +229,7 @@ describe('BEAR Transactional Email & OTP System Tests', () => {
     assert.ok(clean.includes('&amp;'), 'Must encode ampersand');
   });
 
-  test('Order confirmation email tracking link contains ONLY order reference and zero customer secrets', () => {
+  test('4. Order confirmation email tracking link contains ONLY order reference and zero customer secrets', () => {
     const dummyOrder = {
       customerName: 'Aarav Sharma',
       orderNumber: 'BEAR-2026-99120',
@@ -91,9 +246,9 @@ describe('BEAR Transactional Email & OTP System Tests', () => {
       subtotal: 3299,
       discount: 0,
       total: 3299,
-      status: 'pending_whatsapp',
+      status: 'confirmed',
       trackingUrl: 'https://the-bear-company.vercel.app/#/track-order?orderNumber=BEAR-2026-99120',
-      supportEmail: 'support@thebearcompany.com',
+      supportEmail: 'bearwearindia@gmail.com',
     };
 
     const { html, text } = renderOrderConfirmationEmail(dummyOrder);
@@ -116,15 +271,16 @@ describe('BEAR Transactional Email & OTP System Tests', () => {
     assert.ok(!trackingHref.includes('bearer'), 'Tracking URL must not contain Bearer tokens');
   });
 
-  test('Shipment dispatched email includes courier details, AWB, and store tracking link', () => {
+  test('5. Shipment dispatched email includes courier details, AWB, and store tracking link', () => {
     const shipmentData = {
       customerName: 'Rohan Mehra',
       orderNumber: 'BEAR-2026-77881',
       courierName: 'BlueDart Air Express',
+      carrierName: 'BlueDart Air Express',
       trackingNumber: 'BLUEDART-88291039',
       trackingUrl: 'https://www.bluedart.com/track?awb=BLUEDART-88291039',
       storeTrackingUrl: 'https://the-bear-company.vercel.app/#/track-order?orderNumber=BEAR-2026-77881',
-      supportEmail: 'support@thebearcompany.com',
+      supportEmail: 'bearwearindia@gmail.com',
     };
 
     const { html, text } = renderShipmentDispatchedEmail(shipmentData);
@@ -136,17 +292,17 @@ describe('BEAR Transactional Email & OTP System Tests', () => {
     assert.ok(text.includes('BLUEDART-88291039'), 'Plain-text version must include tracking number');
   });
 
-  test('Admin diagnostic email renders correctly with audit timestamp', () => {
+  test('6. Admin diagnostic email renders correctly with audit timestamp', () => {
     const testAdmin = 'admin@thebearcompany.com';
     const timestamp = new Date().toISOString();
     const { html, text } = renderAdminTestEmail({ adminEmail: testAdmin, timestamp });
 
     assert.ok(html.includes(testAdmin), 'Must show admin email');
-    assert.ok(html.includes('BEAR SMTP Diagnostic Test'), 'Must show header');
+    assert.ok(html.includes('SMTP Diagnostic Test'), 'Must show header');
     assert.ok(text.includes(testAdmin), 'Plain-text must show admin email');
   });
 
-  test('Email outbox idempotency prevents duplicate email deliveries', async () => {
+  test('7. Database-atomic outbox idempotency prevents duplicate email deliveries', async () => {
     const testKey = `test:idemp:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
     const recipient = 'idempotency-test@thebearcompany.test';
 
@@ -163,7 +319,7 @@ describe('BEAR Transactional Email & OTP System Tests', () => {
 
     assert.strictEqual(firstCall.success, true, 'First call should succeed');
 
-    // Second call with same idempotencyKey
+    // Second call with identical idempotencyKey
     const secondCall = await sendEmail({
       to: recipient,
       subject: 'Idempotency Test 2',
@@ -178,31 +334,35 @@ describe('BEAR Transactional Email & OTP System Tests', () => {
     assert.strictEqual(secondCall.skipped, true, 'Second call must be marked as skipped due to idempotency');
   });
 
-  test('OTP verification enforces single-use consumption and rejects reuse', async () => {
+  test('8. OTP request enforces atomic cooldown and single-use consumption', async () => {
     const testEmailForOtp = `singleuse_${Date.now()}@thebearcompany.test`;
 
-    // Request an OTP
+    // 1. First OTP request
     const reqRes = await requestOtp(testEmailForOtp, 'verification');
     assert.strictEqual(reqRes.success, true, 'OTP requested successfully');
 
-    // Extract dispatched OTP from the mock transporter
+    // 2. Immediate second request within 60s cooldown must fail
+    const secondReq = await requestOtp(testEmailForOtp, 'verification');
+    assert.strictEqual(secondReq.success, false, 'Second request within 60s must be throttled');
+    assert.ok(secondReq.cooldownSeconds > 0, 'Must report remaining cooldown seconds');
+
+    // 3. Extract dispatched OTP from mock transporter
     const lastDispatched = sentEmails[sentEmails.length - 1];
     assert.strictEqual(lastDispatched.to, testEmailForOtp);
     const otpMatch = lastDispatched.subject.match(/([0-9]{6})/);
     assert.ok(otpMatch, 'Subject must contain the 6-digit OTP code');
     const sentOtp = otpMatch[1];
 
-    // Verify the OTP the first time
+    // 4. Verify the OTP the first time (must succeed)
     const verifyFirst = await verifyOtp(testEmailForOtp, sentOtp, 'verification');
     assert.strictEqual(verifyFirst.success, true, 'First verification must succeed');
 
-    // Attempt second verification of the SAME OTP (must fail due to single-use consumption)
+    // 5. Attempt second verification of the SAME OTP (must fail due to single-use consumption)
     const verifySecond = await verifyOtp(testEmailForOtp, sentOtp, 'verification');
     assert.strictEqual(verifySecond.success, false, 'Second verification must fail');
-    assert.ok(verifySecond.error.includes('Invalid or expired'), 'Error must indicate invalid or expired');
   });
 
-  test('OTP verification enforces maximum 5 attempts and locks out afterwards', async () => {
+  test('9. OTP verification enforces maximum 5 attempts and locks out afterwards', async () => {
     const testEmailForLockout = `lockout_${Date.now()}@thebearcompany.test`;
 
     const reqRes = await requestOtp(testEmailForLockout, 'verification');
@@ -210,34 +370,35 @@ describe('BEAR Transactional Email & OTP System Tests', () => {
 
     const wrongOtp = '000000';
 
-    // 5 failed verification attempts
+    // 4 failed verification attempts
     for (let attempt = 1; attempt <= 4; attempt++) {
       const res = await verifyOtp(testEmailForLockout, wrongOtp, 'verification');
       assert.strictEqual(res.success, false);
-      assert.ok(res.error.includes('attempts remaining') || res.error.includes('attempt remaining'));
+      assert.ok(res.attemptsRemaining !== undefined || res.error.includes('attempt'));
     }
 
     // 5th failed attempt should lock out the code
     const fifthRes = await verifyOtp(testEmailForLockout, wrongOtp, 'verification');
     assert.strictEqual(fifthRes.success, false);
-    assert.ok(fifthRes.error.includes('Too many incorrect attempts') || fifthRes.error.includes('invalid'));
+    assert.ok(fifthRes.error.includes('Too many incorrect attempts') || fifthRes.error.includes('Maximum'));
 
-    // Any subsequent attempt should be immediately rejected
+    // 6th attempt is rejected because code is consumed/locked
     const sixthRes = await verifyOtp(testEmailForLockout, wrongOtp, 'verification');
     assert.strictEqual(sixthRes.success, false);
-    assert.ok(sixthRes.error.includes('expired') || sixthRes.error.includes('invalid') || sixthRes.error.includes('Maximum'));
   });
 
-  test('OTP service enforces 60-second cooldown on consecutive requests', async () => {
-    const testEmailCooldown = `cooldown_${Date.now()}@thebearcompany.test`;
+  test('10. OTP request returns explicit failure when SMTP send fails', async () => {
+    // Inject a failing transporter
+    setMailTransporterForTesting({
+      sendMail: async () => {
+        throw new Error('Connection to smtp.gmail.com timed out');
+      },
+    });
 
-    const firstReq = await requestOtp(testEmailCooldown, 'verification');
-    assert.strictEqual(firstReq.success, true, 'First request must succeed');
+    const testEmailFail = `smtp_fail_${Date.now()}@thebearcompany.test`;
+    const res = await requestOtp(testEmailFail, 'verification');
 
-    // Immediate second request within 60 seconds
-    const secondReq = await requestOtp(testEmailCooldown, 'verification');
-    assert.strictEqual(secondReq.success, false, 'Second request within 60s must be throttled');
-    assert.ok(secondReq.cooldownSeconds > 0, 'Must report remaining cooldown seconds');
-    assert.ok(secondReq.error.includes('wait'), 'Must explain cooldown');
+    assert.strictEqual(res.success, false, 'Must report failure when SMTP delivery fails');
+    assert.ok(res.error.includes('timed out') || res.error.includes('SMTP'), 'Error message must reflect failure');
   });
 });

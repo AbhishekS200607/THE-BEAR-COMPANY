@@ -5,6 +5,7 @@ import { getDashboardStats, logAdminAction } from '../services/adminService.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 import { sendEmail } from '../services/emailService.js';
 import { renderShipmentDispatchedEmail, renderAdminTestEmail } from '../services/emailTemplates.js';
+import { sendOrderConfirmedEmail } from '../services/orderService.js';
 import {
   getStoredCoupons,
   saveStoredCoupons,
@@ -187,12 +188,19 @@ export async function handleUpdateOrderStatus(req, res, next) {
       ipAddress: req.ip,
     });
 
-    // Asynchronously dispatch shipment dispatch email when status transitions to 'shipped'
+    // 1. Asynchronously dispatch "Order Confirmed" email on actual transition to 'confirmed'
+    if (updatedOrder.status === 'confirmed' && currentOrder?.status !== 'confirmed') {
+      sendOrderConfirmedEmail(id).catch((err) => {
+        console.warn('[AdminController] Async order confirmed email error:', err.message);
+      });
+    }
+
+    // 2. Asynchronously dispatch shipment dispatch email when status transitions to 'shipped'
     if (updatedOrder.status === 'shipped' && updatedOrder.tracking_number) {
       (async () => {
         try {
-          let customerEmail = null;
-          if (updatedOrder.profile_id) {
+          let customerEmail = updatedOrder.customer_email || null;
+          if (!customerEmail && updatedOrder.profile_id) {
             try {
               const { data: userRecord } = await supabaseAdmin.auth.admin.getUserById(updatedOrder.profile_id);
               customerEmail = userRecord?.user?.email || null;

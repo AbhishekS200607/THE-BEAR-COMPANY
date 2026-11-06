@@ -6,6 +6,7 @@ import customerRoutes from './customerRoutes.js';
 import adminRoutes from './adminRoutes.js';
 import authRoutes from './authRoutes.js';
 import reviewRoutes from './reviewRoutes.js';
+import cronRoutes from './cronRoutes.js';
 import { getStoredPromotions } from '../services/storePersistence.js';
 import { successResponse } from '../utils/response.js';
 
@@ -34,6 +35,7 @@ router.use('/orders', orderRoutes);
 router.use('/customer', customerRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/admin', adminRoutes);
+router.use('/cron', cronRoutes);
 
 export default router;
 

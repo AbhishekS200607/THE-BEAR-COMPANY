@@ -31,6 +31,8 @@ const envSchema = z.object({
   EMAIL_FROM_ADDRESS: z.string().default(''),
   EMAIL_REPLY_TO: z.string().default(''),
   STOREFRONT_URL: z.string().default('https://the-bear-company.vercel.app').transform((v) => v.replace(/\/+$/, '')),
+  OTP_PEPPER: z.string().default(process.env.OTP_PEPPER || ''),
+  CRON_SECRET: z.string().default(process.env.CRON_SECRET || ''),
 });
 
 const parsed = envSchema.safeParse(process.env);

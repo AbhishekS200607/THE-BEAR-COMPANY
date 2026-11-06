@@ -100,6 +100,7 @@ export async function submitOrder(bagData, detailsData, couponCode = null) {
         quantity: Math.min(Math.max(item.quantity || 1, 1), 10),
       })),
       customerName: detailsData.fullName || 'Guest Customer',
+      customerEmail: detailsData.email || detailsData.customerEmail || null,
       customerPhone: (detailsData.mobile || '').replace(/[^0-9]/g, '').slice(-10),
       deliveryLine1: detailsData.address || 'Standard Delivery',
       deliveryLine2: detailsData.landmark || null,

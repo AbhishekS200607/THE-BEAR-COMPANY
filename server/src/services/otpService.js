@@ -4,13 +4,12 @@
  * ============================================================================
  * Implements bank-grade one-time-password lifecycle management:
  * - 6-digit cryptographically secure random codes via crypto.randomInt
- * - Salted SHA-256 hash storage (plaintext OTPs are NEVER written to DB or logs)
- * - Strict 10-minute expiry window
- * - 60-second resend cooldown
+ * - Salted HMAC/SHA-256 hash storage using strict OTP_PEPPER (no hard-coded fallback)
+ * - Atomic database verification with SELECT FOR UPDATE and attempt tracking via PostgreSQL RPC
+ * - Strict 10-minute expiry window & 60-second cooldown
  * - Maximum 5 failed verification attempts before auto-invalidation
  * - Single-use enforcement (immediate atomic consumption upon verification)
- * - Resilient database persistence with memory store fallback
- * - Safe response messaging to mitigate account enumeration
+ * - Returns explicit failure when SMTP delivery fails
  */
 
 import crypto from 'crypto';
@@ -23,9 +22,6 @@ const OTP_EXPIRY_MINUTES = 10;
 const RESEND_COOLDOWN_SECONDS = 60;
 const MAX_VERIFICATION_ATTEMPTS = 5;
 
-// In-memory fallback if remote database table is pending migration
-const memoryOtps = [];
-
 /**
  * Generates a 6-digit cryptographically secure OTP.
  */
@@ -34,19 +30,25 @@ export function generateCryptoOtp() {
 }
 
 /**
- * Computes a salted SHA-256 hash for an OTP.
+ * Computes a salted SHA-256 hash for an OTP using strict OTP_PEPPER.
+ * Throws if neither OTP_PEPPER nor JWT_SECRET is configured.
  */
 export function hashOtp(email, otp) {
   const cleanEmail = email.toLowerCase().trim();
-  const salt = env.JWT_SECRET || 'bear-auth-otp-salt-key';
+  const pepper = env.OTP_PEPPER || env.JWT_SECRET;
+  if (!pepper) {
+    throw new Error('OTP_PEPPER or JWT_SECRET configuration missing. Cannot compute secure OTP hash.');
+  }
+
   return crypto
     .createHash('sha256')
-    .update(`${cleanEmail}:${otp.trim()}:${salt}`)
+    .update(`${cleanEmail}:${otp.trim()}:${pepper}`)
     .digest('hex');
 }
 
 /**
  * Requests a new OTP for an email address and dispatches it via SMTP.
+ * Enforces atomic database cooldown and invalidation.
  *
  * @param {string} email
  * @param {'verification'|'login'|'password_reset'} [purpose='verification']
@@ -61,93 +63,40 @@ export async function requestOtp(email, purpose = 'verification') {
   const validPurposes = ['verification', 'login', 'password_reset'];
   const cleanPurpose = validPurposes.includes(purpose) ? purpose : 'verification';
 
-  // 1. Check 60-second cooldown from most recent OTP
-  let recentCreatedAt = null;
-  try {
-    const { data: recentOtps, error } = await supabaseAdmin
-      .from('email_otps')
-      .select('id, created_at')
-      .eq('email', cleanEmail)
-      .eq('purpose', cleanPurpose)
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    if (!error && recentOtps && recentOtps.length > 0) {
-      recentCreatedAt = recentOtps[0].created_at;
-    }
-  } catch {}
-
-  if (!recentCreatedAt) {
-    const memRecent = memoryOtps
-      .filter((o) => o.email === cleanEmail && o.purpose === cleanPurpose)
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
-    if (memRecent) {
-      recentCreatedAt = memRecent.created_at;
-    }
-  }
-
-  if (recentCreatedAt) {
-    const elapsedMs = Date.now() - new Date(recentCreatedAt).getTime();
-    const cooldownMs = RESEND_COOLDOWN_SECONDS * 1000;
-    if (elapsedMs < cooldownMs) {
-      const remainingSeconds = Math.ceil((cooldownMs - elapsedMs) / 1000);
-      return {
-        success: false,
-        error: `Please wait ${remainingSeconds}s before requesting another verification code.`,
-        cooldownSeconds: remainingSeconds,
-      };
-    }
-  }
-
-  // 2. Invalidate any previous unconsumed OTPs for this email and purpose
-  const nowIso = new Date().toISOString();
-  try {
-    await supabaseAdmin
-      .from('email_otps')
-      .update({ consumed_at: nowIso })
-      .eq('email', cleanEmail)
-      .eq('purpose', cleanPurpose)
-      .is('consumed_at', null);
-  } catch {}
-
-  memoryOtps.forEach((o) => {
-    if (o.email === cleanEmail && o.purpose === cleanPurpose && !o.consumed_at) {
-      o.consumed_at = nowIso;
-    }
-  });
-
-  // 3. Generate 6-digit code and salted hash
+  // 1. Generate 6-digit code and salted hash
   const otp = generateCryptoOtp();
   const otpHash = hashOtp(cleanEmail, otp);
   const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000).toISOString();
 
-  // 4. Persist hash in database or memory store
-  let savedToDb = false;
-  try {
-    const { error: insertErr } = await supabaseAdmin.from('email_otps').insert({
-      email: cleanEmail,
-      purpose: cleanPurpose,
-      otp_hash: otpHash,
-      expires_at: expiresAt,
-      attempt_count: 0,
-    });
-    if (!insertErr) savedToDb = true;
-  } catch {}
+  // 2. Atomic PostgreSQL RPC to enforce cooldown, invalidate old codes, and insert new OTP
+  let rpcData = null;
+  const { data, error: rpcErr } = await supabaseAdmin.rpc('request_email_otp', {
+    p_email: cleanEmail,
+    p_purpose: cleanPurpose,
+    p_otp_hash: otpHash,
+    p_expires_at: expiresAt,
+    p_cooldown_seconds: RESEND_COOLDOWN_SECONDS,
+  });
 
-  if (!savedToDb) {
-    memoryOtps.push({
-      id: `mem_otp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-      email: cleanEmail,
-      purpose: cleanPurpose,
-      otp_hash: otpHash,
-      expires_at: expiresAt,
-      attempt_count: 0,
-      consumed_at: null,
-      created_at: nowIso,
-    });
+  if (rpcErr) {
+    console.error('[OtpService] request_email_otp RPC error:', rpcErr.message);
+    return {
+      success: false,
+      error: rpcErr.message || 'Failed to initiate OTP verification. Please try again.',
+    };
   }
 
-  // 5. Render responsive branded template and send email
+  rpcData = typeof data === 'string' ? JSON.parse(data) : data;
+
+  if (!rpcData?.success) {
+    return {
+      success: false,
+      error: rpcData?.error || 'Rate limit cooldown active. Please wait before retrying.',
+      cooldownSeconds: rpcData?.cooldown_seconds || RESEND_COOLDOWN_SECONDS,
+    };
+  }
+
+  // 3. Render responsive branded template and send email
   const { html, text } = renderOtpEmail({
     otp,
     expiryMinutes: OTP_EXPIRY_MINUTES,
@@ -165,11 +114,12 @@ export async function requestOtp(email, purpose = 'verification') {
     payload: { purpose: cleanPurpose, expiresAt },
   });
 
-  if (!sendResult.success && sendResult.unconfigured) {
+  // 4. Return failure when SMTP send fails
+  if (!sendResult.success) {
+    console.error(`[OtpService] Email dispatch failed for ${cleanEmail}:`, sendResult.error);
     return {
-      success: true,
-      message: 'Verification code generated (SMTP in test/offline mode).',
-      testMode: true,
+      success: false,
+      error: sendResult.error || 'Failed to dispatch verification email. Please check SMTP settings.',
     };
   }
 
@@ -180,12 +130,12 @@ export async function requestOtp(email, purpose = 'verification') {
 }
 
 /**
- * Verifies an OTP submitted by the user.
+ * Verifies an OTP submitted by the user using atomic PostgreSQL row locking and attempt counter.
  *
  * @param {string} email
  * @param {string} otp
  * @param {'verification'|'login'|'password_reset'} [purpose='verification']
- * @returns {Promise<{success: boolean, message?: string, error?: string}>}
+ * @returns {Promise<{success: boolean, message?: string, error?: string, attemptsRemaining?: number}>}
  */
 export async function verifyOtp(email, otp, purpose = 'verification') {
   if (!email || !otp) {
@@ -197,131 +147,40 @@ export async function verifyOtp(email, otp, purpose = 'verification') {
   const validPurposes = ['verification', 'login', 'password_reset'];
   const cleanPurpose = validPurposes.includes(purpose) ? purpose : 'verification';
 
-  // 1. Fetch latest active unconsumed OTP
-  let record = null;
-  try {
-    const { data: records, error: fetchErr } = await supabaseAdmin
-      .from('email_otps')
-      .select('id, otp_hash, expires_at, attempt_count, consumed_at')
-      .eq('email', cleanEmail)
-      .eq('purpose', cleanPurpose)
-      .is('consumed_at', null)
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    if (!fetchErr && records && records.length > 0) {
-      record = records[0];
-    }
-  } catch {}
-
-  if (!record) {
-    const memRecords = memoryOtps
-      .filter((o) => o.email === cleanEmail && o.purpose === cleanPurpose && !o.consumed_at)
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    if (memRecords.length > 0) {
-      record = memRecords[0];
-    }
-  }
-
-  if (!record) {
-    return { success: false, error: 'Invalid or expired verification code.' };
-  }
-
-  // 2. Check if code has expired
-  if (new Date(record.expires_at).getTime() < Date.now()) {
-    record.consumed_at = new Date().toISOString();
-    if (record.id && !record.id.startsWith('mem_')) {
-      await supabaseAdmin
-        .from('email_otps')
-        .update({ consumed_at: record.consumed_at })
-        .eq('id', record.id)
-        .catch(() => {});
-    }
-    return { success: false, error: 'Verification code has expired. Please request a new one.' };
-  }
-
-  // 3. Check attempt limit
-  if (record.attempt_count >= MAX_VERIFICATION_ATTEMPTS) {
-    record.consumed_at = new Date().toISOString();
-    if (record.id && !record.id.startsWith('mem_')) {
-      await supabaseAdmin
-        .from('email_otps')
-        .update({ consumed_at: record.consumed_at })
-        .eq('id', record.id)
-        .catch(() => {});
-    }
-    return {
-      success: false,
-      error: 'Maximum verification attempts exceeded. Please request a new code.',
-    };
-  }
-
-  // 4. Verify cryptographic hash using timing-safe comparison
+  // Compute hash using pepper
   const inputHash = hashOtp(cleanEmail, cleanOtp);
-  let isMatch = false;
 
-  try {
-    const inputBuf = Buffer.from(inputHash, 'hex');
-    const storedBuf = Buffer.from(record.otp_hash, 'hex');
-    if (inputBuf.length === storedBuf.length) {
-      isMatch = crypto.timingSafeEqual(inputBuf, storedBuf);
-    }
-  } catch {
-    isMatch = false;
+  // Atomic PostgreSQL RPC: row-locks FOR UPDATE, increments attempts, checks expiry and consumes if valid
+  const { data, error: rpcErr } = await supabaseAdmin.rpc('verify_email_otp', {
+    p_email: cleanEmail,
+    p_purpose: cleanPurpose,
+    p_otp_hash: inputHash,
+    p_max_attempts: MAX_VERIFICATION_ATTEMPTS,
+  });
+
+  if (rpcErr) {
+    console.error('[OtpService] verify_email_otp RPC error:', rpcErr.message);
+    return { success: false, error: rpcErr.message || 'Verification failed. Please try again.' };
   }
 
-  if (!isMatch) {
-    const nextAttempts = record.attempt_count + 1;
-    record.attempt_count = nextAttempts;
+  const result = typeof data === 'string' ? JSON.parse(data) : data;
 
-    if (record.id && !record.id.startsWith('mem_')) {
-      await supabaseAdmin
-        .from('email_otps')
-        .update({ attempt_count: nextAttempts })
-        .eq('id', record.id)
-        .catch(() => {});
-    }
-
-    const remaining = Math.max(0, MAX_VERIFICATION_ATTEMPTS - nextAttempts);
-    if (remaining === 0) {
-      record.consumed_at = new Date().toISOString();
-      if (record.id && !record.id.startsWith('mem_')) {
-        await supabaseAdmin
-          .from('email_otps')
-          .update({ consumed_at: record.consumed_at })
-          .eq('id', record.id)
-          .catch(() => {});
-      }
-      return {
-        success: false,
-        error: 'Too many incorrect attempts. This code is now invalid. Please request a new one.',
-      };
-    }
-
+  if (!result?.success) {
     return {
       success: false,
-      error: `Invalid verification code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`,
+      error: result?.error || 'Invalid or expired verification code.',
+      attemptsRemaining: result?.attempts_remaining,
     };
-  }
-
-  // 5. Success: Consume OTP atomically
-  record.consumed_at = new Date().toISOString();
-  if (record.id && !record.id.startsWith('mem_')) {
-    await supabaseAdmin
-      .from('email_otps')
-      .update({ consumed_at: record.consumed_at })
-      .eq('id', record.id)
-      .catch(() => {});
   }
 
   return {
     success: true,
-    message: 'Verification code confirmed successfully.',
+    message: result?.message || 'Verification code confirmed successfully.',
   };
 }
 
 /**
- * Resends an active OTP code or generates a fresh one following the 60-second cooldown.
+ * Resends an active OTP code following cooldown rules.
  */
 export async function resendOtp(email, purpose = 'verification') {
   return requestOtp(email, purpose);

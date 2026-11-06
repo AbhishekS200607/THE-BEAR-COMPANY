@@ -6,6 +6,7 @@ import { showToast } from '../components/toast.js';
 import { createSlideToConfirm } from '../components/slideToConfirm.js';
 import { triggerOrderConfetti } from '../utils/animations.js';
 import { API_V1 } from '../config/api.js';
+import { get } from '../utils/storage.js';
 
 const INDIAN_STATES = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat', 'Haryana',
@@ -29,6 +30,8 @@ export async function render(container) {
   // Load saved delivery addresses
   const savedAddresses = await getDemoAddresses().catch(() => []);
   const defaultAddr = savedAddresses.find((a) => a.default) || savedAddresses[0] || null;
+  const authSession = get('bear_auth_session');
+  const userEmail = authSession?.user?.email || '';
 
   const page = document.createElement('div');
   page.className = 'w-full flex flex-col pt-20 md:pt-24 pb-32 md:pb-16';
@@ -131,21 +134,34 @@ export async function render(container) {
               </div>
 
               <div>
+                <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-600 mb-1 font-headline">Email Address (Order &amp; Tracking Updates) *</label>
+                <input 
+                  type="email" 
+                  id="email-address" 
+                  required 
+                  placeholder="e.g. rahul@example.com" 
+                  value="${userEmail}"
+                  class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black transition-colors"
+                />
+                <p id="email-error" class="text-[11px] text-red-600 font-medium mt-1 hidden"></p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
                 <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-600 mb-1 font-headline">Mobile / WhatsApp Number *</label>
                 <input 
                   type="tel" 
                   id="mobile-number" 
                   required 
-                  maxlength="10"
+                  maxlength="10" 
                   placeholder="10-digit mobile number" 
                   value="${defaultAddr?.phone || ''}"
                   class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black font-mono transition-colors"
                 />
                 <p id="mobile-error" class="text-[11px] text-red-600 font-medium mt-1 hidden"></p>
               </div>
-            </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-600 mb-1 font-headline">PIN Code (Pan-India) *</label>
                 <input 
@@ -159,6 +175,7 @@ export async function render(container) {
                 />
                 <p id="pincode-error" class="text-[11px] text-red-600 font-medium mt-1 hidden"></p>
               </div>
+            </div>
 
               <div>
                 <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-600 mb-1 font-headline">State *</label>
@@ -399,12 +416,14 @@ export async function render(container) {
 
   // Real-Time Inline Form Validation (Item 20)
   const fullNameInput = page.querySelector('#full-name');
+  const emailInput = page.querySelector('#email-address');
   const mobileInput = page.querySelector('#mobile-number');
   const pincodeInput = page.querySelector('#pin-code');
   const addressInput = page.querySelector('#address');
   const cityInput = page.querySelector('#city');
 
   const fullNameErr = page.querySelector('#full-name-error');
+  const emailErr = page.querySelector('#email-error');
   const mobileErr = page.querySelector('#mobile-error');
   const pincodeErr = page.querySelector('#pincode-error');
   const addressErr = page.querySelector('#address-error');
@@ -429,6 +448,10 @@ export async function render(container) {
 
   fullNameInput?.addEventListener('blur', () => {
     validateField(fullNameInput, fullNameErr, (v) => v.length >= 2, 'Please enter your full legal name');
+  });
+
+  emailInput?.addEventListener('blur', () => {
+    validateField(emailInput, emailErr, (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), 'Please enter a valid email address');
   });
 
   mobileInput?.addEventListener('blur', () => {
@@ -517,18 +540,20 @@ export async function render(container) {
 
   function validateAllDeliveryInputs() {
     const isNameValid = validateField(fullNameInput, fullNameErr, (v) => v.length >= 2, 'Please enter your full legal name');
+    const isEmailValid = validateField(emailInput, emailErr, (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), 'Please enter a valid email address');
     const isMobileValid = validateField(mobileInput, mobileErr, (v) => /^[6-9]\d{9}$/.test(v), 'Please enter a valid 10-digit Indian mobile number');
     const isPinValid = validateField(pincodeInput, pincodeErr, (v) => /^\d{6}$/.test(v), 'Please enter a valid 6-digit Indian PIN code');
     const isAddrValid = validateField(addressInput, addressErr, (v) => v.length >= 5, 'Please enter a complete street address');
     const isCityValid = validateField(cityInput, cityErr, (v) => v.length >= 2, 'Please enter your city / district');
 
     if (!isNameValid) fullNameInput.focus();
+    else if (!isEmailValid) emailInput.focus();
     else if (!isMobileValid) mobileInput.focus();
     else if (!isPinValid) pincodeInput.focus();
     else if (!isAddrValid) addressInput.focus();
     else if (!isCityValid) cityInput.focus();
 
-    if (!(isNameValid && isMobileValid && isPinValid && isAddrValid && isCityValid)) {
+    if (!(isNameValid && isEmailValid && isMobileValid && isPinValid && isAddrValid && isCityValid)) {
       showToast('Please fix the highlighted fields before placing your order', 'error');
       return false;
     }
@@ -539,6 +564,7 @@ export async function render(container) {
   async function executeOrderPlacement() {
     try {
       const fullName = fullNameInput.value.trim();
+      const email = emailInput.value.trim();
       const mobile = mobileInput.value.trim();
       const pincode = pincodeInput.value.trim();
       const address = addressInput.value.trim();
@@ -547,6 +573,7 @@ export async function render(container) {
 
       const order = await submitOrder(cart, {
         fullName,
+        email,
         mobile,
         pincode,
         address,
