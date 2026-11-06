@@ -31,3 +31,4 @@ CREATE POLICY "No public access to pending signups"
     USING (FALSE);
 
 COMMIT;
+
