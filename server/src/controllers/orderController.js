@@ -27,6 +27,7 @@ export async function handleCreateOrder(req, res, next) {
     const {
       items,
       customerName,
+      customerEmail,
       customerPhone,
       deliveryLine1,
       deliveryLine2,
@@ -38,10 +39,12 @@ export async function handleCreateOrder(req, res, next) {
 
     const idempotencyKey = req.headers['idempotency-key'] || req.body.idempotencyKey;
     const profileId = req.user ? req.user.id : null;
+    const resolvedEmail = customerEmail || req.user?.email || null;
 
     const result = await createOrder({
       items,
       customerName,
+      customerEmail: resolvedEmail,
       customerPhone,
       deliveryLine1,
       deliveryLine2,

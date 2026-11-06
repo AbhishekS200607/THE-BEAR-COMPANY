@@ -23,6 +23,7 @@ const createOrderSchema = {
       })
     ).min(1, 'Order must contain at least 1 item').max(25, 'Maximum 25 items per order'),
     customerName: z.string().trim().min(2, 'Name must be at least 2 characters').max(100),
+    customerEmail: z.string().trim().email('Invalid email address').optional().nullable(),
     customerPhone: z.string().trim().regex(/^[0-9]{10}$/, 'Must be a 10-digit mobile number'),
     deliveryLine1: z.string().trim().min(5, 'Address line 1 must be at least 5 characters').max(200),
     deliveryLine2: z.string().trim().max(200).optional().nullable(),

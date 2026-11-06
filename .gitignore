@@ -13,7 +13,6 @@ out/
 .env.*
 *.env
 !.env.example
-!.env.vercel.production
 *.pem
 *.key
 *.cert
@@ -74,6 +73,7 @@ TODO.md
 NOTES.md
 TEMP*.md
 *.tmp.md
+ADMIN_PANEL_FEATURE_ROADMAP.md
 
 # Scratch and temporary scripts
 *.mjs

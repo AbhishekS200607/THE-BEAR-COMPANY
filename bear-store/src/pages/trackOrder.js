@@ -315,6 +315,28 @@ export function render(container) {
     }
   });
 
+  // Prefill order reference safely from URL query parameter if present (#/track-order?orderNumber=BEAR-...)
+  // Strictly leaves phone number empty to preserve two-factor customer tracking security
+  try {
+    const hash = window.location.hash || '';
+    const qIndex = hash.indexOf('?');
+    const searchParams = qIndex !== -1
+      ? new URLSearchParams(hash.substring(qIndex))
+      : new URLSearchParams(window.location.search);
+    const paramOrderNumber = searchParams.get('orderNumber');
+    if (paramOrderNumber) {
+      const orderInput = page.querySelector('#track-order-id');
+      if (orderInput) {
+        orderInput.value = paramOrderNumber.trim();
+        setTimeout(() => {
+          page.querySelector('#track-phone')?.focus();
+        }, 150);
+      }
+    }
+  } catch {
+    // Non-blocking fallback
+  }
+
   container.innerHTML = '';
   container.appendChild(page);
 }

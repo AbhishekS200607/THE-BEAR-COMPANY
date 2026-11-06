@@ -22,6 +22,15 @@ const envSchema = z.object({
   TEST_MANAGER_PASSWORD: z.string().optional().default(''),
   TEST_CUSTOMER_EMAIL: z.string().default('customer@example.com'),
   TEST_CUSTOMER_PASSWORD: z.string().optional().default(''),
+  SMTP_HOST: z.string().default(''),
+  SMTP_PORT: z.union([z.string(), z.number()]).default('587').transform((v) => parseInt(String(v), 10)),
+  SMTP_SECURE: z.union([z.string(), z.boolean()]).default(false).transform((v) => v === true || v === 'true'),
+  SMTP_USER: z.string().default(''),
+  SMTP_PASSWORD: z.string().default(''),
+  EMAIL_FROM_NAME: z.string().default('BEAR Performance Wear'),
+  EMAIL_FROM_ADDRESS: z.string().default(''),
+  EMAIL_REPLY_TO: z.string().default(''),
+  STOREFRONT_URL: z.string().default('https://the-bear-company.vercel.app').transform((v) => v.replace(/\/+$/, '')),
 });
 
 const parsed = envSchema.safeParse(process.env);

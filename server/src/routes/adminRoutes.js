@@ -39,6 +39,7 @@ import {
   handleCreateAdminReview,
   handleUpdateAdminReview,
   handleDeleteAdminReview,
+  handleSendAdminTestEmail,
 } from '../controllers/adminController.js';
 
 const router = Router();
@@ -282,5 +283,8 @@ router.get('/reviews', handleGetAdminReviews);
 router.post('/reviews', validate(createAdminReviewSchema), handleCreateAdminReview);
 router.patch('/reviews/:id', validate(updateAdminReviewSchema), handleUpdateAdminReview);
 router.delete('/reviews/:id', handleDeleteAdminReview);
+
+// 12. Transactional Email Diagnostic (Super-Admin only)
+router.post('/email/test', requireSuperAdmin, handleSendAdminTestEmail);
 
 export default router;

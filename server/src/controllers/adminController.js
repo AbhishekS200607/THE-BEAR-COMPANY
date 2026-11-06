@@ -1,7 +1,10 @@
 import crypto from 'crypto';
 import { supabaseAdmin } from '../config/supabase.js';
+import { env } from '../config/env.js';
 import { getDashboardStats, logAdminAction } from '../services/adminService.js';
 import { successResponse, errorResponse } from '../utils/response.js';
+import { sendEmail } from '../services/emailService.js';
+import { renderShipmentDispatchedEmail, renderAdminTestEmail } from '../services/emailTemplates.js';
 import {
   getStoredCoupons,
   saveStoredCoupons,
@@ -183,6 +186,65 @@ export async function handleUpdateOrderStatus(req, res, next) {
       changes: updates,
       ipAddress: req.ip,
     });
+
+    // Asynchronously dispatch shipment dispatch email when status transitions to 'shipped'
+    if (updatedOrder.status === 'shipped' && updatedOrder.tracking_number) {
+      (async () => {
+        try {
+          let customerEmail = null;
+          if (updatedOrder.profile_id) {
+            try {
+              const { data: userRecord } = await supabaseAdmin.auth.admin.getUserById(updatedOrder.profile_id);
+              customerEmail = userRecord?.user?.email || null;
+            } catch {}
+          }
+
+          if (!customerEmail) {
+            try {
+              const { data: outboxRec } = await supabaseAdmin
+                .from('email_outbox')
+                .select('recipient_email')
+                .eq('idempotency_key', `order:${updatedOrder.id}:confirmation`)
+                .maybeSingle();
+              customerEmail = outboxRec?.recipient_email || null;
+            } catch {}
+          }
+
+          if (customerEmail) {
+            const storefrontBase = env.STOREFRONT_URL || 'https://the-bear-company.vercel.app';
+            const cleanBase = storefrontBase.endsWith('/') ? storefrontBase.slice(0, -1) : storefrontBase;
+            const storeTrackingUrl = `${cleanBase}/#/track-order?orderNumber=${encodeURIComponent(updatedOrder.order_number)}`;
+
+            const { html, text } = renderShipmentDispatchedEmail({
+              customerName: updatedOrder.customer_name,
+              orderNumber: updatedOrder.order_number,
+              courierName: updatedOrder.carrier_name || 'Express Logistics',
+              trackingNumber: updatedOrder.tracking_number,
+              trackingUrl: updatedOrder.tracking_url,
+              storeTrackingUrl,
+              supportEmail: env.EMAIL_REPLY_TO || env.EMAIL_FROM_ADDRESS || 'support@thebearcompany.com',
+            });
+
+            await sendEmail({
+              to: customerEmail,
+              subject: `Dispatched: Your BEAR Order ${updatedOrder.order_number} is on the way`,
+              html,
+              text,
+              eventType: 'shipment_dispatched',
+              idempotencyKey: `order:${updatedOrder.id}:shipment:${updatedOrder.tracking_number}`,
+              payload: {
+                orderId: updatedOrder.id,
+                orderNumber: updatedOrder.order_number,
+                trackingNumber: updatedOrder.tracking_number,
+                carrierName: updatedOrder.carrier_name,
+              },
+            });
+          }
+        } catch (emailErr) {
+          console.warn('[AdminController] Async shipment email dispatch warning:', emailErr.message);
+        }
+      })();
+    }
 
     return successResponse(res, updatedOrder, 200, 'Order status updated successfully');
   } catch (err) {
@@ -1589,4 +1651,58 @@ export async function handleDeleteAdminReview(req, res, next) {
     return next(err);
   }
 }
+
+/**
+ * Super-Admin Diagnostic SMTP Email Dispatcher
+ * Sends a live test email strictly to the authenticated super-admin's own verified email.
+ * Does not accept arbitrary recipient emails.
+ */
+export async function handleSendAdminTestEmail(req, res, next) {
+  try {
+    const adminEmail = req.user?.email;
+    if (!adminEmail) {
+      return errorResponse(res, 'Authenticated admin email address not found in token', 400);
+    }
+
+    const { html, text } = renderAdminTestEmail({
+      adminEmail,
+      timestamp: new Date().toISOString(),
+    });
+
+    const idempotencyKey = `admin-test:${req.user.id}:${Date.now()}`;
+    const result = await sendEmail({
+      to: adminEmail,
+      subject: `SMTP Diagnostic Test | BEAR Performance Wear`,
+      html,
+      text,
+      eventType: 'admin_test',
+      idempotencyKey,
+      payload: { adminId: req.user.id, adminEmail },
+    });
+
+    if (!result.success) {
+      return errorResponse(
+        res,
+        result.error || 'Failed to dispatch test email',
+        result.unconfigured ? 503 : 500,
+        { unconfigured: result.unconfigured }
+      );
+    }
+
+    return successResponse(
+      res,
+      {
+        sent: true,
+        recipient: adminEmail,
+        outboxId: result.outboxId,
+        messageId: result.messageId,
+      },
+      200,
+      `Diagnostic test email successfully sent to ${adminEmail}`
+    );
+  } catch (err) {
+    return next(err);
+  }
+}
+
 

@@ -3,10 +3,13 @@ import { env } from '../config/env.js';
 import { generateOrderFingerprint } from '../utils/crypto.js';
 import { generateWhatsAppHandoff } from './whatsappService.js';
 import { validateCouponCode, incrementCouponUsage } from './storePersistence.js';
+import { sendEmail } from './emailService.js';
+import { renderOrderConfirmationEmail } from './emailTemplates.js';
 
 export async function createOrder({
   items,
   customerName,
+  customerEmail,
   customerPhone,
   deliveryLine1,
   deliveryLine2,
@@ -112,6 +115,64 @@ export async function createOrder({
     ...order,
     items: order.order_items,
   });
+
+  // 6. Asynchronously dispatch order confirmation email (non-blocking)
+  (async () => {
+    try {
+      let recipientEmail = customerEmail;
+      if (!recipientEmail && profileId) {
+        try {
+          const { data: userRecord } = await supabaseAdmin.auth.admin.getUserById(profileId);
+          if (userRecord?.user?.email) {
+            recipientEmail = userRecord.user.email;
+          }
+        } catch {}
+      }
+
+      if (recipientEmail) {
+        const storefrontBase = env.STOREFRONT_URL || 'https://the-bear-company.vercel.app';
+        const cleanBase = storefrontBase.endsWith('/') ? storefrontBase.slice(0, -1) : storefrontBase;
+        const trackingLink = `${cleanBase}/#/track-order?orderNumber=${encodeURIComponent(order.order_number)}`;
+
+        const { html, text } = renderOrderConfirmationEmail({
+          customerName: order.customer_name,
+          orderNumber: order.order_number,
+          items: (order.order_items || []).map((i) => ({
+            productName: i.product_name,
+            colour: i.colour_name,
+            size: i.size,
+            quantity: i.quantity,
+            totalPrice: i.total_price_paise / 100,
+          })),
+          deliveryAddress: {
+            line1: order.delivery_line1,
+            line2: order.delivery_line2,
+            city: order.delivery_city,
+            state: order.delivery_state,
+            pincode: order.delivery_pincode,
+          },
+          subtotal: order.subtotal_paise / 100,
+          discount: (order.discount_paise || 0) / 100,
+          total: order.total_paise / 100,
+          status: order.status,
+          trackingUrl: trackingLink,
+          supportEmail: env.EMAIL_REPLY_TO || env.EMAIL_FROM_ADDRESS || 'support@thebearcompany.com',
+        });
+
+        await sendEmail({
+          to: recipientEmail,
+          subject: `Order Confirmed - ${order.order_number} | BEAR Performance Wear`,
+          html,
+          text,
+          eventType: 'order_confirmation',
+          idempotencyKey: `order:${order.id}:confirmation`,
+          payload: { orderId: order.id, orderNumber: order.order_number },
+        });
+      }
+    } catch (emailErr) {
+      console.warn('[OrderService] Async order confirmation email error:', emailErr.message);
+    }
+  })();
 
   return {
     order: {

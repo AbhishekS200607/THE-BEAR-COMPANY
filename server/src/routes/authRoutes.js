@@ -4,6 +4,7 @@ import { validate } from '../middleware/validate.js';
 import { sensitiveRateLimiter } from '../middleware/rateLimiter.js';
 import { supabaseAdmin, supabaseAnon } from '../config/supabase.js';
 import { successResponse, errorResponse } from '../utils/response.js';
+import { requestOtp, verifyOtp, resendOtp } from '../services/otpService.js';
 
 const router = Router();
 
@@ -15,6 +16,65 @@ const signupSchema = {
     phoneNumber: z.string().trim().regex(/^[0-9]{10}$/, 'Must be a 10-digit mobile number').optional().nullable(),
   }),
 };
+
+const otpRequestSchema = {
+  body: z.object({
+    email: z.string().trim().email('Invalid email address'),
+    purpose: z.enum(['verification', 'login', 'password_reset']).optional().default('verification'),
+  }),
+};
+
+const otpVerifySchema = {
+  body: z.object({
+    email: z.string().trim().email('Invalid email address'),
+    otp: z.string().trim().length(6, 'Verification code must be 6 digits'),
+    purpose: z.enum(['verification', 'login', 'password_reset']).optional().default('verification'),
+  }),
+};
+
+// POST /api/v1/auth/email-otp/request - Request 6-digit email OTP
+router.post('/email-otp/request', sensitiveRateLimiter, validate(otpRequestSchema), async (req, res, next) => {
+  try {
+    const { email, purpose } = req.body;
+    const result = await requestOtp(email, purpose);
+    if (!result.success) {
+      const status = result.cooldownSeconds ? 429 : 400;
+      return errorResponse(res, result.error, status, { cooldownSeconds: result.cooldownSeconds });
+    }
+    return successResponse(res, { message: result.message, testMode: result.testMode }, 200, result.message);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// POST /api/v1/auth/email-otp/verify - Verify 6-digit email OTP
+router.post('/email-otp/verify', sensitiveRateLimiter, validate(otpVerifySchema), async (req, res, next) => {
+  try {
+    const { email, otp, purpose } = req.body;
+    const result = await verifyOtp(email, otp, purpose);
+    if (!result.success) {
+      return errorResponse(res, result.error, 400);
+    }
+    return successResponse(res, { verified: true, message: result.message }, 200, result.message);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// POST /api/v1/auth/email-otp/resend - Resend 6-digit email OTP
+router.post('/email-otp/resend', sensitiveRateLimiter, validate(otpRequestSchema), async (req, res, next) => {
+  try {
+    const { email, purpose } = req.body;
+    const result = await resendOtp(email, purpose);
+    if (!result.success) {
+      const status = result.cooldownSeconds ? 429 : 400;
+      return errorResponse(res, result.error, status, { cooldownSeconds: result.cooldownSeconds });
+    }
+    return successResponse(res, { message: result.message, testMode: result.testMode }, 200, result.message);
+  } catch (err) {
+    return next(err);
+  }
+});
 
 // POST /api/v1/auth/signup - Register customer account with immediate pre-confirmation
 router.post('/signup', sensitiveRateLimiter, validate(signupSchema), async (req, res, next) => {
