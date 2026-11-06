@@ -46,15 +46,15 @@ router.post('/signup/request-otp', sensitiveRateLimiter, validate(signupSchema),
     const { email, password, fullName, phoneNumber } = req.body;
     const cleanEmail = email.toLowerCase().trim();
 
-    // 1. Check if user already exists
-    const { data: existingProfile } = await supabaseAdmin
-      .from('profiles')
-      .select('id')
-      .eq('email', cleanEmail)
-      .maybeSingle();
-
-    if (existingProfile) {
-      return errorResponse(res, 'An account with this email already exists. Try signing in instead.', 409);
+    // 1. Check if user already exists in Supabase Auth
+    try {
+      const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
+      const existingUser = usersData?.users?.find((u) => u.email?.toLowerCase() === cleanEmail);
+      if (existingUser) {
+        return errorResponse(res, 'An account with this email already exists. Try signing in instead.', 409);
+      }
+    } catch (checkErr) {
+      console.warn('[AuthRoutes] User existence check warning:', checkErr.message);
     }
 
     // 2. Encrypt password with server secret (AES-256-GCM)
