@@ -39,3 +39,4 @@ router.get('/email-outbox', verifyCronAuth, handleProcessEmailOutbox);
 router.post('/email-outbox', verifyCronAuth, handleProcessEmailOutbox);
 
 export default router;
+

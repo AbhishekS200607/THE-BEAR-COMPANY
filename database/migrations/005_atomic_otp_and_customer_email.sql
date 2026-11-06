@@ -338,3 +338,4 @@ $$;
 GRANT EXECUTE ON FUNCTION public.verify_email_otp(TEXT, TEXT, TEXT, INT) TO service_role;
 
 COMMIT;
+

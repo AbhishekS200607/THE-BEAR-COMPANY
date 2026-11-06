@@ -21,6 +21,7 @@ import {
   sendEmail,
   setMailTransporterForTesting,
 } from '../src/services/emailService.js';
+import { encryptPassword, decryptPassword } from '../src/utils/crypto.js';
 import { supabaseAdmin } from '../src/config/supabase.js';
 import { env } from '../src/config/env.js';
 
@@ -400,5 +401,32 @@ describe('BEAR Transactional Email & Cryptographic OTP System Tests (Isolated)',
 
     assert.strictEqual(res.success, false, 'Must report failure when SMTP delivery fails');
     assert.ok(res.error.includes('timed out') || res.error.includes('SMTP'), 'Error message must reflect failure');
+  });
+
+  test('11. AES-256-GCM password encryption and decryption prevents plaintext password leakage', () => {
+    const rawPass = 'SecretP@ssw0rd2026!';
+    const encrypted = encryptPassword(rawPass);
+
+    assert.ok(encrypted.ciphertext, 'Ciphertext must be generated');
+    assert.ok(encrypted.iv, 'IV must be generated');
+    assert.ok(encrypted.tag, 'Auth tag must be generated');
+    assert.notStrictEqual(encrypted.ciphertext, rawPass, 'Ciphertext must never equal plaintext');
+    assert.ok(!encrypted.ciphertext.includes(rawPass), 'Ciphertext must not contain plaintext string');
+
+    const decrypted = decryptPassword(encrypted);
+    assert.strictEqual(decrypted, rawPass, 'Decrypted password must perfectly match original');
+  });
+
+  test('12. Incomplete OTP and malformed codes are strictly rejected', async () => {
+    const testEmail = `malformed_${Date.now()}@thebearcompany.test`;
+    await requestOtp(testEmail, 'verification');
+
+    // Missing code
+    const resEmpty = await verifyOtp(testEmail, '', 'verification');
+    assert.strictEqual(resEmpty.success, false);
+
+    // Short code
+    const resShort = await verifyOtp(testEmail, '123', 'verification');
+    assert.strictEqual(resShort.success, false);
   });
 });
