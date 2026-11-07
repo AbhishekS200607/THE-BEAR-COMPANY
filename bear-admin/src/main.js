@@ -15,23 +15,26 @@ import { renderPromotions } from './sections/promotions.js';
 import { renderNotifications } from './sections/notifications.js';
 import { renderStaff } from './sections/staff.js';
 import { renderSettings } from './sections/settings.js';
+import { renderFulfillment } from './sections/fulfillment.js';
+import { getIcon } from './utils/icons.js';
 
 const app = document.getElementById('app');
 
 const SECTIONS = {
-  dashboard:     { label: 'Dashboard',            icon: 'grid_view',        render: renderDashboard, role: 'admin' },
-  products:      { label: 'Products',             icon: 'inventory_2',      render: renderProducts, role: 'admin' },
-  categories:    { label: 'Categories',           icon: 'category',         render: renderCategories, role: 'admin' },
-  reviews:       { label: 'Customer Reviews',     icon: 'rate_review',      render: renderReviews, role: 'admin' },
-  inventory:     { label: 'Inventory Matrix',     icon: 'warehouse',        render: renderInventory, role: 'admin' },
-  orders:        { label: 'Orders Queue',         icon: 'shopping_bag',     render: renderOrders, role: 'admin' },
-  cancellations: { label: 'Cancellations',        icon: 'cancel_presentation', render: renderCancellations, role: 'admin' },
-  customers:     { label: 'Customer CRM',         icon: 'group',            render: renderCustomers, role: 'admin' },
-  shipping:      { label: 'Shipping & Logistics', icon: 'local_shipping',   render: renderShipping, role: 'admin' },
-  discounts:     { label: 'Discounts & Coupons',  icon: 'loyalty',          render: renderDiscounts, role: 'admin' },
-  promotions:    { label: 'Promotions & Banners', icon: 'campaign',         render: renderPromotions, role: 'admin' },
+  dashboard:     { label: 'Dashboard',            icon: 'dashboard',        render: renderDashboard, role: 'admin' },
+  fulfillment:   { label: 'Fulfillment Centre',   icon: 'fulfillment',      render: renderFulfillment, role: 'admin' },
+  orders:        { label: 'Orders Queue',         icon: 'orders',           render: renderOrders, role: 'admin' },
+  inventory:     { label: 'Inventory Matrix',     icon: 'inventory',        render: renderInventory, role: 'admin' },
+  products:      { label: 'Products',             icon: 'products',         render: renderProducts, role: 'admin' },
+  categories:    { label: 'Categories',           icon: 'categories',       render: renderCategories, role: 'admin' },
+  reviews:       { label: 'Customer Reviews',     icon: 'reviews',          render: renderReviews, role: 'admin' },
+  cancellations: { label: 'Cancellations',        icon: 'cancellations',    render: renderCancellations, role: 'admin' },
+  customers:     { label: 'Customer CRM',         icon: 'customers',        render: renderCustomers, role: 'admin' },
+  shipping:      { label: 'Shipping & Logistics', icon: 'shipping',         render: renderShipping, role: 'admin' },
+  discounts:     { label: 'Discounts & Coupons',  icon: 'discounts',        render: renderDiscounts, role: 'admin' },
+  promotions:    { label: 'Promotions & Banners', icon: 'promotions',       render: renderPromotions, role: 'admin' },
   notifications: { label: 'Notifications',        icon: 'notifications',    render: renderNotifications, role: 'admin' },
-  staff:         { label: 'Staff & Audit Logs',   icon: 'badge',            render: renderStaff, role: 'super_admin' },
+  staff:         { label: 'Staff & Audit Logs',   icon: 'staff',            render: renderStaff, role: 'super_admin' },
   settings:      { label: 'Store Settings',       icon: 'settings',         render: renderSettings, role: 'super_admin' },
 };
 
@@ -154,11 +157,11 @@ function renderShell() {
 
           <div style="display:flex;gap:6px;">
             <a href="/" target="_blank" rel="noopener" class="admin-btn" style="flex:1;justify-content:center;padding:5px 8px;font-size:10px;text-decoration:none;">
-              <span class="material-symbols-outlined" style="font-size:14px;">open_in_new</span>
+              <span style="display:flex;align-items:center;">${getIcon('arrowRight')}</span>
               <span>Storefront</span>
             </a>
             <button id="admin-logout-btn" class="admin-btn danger" style="padding:5px 10px;font-size:10px;" title="Sign out of console">
-              <span class="material-symbols-outlined" style="font-size:14px;">logout</span>
+              <span style="display:flex;align-items:center;">${getIcon('close')}</span>
             </button>
           </div>
         </div>
@@ -170,7 +173,7 @@ function renderShell() {
         <!-- Top Executive Bar -->
         <header style="height:56px;background:#111113;border-bottom:1px solid #27272a;display:flex;align-items:center;justify-content:space-between;padding:0 24px;">
           <div style="display:flex;align-items:center;gap:12px;">
-            <span class="material-symbols-outlined" style="color:#71717a;font-size:20px;">${SECTIONS[currentSection]?.icon || 'grid_view'}</span>
+            <span style="display:flex;align-items:center;color:#71717a;">${getIcon(SECTIONS[currentSection]?.icon || 'dashboard')}</span>
             <span style="font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;color:#f4f4f5;letter-spacing:-0.01em;">
               ${SECTIONS[currentSection]?.label || 'Dashboard'}
             </span>
@@ -226,7 +229,7 @@ function renderNavLink(key) {
   const isActive = key === currentSection;
   return `
     <button class="sidebar-link ${isActive ? 'active' : ''}" data-section="${key}">
-      <span class="material-symbols-outlined">${item.icon}</span>
+      <span style="display:flex;align-items:center;">${getIcon(item.icon)}</span>
       <span>${item.label}</span>
     </button>
   `;

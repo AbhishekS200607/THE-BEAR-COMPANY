@@ -106,3 +106,4 @@ test('Milestone 1 — Storefront Review Scalability (10A) & Fine-Grained RBAC', 
     assert.strictEqual(roleHasPermission('analyst', PERMISSIONS.PAYMENTS_REFUND), false);
   });
 });
+

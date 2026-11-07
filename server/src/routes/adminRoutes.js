@@ -42,6 +42,15 @@ import {
   handleDeleteAdminReview,
   handleSendAdminTestEmail,
 } from '../controllers/adminController.js';
+import {
+  handleGetFulfillment,
+  handleAssignStaff,
+  handleBulkUpdateStatus,
+  handleUpdateItemPacking,
+  handleToggleUrgent,
+  handleGetOrderTimeline,
+  handlePrintBatchPackingSlips,
+} from '../controllers/fulfillmentController.js';
 
 const router = Router();
 
@@ -287,5 +296,15 @@ router.delete('/reviews/:id', requirePermission(PERMISSIONS.REVIEWS_MODERATE), h
 
 // 12. Transactional Email Diagnostic (Super-Admin only)
 router.post('/email/test', requireSuperAdmin, handleSendAdminTestEmail);
+
+// 13. Warehouse Fulfillment Centre Routes (Milestone 2)
+router.get('/fulfillment', requirePermission(PERMISSIONS.ORDERS_READ), handleGetFulfillment);
+router.patch('/fulfillment/assign', requirePermission(PERMISSIONS.FULFILLMENT_MANAGE), handleAssignStaff);
+router.patch('/fulfillment/bulk-status', requirePermission(PERMISSIONS.FULFILLMENT_MANAGE), handleBulkUpdateStatus);
+router.patch('/fulfillment/:id/packing-checklist', requirePermission(PERMISSIONS.FULFILLMENT_MANAGE), handleUpdateItemPacking);
+router.patch('/fulfillment/:id/urgent', requirePermission(PERMISSIONS.FULFILLMENT_MANAGE), handleToggleUrgent);
+router.get('/fulfillment/:id/timeline', requirePermission(PERMISSIONS.ORDERS_READ), handleGetOrderTimeline);
+router.get('/fulfillment/packing-slips', requirePermission(PERMISSIONS.FULFILLMENT_MANAGE), handlePrintBatchPackingSlips);
+router.post('/fulfillment/packing-slips', requirePermission(PERMISSIONS.FULFILLMENT_MANAGE), handlePrintBatchPackingSlips);
 
 export default router;

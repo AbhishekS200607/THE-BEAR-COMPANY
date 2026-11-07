@@ -154,3 +154,4 @@ export function requirePermission(...requiredPermissions) {
     next();
   };
 }
+

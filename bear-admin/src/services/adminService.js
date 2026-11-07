@@ -348,10 +348,80 @@ export async function deleteAdminReview(id) {
   throw new Error(d?.error?.message || 'Failed to delete review');
 }
 
+// ── 13. Fulfillment Operations (Milestone 2) ──────────────────────────────
+
+export async function getFulfillment(params = {}) {
+  const q = new URLSearchParams();
+  if (params.tab) q.set('tab', params.tab);
+  if (params.search) q.set('search', params.search);
+  if (params.staffId) q.set('staffId', params.staffId);
+  if (params.courier) q.set('courier', params.courier);
+  if (params.limit) q.set('limit', String(params.limit));
+  if (params.offset) q.set('offset', String(params.offset));
+
+  const d = await apiFetch(`/fulfillment?${q.toString()}`);
+  if (d?.success) return d.data;
+  return { orders: [], tabCounts: {}, staffMembers: [], _error: d?.error?.message };
+}
+
+export async function assignFulfillmentStaff(orderIds, staffId) {
+  const d = await apiFetch('/fulfillment/assign', {
+    method: 'PATCH',
+    body: JSON.stringify({ orderIds, staffId }),
+  });
+  return d;
+}
+
+export async function bulkUpdateFulfillmentStatus(orderIds, status, trackingData = {}) {
+  const d = await apiFetch('/fulfillment/bulk-status', {
+    method: 'PATCH',
+    body: JSON.stringify({ orderIds, status, ...trackingData }),
+  });
+  return d;
+}
+
+export async function updatePackingChecklist(orderId, itemIndex, isPacked) {
+  const d = await apiFetch(`/fulfillment/${orderId}/packing-checklist`, {
+    method: 'PATCH',
+    body: JSON.stringify({ itemIndex, isPacked }),
+  });
+  return d;
+}
+
+export async function toggleOrderUrgent(orderId, isUrgent) {
+  const d = await apiFetch(`/fulfillment/${orderId}/urgent`, {
+    method: 'PATCH',
+    body: JSON.stringify({ isUrgent }),
+  });
+  return d;
+}
+
+export async function getOrderTimeline(orderId) {
+  const d = await apiFetch(`/fulfillment/${orderId}/timeline`);
+  if (d?.success) return d.data;
+  return [];
+}
+
+export async function openBatchPackingSlips(orderIds = []) {
+  const q = orderIds.length > 0 ? `?ids=${encodeURIComponent(orderIds.join(','))}` : '';
+  const printUrl = `${BASE}/fulfillment/packing-slips${q}`;
+  const win = window.open(printUrl, '_blank');
+  if (!win) {
+    alert('Pop-up blocked. Please allow pop-ups for this site to print packing slips.');
+  }
+}
+
 export default {
   getDashboard,
   getOrders,
   updateOrderStatus,
+  getFulfillment,
+  assignFulfillmentStaff,
+  bulkUpdateFulfillmentStatus,
+  updatePackingChecklist,
+  toggleOrderUrgent,
+  getOrderTimeline,
+  openBatchPackingSlips,
   getInventory,
   updateInventory,
   bulkImportInventory,
