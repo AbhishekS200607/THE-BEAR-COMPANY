@@ -67,3 +67,51 @@ CREATE POLICY "Customers view own order timeline"
             AND orders.profile_id = auth.uid()
         )
     );
+
+-- 5. Self-Healing Expired Reservations Sweep (Prevents Invariant Warnings from Old Test Orders)
+CREATE OR REPLACE FUNCTION public.release_expired_reservations()
+RETURNS INTEGER
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public SET row_security=off AS $$
+DECLARE
+    o record;
+    r record;
+    reserved_now int;
+    released_count int := 0;
+BEGIN
+    IF auth.role() IS DISTINCT FROM 'service_role' THEN
+        RAISE EXCEPTION 'Trusted backend required' USING ERRCODE='42501';
+    END IF;
+
+    FOR o IN 
+        SELECT id FROM public.orders
+        WHERE status = 'pending_whatsapp' AND reservation_expires_at <= now() AND reservation_released_at IS NULL
+        ORDER BY id FOR UPDATE SKIP LOCKED
+    LOOP
+        FOR r IN 
+            SELECT variant_id, sum(quantity)::int qty 
+            FROM public.order_items WHERE order_id = o.id
+            GROUP BY variant_id ORDER BY variant_id 
+        LOOP
+            SELECT quantity_reserved INTO reserved_now
+            FROM public.inventory WHERE variant_id = r.variant_id FOR UPDATE;
+
+            IF FOUND THEN
+                UPDATE public.inventory
+                SET quantity_reserved = GREATEST(0, quantity_reserved - r.qty), updated_at = now()
+                WHERE variant_id = r.variant_id;
+            END IF;
+        END LOOP;
+
+        UPDATE public.orders 
+        SET status = 'cancelled', reservation_released_at = now(),
+            admin_notes = concat_ws(E'\n', nullif(admin_notes, ''), 'Reservation expired automatically.'),
+            updated_at = now()
+        WHERE id = o.id;
+
+        released_count := released_count + 1;
+    END LOOP;
+
+    RETURN released_count;
+END;
+$$;
+
