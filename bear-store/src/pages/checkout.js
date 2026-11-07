@@ -119,6 +119,7 @@ export async function render(container) {
           ` : ''}
 
           <form id="checkout-address-form" class="flex flex-col gap-4" novalidate>
+            <!-- Row 1: Full Legal Name & Email Address -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-600 mb-1 font-headline">Full Legal Name *</label>
@@ -147,6 +148,7 @@ export async function render(container) {
               </div>
             </div>
 
+            <!-- Row 2: Mobile / WhatsApp Number & PIN Code -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-600 mb-1 font-headline">Mobile / WhatsApp Number *</label>
@@ -177,39 +179,43 @@ export async function render(container) {
               </div>
             </div>
 
-              <div>
-                <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-600 mb-1 font-headline">State *</label>
-                <select id="state" class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black bg-white cursor-pointer">
-                  ${INDIAN_STATES.map((s) => `<option value="${s}" ${s === (defaultAddr?.state || 'Karnataka') ? 'selected' : ''}>${s}</option>`).join('')}
-                </select>
-              </div>
-            </div>
-
+            <!-- Row 3: Street Address / Landmark (Full width) -->
             <div>
               <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-600 mb-1 font-headline">Street Address / Landmark *</label>
               <textarea 
                 id="address" 
                 required 
                 rows="2" 
-                placeholder="Flat/House no., building, street address" 
-                class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black transition-colors"
+                placeholder="Flat/House no., building, street address, landmark" 
+                class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black transition-colors resize-none"
               >${defaultAddr ? (defaultAddr.line1 + (defaultAddr.line2 ? ', ' + defaultAddr.line2 : '')) : ''}</textarea>
               <p id="address-error" class="text-[11px] text-red-600 font-medium mt-1 hidden"></p>
             </div>
 
-            <div>
-              <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-600 mb-1 font-headline">City / District *</label>
-              <input 
-                type="text" 
-                id="city" 
-                required 
-                placeholder="City / District" 
-                value="${defaultAddr?.city || ''}"
-                class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black transition-colors"
-              />
-              <p id="city-error" class="text-[11px] text-red-600 font-medium mt-1 hidden"></p>
+            <!-- Row 4: City / District & State (Side-by-side) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-600 mb-1 font-headline">City / District *</label>
+                <input 
+                  type="text" 
+                  id="city" 
+                  required 
+                  placeholder="City / District" 
+                  value="${defaultAddr?.city || ''}"
+                  class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black transition-colors"
+                />
+                <p id="city-error" class="text-[11px] text-red-600 font-medium mt-1 hidden"></p>
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-600 mb-1 font-headline">State *</label>
+                <select id="state" class="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:border-black bg-white cursor-pointer transition-colors">
+                  ${INDIAN_STATES.map((s) => `<option value="${s}" ${s === (defaultAddr?.state || 'Karnataka') ? 'selected' : ''}>${s}</option>`).join('')}
+                </select>
+              </div>
             </div>
 
+            <!-- Row 5: Save Address Checkbox -->
             <div class="flex items-center gap-2 pt-1">
               <input 
                 type="checkbox" 
