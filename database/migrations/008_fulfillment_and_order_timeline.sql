@@ -37,6 +37,7 @@ CREATE INDEX IF NOT EXISTS idx_order_timeline_order_id ON public.order_timeline(
 -- 4. Enable Row Level Security on Timeline
 ALTER TABLE public.order_timeline ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admin and staff full timeline access" ON public.order_timeline;
 CREATE POLICY "Admin and staff full timeline access"
     ON public.order_timeline
     FOR ALL
@@ -57,6 +58,7 @@ CREATE POLICY "Admin and staff full timeline access"
         )
     );
 
+DROP POLICY IF EXISTS "Customers view own order timeline" ON public.order_timeline;
 CREATE POLICY "Customers view own order timeline"
     ON public.order_timeline
     FOR SELECT
