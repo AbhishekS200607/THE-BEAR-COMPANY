@@ -40,8 +40,28 @@ export function createApp() {
   app.use(express.json({ limit: '15mb' }));
   app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
+  // Friendly redirect for direct browser tracking visits
+  app.get('/track-order', (req, res) => {
+    const orderNumber = req.query.orderNumber || req.query.order_number || '';
+    const storefront = env.STOREFRONT_URL || (env.NODE_ENV === 'production' ? 'https://the-bear-company.vercel.app' : 'http://localhost:5173');
+    const clean = storefront.replace(/\/+$/, '');
+    const destination = `${clean}/#/track-order${orderNumber ? `?orderNumber=${encodeURIComponent(orderNumber)}` : ''}`;
+    return res.redirect(302, destination);
+  });
+
   // Root health & status endpoints for deployment verification
   app.get(['/', '/api', '/health', '/api/health'], (req, res) => {
+    // If a human visitor opens the root URL in a desktop/mobile web browser, redirect to the storefront
+    if (req.path === '/' && req.accepts('html') && !req.query.format && env.STOREFRONT_URL) {
+      const cleanStorefront = env.STOREFRONT_URL.replace(/\/+$/, '');
+      try {
+        const storeHost = new URL(cleanStorefront).host;
+        if (storeHost && storeHost !== req.headers.host) {
+          return res.redirect(302, cleanStorefront);
+        }
+      } catch {}
+    }
+
     res.json({
       status: 'online',
       service: 'BEAR Performance API',

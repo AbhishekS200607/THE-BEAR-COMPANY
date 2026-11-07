@@ -316,7 +316,7 @@ export async function sendOrderConfirmedEmail(orderId) {
       return;
     }
 
-    const storefrontBase = env.STOREFRONT_URL || 'https://the-bear-company.vercel.app';
+    const storefrontBase = env.STOREFRONT_URL || (env.NODE_ENV === 'production' ? 'https://the-bear-company.vercel.app' : 'http://localhost:5173');
     const cleanBase = storefrontBase.endsWith('/') ? storefrontBase.slice(0, -1) : storefrontBase;
     const trackingLink = `${cleanBase}/#/track-order?orderNumber=${encodeURIComponent(order.order_number)}`;
 

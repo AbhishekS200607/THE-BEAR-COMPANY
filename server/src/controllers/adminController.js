@@ -219,7 +219,7 @@ export async function handleUpdateOrderStatus(req, res, next) {
           }
 
           if (customerEmail) {
-            const storefrontBase = env.STOREFRONT_URL || 'https://the-bear-company.vercel.app';
+            const storefrontBase = env.STOREFRONT_URL || (env.NODE_ENV === 'production' ? 'https://the-bear-company.vercel.app' : 'http://localhost:5173');
             const cleanBase = storefrontBase.endsWith('/') ? storefrontBase.slice(0, -1) : storefrontBase;
             const storeTrackingUrl = `${cleanBase}/#/track-order?orderNumber=${encodeURIComponent(updatedOrder.order_number)}`;
 
