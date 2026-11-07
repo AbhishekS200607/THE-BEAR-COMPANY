@@ -37,22 +37,50 @@ const updateReviewSchema = {
   }),
 };
 
-// GET /api/v1/reviews?productId=...
+// GET /api/v1/reviews?productId=...&page=1&limit=10&rating=5&fit=True+to+Size&verified=true&sort=newest
 router.get('/', (req, res, next) => {
   try {
-    const { productId, rating, search } = req.query;
-    // Only published reviews for storefront users
-    const reviews = getStoredReviews({
+    const { productId, rating, fit, verified, sort, search } = req.query;
+    const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1);
+    // Enforce strict bounded limit (max 50, default 10)
+    const limit = Math.min(50, Math.max(1, parseInt(String(req.query.limit || '10'), 10) || 10));
+
+    // 1. Calculate authoritative product metrics over all published reviews for this product
+    const allProductReviews = getStoredReviews({
+      productId: productId ? String(productId) : undefined,
+      isPublished: true,
+    });
+    const metrics = calculateStoredReviewMetrics(allProductReviews);
+
+    // 2. Apply active filters & sorting
+    const isVerifiedBool = verified !== undefined && verified !== '' ? verified === 'true' || verified === true : undefined;
+    const filteredReviews = getStoredReviews({
       productId: productId ? String(productId) : undefined,
       rating: rating ? Number(rating) : undefined,
+      fit: fit ? String(fit) : undefined,
+      isVerified: isVerifiedBool,
+      sort: sort ? String(sort) : 'newest',
       search: search ? String(search) : undefined,
       isPublished: true,
     });
 
-    const metrics = calculateStoredReviewMetrics(reviews);
+    // 3. Paginate
+    const total = filteredReviews.length;
+    const totalPages = Math.ceil(total / limit) || 1;
+    const startIndex = (page - 1) * limit;
+    const paginatedReviews = filteredReviews.slice(startIndex, startIndex + limit);
+    const hasNextPage = startIndex + limit < total;
+
     return successResponse(res, {
       metrics,
-      reviews,
+      reviews: paginatedReviews,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage,
+      },
     });
   } catch (err) {
     return next(err);

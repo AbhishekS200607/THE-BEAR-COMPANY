@@ -1,5 +1,6 @@
 import { supabaseAnon, supabaseAdmin } from '../config/supabase.js';
 import { errorResponse } from '../utils/response.js';
+import { ALL_STAFF_ROLES } from './rbac.js';
 
 // In-memory cache (5 mins) to prevent hammering Supabase Auth endpoint on rapid bursts & tests
 const tokenCache = new Map();
@@ -114,8 +115,8 @@ export async function requireAdmin(req, res, next) {
       .eq('id', user.id)
       .single();
 
-    if (profileError || !profile || !['admin', 'super_admin'].includes(profile.role)) {
-      return errorResponse(res, 'Admin privileges required', 403);
+    if (profileError || !profile || !ALL_STAFF_ROLES.includes(profile.role)) {
+      return errorResponse(res, 'Admin or staff privileges required', 403);
     }
 
     setCachedAuth(token, user, profile);

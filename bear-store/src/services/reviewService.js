@@ -108,31 +108,53 @@ export function calculateReviewMetrics(reviews = []) {
 }
 
 /**
- * Fetches real reviews and metrics from the backend API, falling back to cache.
+ * Fetches real reviews and metrics from the backend API with pagination, filtering & sorting.
  */
-export async function fetchProductReviews(productId) {
-  if (!isUUID(productId)) {
-    const fallback = getProductReviews(productId);
-    return { reviews: fallback, metrics: calculateReviewMetrics(fallback) };
-  }
+export async function fetchProductReviews(productId, params = {}, signal = null) {
+  const query = new URLSearchParams();
+  if (productId) query.set('productId', productId);
+  if (params.page) query.set('page', String(params.page));
+  if (params.limit) query.set('limit', String(params.limit));
+  if (params.rating) query.set('rating', String(params.rating));
+  if (params.fit) query.set('fit', String(params.fit));
+  if (params.verified !== undefined && params.verified !== '') query.set('verified', String(params.verified));
+  if (params.sort) query.set('sort', String(params.sort));
+  if (params.search) query.set('search', String(params.search));
+
   try {
-    const res = await fetch(`${API_URL}?productId=${encodeURIComponent(productId)}`);
+    const res = await fetch(`${API_URL}?${query.toString()}`, { signal });
     if (res.ok) {
       const json = await res.json();
       if (json.success && json.data) {
         return {
           reviews: json.data.reviews || [],
           metrics: json.data.metrics || calculateReviewMetrics(json.data.reviews),
+          pagination: json.data.pagination || {
+            page: Number(params.page || 1),
+            limit: Number(params.limit || 10),
+            total: (json.data.reviews || []).length,
+            totalPages: 1,
+            hasNextPage: false,
+          },
         };
       }
     }
   } catch (err) {
+    if (err.name === 'AbortError') throw err;
     console.warn('[ReviewService] Backend fetch failed, falling back to local seed/cache:', err.message);
   }
+
   const fallback = getProductReviews(productId);
   return {
     reviews: fallback,
     metrics: calculateReviewMetrics(fallback),
+    pagination: {
+      page: 1,
+      limit: fallback.length,
+      total: fallback.length,
+      totalPages: 1,
+      hasNextPage: false,
+    },
   };
 }
 

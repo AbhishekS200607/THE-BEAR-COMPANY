@@ -77,9 +77,9 @@ export async function render(container, slug) {
     'https://lh3.googleusercontent.com/aida-public/AB6AXuC0A_M4HqJNIIAusW1iTMaL94tnVHUlB2_7uyMjBw5mHw6BLBMJonDYlpbl1ks7zxdtF5jLW3oxBMrz9ZUSoacdbiSztre6lZoDTkvo9Apt6qGtxTxL2PLQibuZAUxKdZJVQD8YhaWaEAhApqCJQHkOjxDW8K-juFBWPSJxhzNXraK5jbwy0Vfos7iF5tBILTs-ByqMTeXYzQYYE66yCKJF6mcKz8kT6DF0rxTO3w'
   ];
 
-  // Authentic product reviews and calculated metrics from server
-  const { reviews: fetchedReviews, metrics: fetchedMetrics } = await fetchProductReviews(product.id);
-  let reviews = fetchedReviews;
+  // Authentic product reviews and calculated metrics from server (bounded preview to 3 reviews)
+  const { reviews: fetchedReviews, metrics: fetchedMetrics } = await fetchProductReviews(product.id, { limit: 3, sort: 'newest' });
+  let reviews = fetchedReviews.slice(0, 3);
   let metrics = fetchedMetrics;
 
   const hasRealId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(product.id);
@@ -407,10 +407,21 @@ export async function render(container, slug) {
           </div>
         </div>
 
-        <!-- Review Cards Grid -->
+        <!-- Review Cards Grid (Bounded to Top 3 Reviews with Scale Route 10A) -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="reviews-list-container">
           ${reviews.length > 0
-            ? reviews.map(renderReviewCardHTML).join('')
+            ? reviews.slice(0, 3).map(renderReviewCardHTML).join('') + (
+                (metrics.totalCount || reviews.length) > 3
+                  ? `
+                  <div class="col-span-1 md:col-span-2 text-center pt-4">
+                    <a href="#product-reviews?productId=${encodeURIComponent(product.id)}" class="inline-flex items-center gap-2 px-8 py-3.5 rounded-full border border-black bg-black text-white hover:bg-zinc-800 text-xs font-bold uppercase tracking-wider font-headline transition-all shadow-xs">
+                      View all ${metrics.totalCount || reviews.length} reviews
+                      <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+                    </a>
+                  </div>
+                  `
+                  : ''
+              )
             : `
             <div id="no-reviews-placeholder" class="col-span-1 md:col-span-2 py-10 px-6 rounded-2xl border border-dashed border-zinc-200 text-center bg-zinc-50/50">
               <span class="material-symbols-outlined text-[32px] text-zinc-400 mb-2">rate_review</span>

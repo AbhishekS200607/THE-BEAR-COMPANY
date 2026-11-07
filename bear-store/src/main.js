@@ -173,6 +173,11 @@ async function router(options = {}) {
       showPageSkeleton();
       const { render } = await import('./pages/faq.js');
       render(pageContainer);
+    } else if (path === 'product-reviews') {
+      setPageMeta({ title: 'BEAR. — Verified Athlete Reviews', description: 'Read verified customer and athlete reviews across fit, durability, and performance.' });
+      showPageSkeleton();
+      const { render } = await import('./pages/productReviews.js');
+      currentRouteCleanup = (await render(pageContainer)) || null;
     } else if (path === 'track-order') {
       setPageMeta({ title: 'BEAR. — Track Shipment & PIN Serviceability', description: 'Live pan-India express air logistics and pin code transit tracker.' });
       showPageSkeleton();
@@ -362,6 +367,7 @@ function init() {
     else if (hash === 'account') import('./pages/account.js');
     else if (hash === 'auth') import('./pages/auth.js');
     else if (hash === 'track-order') import('./pages/trackOrder.js');
+    else if (hash === 'product-reviews') import('./pages/productReviews.js');
   };
 
   document.addEventListener('mouseover', (e) => {

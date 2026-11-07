@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { validate } from '../middleware/validate.js';
 import { requireAdmin, requireSuperAdmin } from '../middleware/auth.js';
+import { requirePermission, PERMISSIONS } from '../middleware/rbac.js';
 import {
   handleGetAdminMe,
   handleGetDashboard,
@@ -279,10 +280,10 @@ const updateAdminReviewSchema = {
   }),
 };
 
-router.get('/reviews', handleGetAdminReviews);
-router.post('/reviews', validate(createAdminReviewSchema), handleCreateAdminReview);
-router.patch('/reviews/:id', validate(updateAdminReviewSchema), handleUpdateAdminReview);
-router.delete('/reviews/:id', handleDeleteAdminReview);
+router.get('/reviews', requirePermission(PERMISSIONS.REVIEWS_READ), handleGetAdminReviews);
+router.post('/reviews', requirePermission(PERMISSIONS.REVIEWS_MODERATE), validate(createAdminReviewSchema), handleCreateAdminReview);
+router.patch('/reviews/:id', requirePermission(PERMISSIONS.REVIEWS_MODERATE), validate(updateAdminReviewSchema), handleUpdateAdminReview);
+router.delete('/reviews/:id', requirePermission(PERMISSIONS.REVIEWS_MODERATE), handleDeleteAdminReview);
 
 // 12. Transactional Email Diagnostic (Super-Admin only)
 router.post('/email/test', requireSuperAdmin, handleSendAdminTestEmail);

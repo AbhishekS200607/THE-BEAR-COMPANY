@@ -470,13 +470,18 @@ function toReviewRow(r) {
 }
 
 export function getStoredReviews(filters = {}) {
-  return cachedReviews.filter((r) => {
+  const list = cachedReviews.filter((r) => {
     if (filters.productId) {
       const targetPid = resolveProductId(filters.productId);
       if (r.productId !== targetPid && r.productId !== filters.productId) return false;
     }
     if (filters.rating && r.rating !== Number(filters.rating)) return false;
     if (filters.isPublished !== undefined && r.isPublished !== filters.isPublished) return false;
+    if (filters.isVerified !== undefined && r.isVerified !== filters.isVerified) return false;
+    if (filters.fit) {
+      const targetFit = filters.fit.toLowerCase();
+      if (!r.fit || !r.fit.toLowerCase().includes(targetFit)) return false;
+    }
     if (filters.search) {
       const q = filters.search.toLowerCase();
       const match =
@@ -488,6 +493,17 @@ export function getStoredReviews(filters = {}) {
     }
     return true;
   });
+
+  const sort = filters.sort || 'newest';
+  if (sort === 'highest_rating') {
+    list.sort((a, b) => b.rating - a.rating || new Date(b.createdAt) - new Date(a.createdAt));
+  } else if (sort === 'lowest_rating') {
+    list.sort((a, b) => a.rating - b.rating || new Date(b.createdAt) - new Date(a.createdAt));
+  } else {
+    list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }
+
+  return list;
 }
 
 export function createStoredReview(data) {
