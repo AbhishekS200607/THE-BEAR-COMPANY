@@ -35,7 +35,7 @@ AS $$
     SELECT EXISTS (
         SELECT 1 FROM public.profiles 
         WHERE id = auth.uid() 
-        AND role IN (
+        AND role::text IN (
             'admin', 
             'super_admin', 
             'operations_manager', 
@@ -87,3 +87,4 @@ ALTER TABLE public.staff_roles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public staff roles read"
     ON public.staff_roles FOR SELECT
     USING (TRUE);
+
