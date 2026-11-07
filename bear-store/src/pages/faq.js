@@ -19,7 +19,7 @@ export function render(container) {
         },
         {
           q: 'Can I track my order in real-time?',
-          a: 'Yes. As soon as your drop is dispatched, you will receive an SMS and WhatsApp tracking link with live BlueDart / Delhivery status updates. You can also track anytime on our #track-order page.'
+          a: 'Yes. As soon as your drop is dispatched, you will receive an SMS and WhatsApp tracking link with live priority courier status updates. You can also track anytime on our #track-order page.'
         }
       ]
     },

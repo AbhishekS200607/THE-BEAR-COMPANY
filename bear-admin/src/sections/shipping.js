@@ -33,7 +33,7 @@ export async function renderShipping(container) {
       <div>
         <span class="material-symbols-outlined" style="color:#22d3ee;font-size:20px;">flight_takeoff</span>
         <p style="font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700;color:#f4f4f5;margin-top:4px;">AIR EXPRESS PRIORITY</p>
-        <p style="font-size:11px;color:#71717a;">BlueDart Air & Delhivery Express. Complimentary Pan-India ₹0 shipping.</p>
+        <p style="font-size:11px;color:#71717a;">Pan-India Priority Express Air Delivery. Complimentary ₹0 shipping.</p>
       </div>
       <div>
         <span class="material-symbols-outlined" style="color:#fbbf24;font-size:20px;">schedule</span>
@@ -121,21 +121,24 @@ function openShippingModal(order, onSaved) {
       <div>
         <label style="display:block;font-size:11px;color:#71717a;margin-bottom:4px;text-transform:uppercase;">Courier Partner</label>
         <select id="ship-carrier" class="admin-select">
-          <option value="BlueDart Express" ${order.carrierName?.includes('BlueDart') ? 'selected' : ''}>BlueDart Express Air</option>
+          <option value="Express Air Cargo" ${order.carrierName?.includes('Express') ? 'selected' : ''}>Express Air Cargo</option>
+          <option value="Shiprocket" ${order.carrierName?.includes('Shiprocket') ? 'selected' : ''}>Shiprocket</option>
           <option value="Delhivery" ${order.carrierName?.includes('Delhivery') ? 'selected' : ''}>Delhivery Surface & Air</option>
+          <option value="BlueDart Express" ${order.carrierName?.includes('BlueDart') ? 'selected' : ''}>BlueDart Express Air</option>
           <option value="DTDC Express" ${order.carrierName?.includes('DTDC') ? 'selected' : ''}>DTDC Express Cargo</option>
           <option value="Shadowfax" ${order.carrierName?.includes('Shadowfax') ? 'selected' : ''}>Shadowfax Express</option>
+          <option value="India Post" ${order.carrierName?.includes('Post') ? 'selected' : ''}>India Post Speed Post</option>
         </select>
       </div>
 
       <div>
         <label style="display:block;font-size:11px;color:#71717a;margin-bottom:4px;text-transform:uppercase;">Tracking ID / AWB Number</label>
-        <input id="ship-awb" type="text" class="admin-input" placeholder="e.g. BD-889210948" value="${order.trackingNumber || ''}" required />
+        <input id="ship-awb" type="text" class="admin-input" placeholder="e.g. AWB-889210948" value="${order.trackingNumber || ''}" required />
       </div>
 
       <div>
-        <label style="display:block;font-size:11px;color:#71717a;margin-bottom:4px;text-transform:uppercase;">Direct Courier Tracking URL</label>
-        <input id="ship-url" type="url" class="admin-input" placeholder="https://www.bluedart.com/tracking/..." value="${order.trackingUrl || ''}" />
+        <label style="display:block;font-size:11px;color:#71717a;margin-bottom:4px;text-transform:uppercase;">Direct Courier Tracking URL (Optional)</label>
+        <input id="ship-url" type="url" class="admin-input" placeholder="https://..." value="${order.trackingUrl || ''}" />
       </div>
 
       <div>
@@ -164,10 +167,7 @@ function openShippingModal(order, onSaved) {
 
     const carrierName = overlay.querySelector('#ship-carrier').value;
     const trackingNumber = overlay.querySelector('#ship-awb').value.trim();
-    let trackingUrl = overlay.querySelector('#ship-url').value.trim();
-    if (!trackingUrl && trackingNumber) {
-      trackingUrl = `https://www.bluedart.com/tracking/${trackingNumber}`;
-    }
+    let trackingUrl = overlay.querySelector('#ship-url').value.trim() || null;
     const status = overlay.querySelector('#ship-status').value;
 
     try {

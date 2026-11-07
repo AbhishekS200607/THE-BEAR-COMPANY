@@ -142,7 +142,7 @@ export async function submitOrder(bagData, detailsData, couponCode = null) {
       id: orderNumber,
       backendId: serverOrder.id,
       reservationExpiresAt,
-      estimatedDelivery: '2–3 business days (BlueDart Air Express)',
+      estimatedDelivery: '2–4 business days (Pan-India Express Air)',
       items: cart,
       total: typeof serverOrder.total === 'number'
         ? serverOrder.total

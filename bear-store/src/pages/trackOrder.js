@@ -79,7 +79,7 @@ export function render(container) {
         <span class="material-symbols-outlined text-[18px]">pin_drop</span>
         <span>Check PIN Code Serviceability</span>
       </h2>
-      <p class="text-xs text-zinc-500 mb-4">We deliver across 19,000+ Indian PIN codes via BlueDart Express Air cargo.</p>
+      <p class="text-xs text-zinc-500 mb-4">We deliver across 19,000+ Indian PIN codes via Pan-India Priority Air Express cargo.</p>
       
       <form id="pincode-form" class="flex flex-col sm:flex-row gap-3">
         <input 
@@ -100,7 +100,7 @@ export function render(container) {
           <span class="material-symbols-outlined text-emerald-700 text-xl">verified</span>
           <div>
             <p class="font-headline text-xs font-bold text-emerald-950 uppercase">Express Air Service Active</p>
-            <p class="text-xs text-emerald-800 mt-0.5" id="pincode-msg">PIN Code is serviced directly via BlueDart Air Express.</p>
+            <p class="text-xs text-emerald-800 mt-0.5" id="pincode-msg">PIN Code is serviced directly via Pan-India Express Air Delivery.</p>
             <div class="flex items-center gap-4 mt-2 text-[11px] text-emerald-900 font-medium flex-wrap">
               <span>⚡ Air Express: 24–48 Hours</span>
               <span>💵 Cash on Delivery (COD): Active</span>
@@ -212,8 +212,8 @@ export function render(container) {
       const orderRef = liveOrder ? liveOrder.order_number : (matched.orderNumber || matched.id);
       const orderStatus = liveOrder ? liveOrder.status : (matched.status || 'pending_whatsapp');
       const awbNumber = liveOrder?.tracking_number || matched.tracking_number || matched.awbNumber || null;
-      const carrierName = liveOrder?.carrier_name || matched.carrier_name || (awbNumber ? 'BLUEDART AIR' : 'Pending Allocation');
-      const trackingUrl = liveOrder?.tracking_url || matched.tracking_url || (awbNumber ? `https://www.bluedart.com/tracking/${awbNumber}` : null);
+      const carrierName = liveOrder?.carrier_name || matched.carrier_name || (awbNumber ? 'EXPRESS AIR' : 'Pending Allocation');
+      const trackingUrl = liveOrder?.tracking_url || matched.tracking_url || null;
 
       // Status text & badge
       let statusBadge = '';
@@ -260,7 +260,7 @@ export function render(container) {
           </div>
         </div>
 
-        <!-- 4-Stage BlueDart Transit Stepper (Item 14) -->
+        <!-- 4-Stage Express Transit Stepper -->
         <div class="relative pl-6 space-y-6 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-zinc-200 mb-6">
           <!-- Step 1 -->
           <div class="relative">
@@ -271,8 +271,8 @@ export function render(container) {
           <!-- Step 2 -->
           <div class="relative">
             <span class="absolute -left-6 top-1 w-4 h-4 rounded-full ${orderStatus === 'pending_whatsapp' ? 'bg-zinc-200 text-zinc-400' : 'bg-black text-white'} flex items-center justify-center text-[10px] font-bold">✓</span>
-            <p class="text-xs font-bold text-zinc-950 font-headline">Dispatched via BlueDart Express Air</p>
-            <p class="text-[11px] text-zinc-500">Kempegowda Air Cargo Terminal — Airway Bill Generated</p>
+            <p class="text-xs font-bold text-zinc-950 font-headline">Dispatched via Priority Air Express</p>
+            <p class="text-[11px] text-zinc-500">Air Cargo Logistics Terminal — Airway Bill Generated</p>
           </div>
           <!-- Step 3 -->
           <div class="relative">
@@ -284,7 +284,7 @@ export function render(container) {
           <div class="relative">
             <span class="absolute -left-6 top-1 w-4 h-4 rounded-full ${orderStatus === 'delivered' ? 'bg-emerald-600 text-white' : 'bg-zinc-200 text-zinc-400'} flex items-center justify-center text-[10px] font-bold">${orderStatus === 'delivered' ? '✓' : '○'}</span>
             <p class="text-xs font-bold ${orderStatus === 'delivered' ? 'text-emerald-700' : 'text-zinc-400'} font-headline">Out for Doorstep Delivery</p>
-            <p class="text-[11px] text-zinc-400">${orderStatus === 'delivered' ? 'Successfully handed over to customer' : 'BlueDart delivery agent out for final mile'}</p>
+            <p class="text-[11px] text-zinc-400">${orderStatus === 'delivered' ? 'Successfully handed over to customer' : 'Courier delivery agent out for final mile'}</p>
           </div>
         </div>
 
@@ -308,7 +308,7 @@ export function render(container) {
     e.preventDefault();
     const pin = pinInput.value.trim();
     if (pin.length === 6 && /^\d{6}$/.test(pin)) {
-      pinMsg.textContent = `PIN Code ${pin} is serviced via BlueDart Air Express. Complimentary standard air shipping confirmed.`;
+      pinMsg.textContent = `PIN Code ${pin} is serviced via Pan-India Priority Air Express. Complimentary express shipping confirmed.`;
       pinResult?.classList.remove('hidden');
     } else {
       showToast('Please enter a valid 6-digit Indian PIN code', 'error');

@@ -160,7 +160,7 @@ export function render(container, orderData = null) {
       <div class="space-y-4">
         ${[
           { step: '01', icon: 'inventory_2',    title: 'Packing & QC',         desc: 'Your order is being quality-checked and packed in tamper-proof waterproof mailers.' },
-          { step: '02', icon: 'local_shipping', title: 'Dispatch Notification', desc: 'You\'ll receive a WhatsApp message with your live BlueDart / Delhivery tracking link.' },
+          { step: '02', icon: 'local_shipping', title: 'Dispatch Notification', desc: 'You\'ll receive a WhatsApp message with your live courier tracking link.' },
           { step: '03', icon: 'door_front',     title: 'Doorstep Delivery',    desc: 'Your drop arrives within the estimated window. Reschedule anytime via WhatsApp.' },
         ].map(s => `
           <div class="flex items-start gap-3">

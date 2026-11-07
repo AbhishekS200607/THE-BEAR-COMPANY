@@ -165,21 +165,24 @@ function openOrderModal(order, onUpdate) {
           <label style="display:block;font-size:11px;color:#71717a;margin-bottom:4px;text-transform:uppercase;">Courier Carrier</label>
           <select id="m-carrier" class="admin-select">
             <option value="">— Unassigned —</option>
-            <option value="BlueDart Express" ${order.carrierName?.includes('BlueDart') ? 'selected' : ''}>BlueDart Express Air</option>
+            <option value="Express Air Cargo" ${order.carrierName?.includes('Express') ? 'selected' : ''}>Express Air Cargo</option>
+            <option value="Shiprocket" ${order.carrierName?.includes('Shiprocket') ? 'selected' : ''}>Shiprocket</option>
             <option value="Delhivery" ${order.carrierName?.includes('Delhivery') ? 'selected' : ''}>Delhivery Express</option>
-            <option value="DTDC" ${order.carrierName?.includes('DTDC') ? 'selected' : ''}>DTDC Express Cargo</option>
+            <option value="BlueDart Express" ${order.carrierName?.includes('BlueDart') ? 'selected' : ''}>BlueDart Express Air</option>
+            <option value="DTDC" ${order.carrierName?.includes('DTDC') ? 'selected' : ''}>DTDC Express</option>
             <option value="Shadowfax" ${order.carrierName?.includes('Shadowfax') ? 'selected' : ''}>Shadowfax Air</option>
+            <option value="India Post" ${order.carrierName?.includes('Post') ? 'selected' : ''}>India Post Speed Post</option>
           </select>
         </div>
 
         <div>
           <label style="display:block;font-size:11px;color:#71717a;margin-bottom:4px;text-transform:uppercase;">Tracking ID / AWB Number</label>
-          <input id="m-tracking" type="text" class="admin-input" placeholder="e.g. BD-889210948" value="${order.trackingNumber || ''}" />
+          <input id="m-tracking" type="text" class="admin-input" placeholder="e.g. AWB-889210948" value="${order.trackingNumber || ''}" />
         </div>
 
         <div>
-          <label style="display:block;font-size:11px;color:#71717a;margin-bottom:4px;text-transform:uppercase;">Tracking URL</label>
-          <input id="m-tracking-url" type="url" class="admin-input" placeholder="https://www.bluedart.com/tracking/..." value="${order.trackingUrl || ''}" />
+          <label style="display:block;font-size:11px;color:#71717a;margin-bottom:4px;text-transform:uppercase;">Tracking URL (Optional)</label>
+          <input id="m-tracking-url" type="url" class="admin-input" placeholder="https://..." value="${order.trackingUrl || ''}" />
         </div>
 
         <div>
@@ -206,9 +209,6 @@ function openOrderModal(order, onUpdate) {
     const carrierName = overlay.querySelector('#m-carrier').value.trim() || null;
     const trackingNumber = overlay.querySelector('#m-tracking').value.trim() || null;
     let trackingUrl = overlay.querySelector('#m-tracking-url').value.trim() || null;
-    if (trackingNumber && !trackingUrl) {
-      trackingUrl = `https://www.bluedart.com/tracking/${trackingNumber}`;
-    }
     const adminNotes = overlay.querySelector('#m-notes').value.trim() || null;
 
     try {

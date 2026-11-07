@@ -231,7 +231,7 @@ export async function render(container) {
 
           <div class="mt-6 pt-4 border-t border-zinc-100 flex items-center gap-2 text-xs text-zinc-500">
             <span class="material-symbols-outlined text-emerald-700 text-base">verified</span>
-            <span>BlueDart Air Express priority dispatch is confirmed for this destination.</span>
+            <span>Pan-India Priority Express Air delivery is confirmed for this destination.</span>
           </div>
         </div>
 
@@ -739,7 +739,7 @@ export async function render(container) {
           <h1 class="font-headline text-2xl md:text-3xl font-extrabold uppercase text-zinc-950 mb-2">Order Confirmed & Verified</h1>
           <p class="text-sm font-bold text-green-700 uppercase font-headline mb-4">Order ID: ${order.orderNumber}</p>
           <p class="text-xs sm:text-sm text-zinc-600 mb-6 leading-relaxed max-w-lg mx-auto">
-            Your WhatsApp message has been recorded. Our fulfilment desk has assigned your dispatch queue. You will receive BlueDart live tracking alerts directly on WhatsApp.
+            Your WhatsApp message has been recorded. Our fulfilment desk has assigned your dispatch queue. You will receive live courier tracking alerts directly on WhatsApp.
           </p>
 
           <div class="p-5 sm:p-6 rounded-xl bg-zinc-50 text-left mb-6 border border-zinc-200">
@@ -748,7 +748,7 @@ export async function render(container) {
             <p class="text-xs text-zinc-700 mt-1"><strong>Address:</strong> ${address}, ${city}, ${state} — ${pincode}</p>
             ${activeCoupon ? `<p class="text-xs text-emerald-700 mt-1 font-semibold"><strong>Coupon Applied:</strong> ${activeCoupon.code} (-${formatCurrency(discountAmount)})</p>` : ''}
             <p class="text-xs text-zinc-700 mt-1"><strong>Total Paid / COD:</strong> ${formatCurrency(grandTotal)}</p>
-            <p class="text-xs text-green-700 mt-1 font-bold"><strong>Status:</strong> Processing (Standard dispatch via BlueDart Air Express)</p>
+            <p class="text-xs text-green-700 mt-1 font-bold"><strong>Status:</strong> Processing (Pan-India Priority Express Air Dispatch)</p>
           </div>
 
           <div class="flex flex-wrap items-center justify-center gap-3">

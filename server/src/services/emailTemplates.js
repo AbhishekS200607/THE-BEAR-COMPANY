@@ -386,7 +386,7 @@ export function renderOrderConfirmationEmail({
               </tr>
               <tr>
                 <td style="font-size: 11px; color: #71717a; text-transform: uppercase; letter-spacing: 0.05em; padding-top: 6px;">Shipping Speed</td>
-                <td align="right" style="font-size: 11px; color: #34d399; font-weight: bold; padding-top: 6px;">BlueDart Air Express (Complimentary)</td>
+                <td align="right" style="font-size: 11px; color: #34d399; font-weight: bold; padding-top: 6px;">Pan-India Express Air (Complimentary)</td>
               </tr>
             </table>
           </td>
@@ -512,7 +512,7 @@ BEAR Performance Wear Pvt. Ltd.`;
 export function renderShipmentDispatchedEmail({
   customerName,
   orderNumber,
-  carrierName = 'BlueDart Express',
+  carrierName = 'Priority Express Air',
   trackingNumber,
   trackingUrl,
   storeTrackingUrl,
@@ -522,7 +522,7 @@ export function renderShipmentDispatchedEmail({
   const safeName = escapeHtml(customerName || 'Athlete');
   const safeOrderNumber = escapeHtml(orderNumber);
   const safeCarrier = escapeHtml(carrierName);
-  const safeAwb = escapeHtml(trackingNumber || 'Available via BlueDart Portal');
+  const safeAwb = escapeHtml(trackingNumber || 'Tracking Link on Dashboard');
   const safeSupport = escapeHtml(supportEmail);
   const safeDate = new Date(dispatchedAt).toLocaleDateString('en-IN', {
     day: 'numeric',

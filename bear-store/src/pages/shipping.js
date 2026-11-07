@@ -10,7 +10,7 @@ export function render(container) {
     <div class="text-center max-w-xl mx-auto mb-10 md:mb-12">
       <p class="font-headline text-xs font-bold uppercase tracking-widest text-zinc-400 mb-2">PAN-INDIA FULFILLMENT</p>
       <h1 class="font-headline text-2xl sm:text-4xl font-extrabold uppercase tracking-tight text-zinc-950">Shipping &amp; Transit</h1>
-      <p class="text-xs sm:text-sm text-zinc-500 mt-2">Precision logistics powered by dedicated BlueDart and Delhivery Air Express channels.</p>
+      <p class="text-xs sm:text-sm text-zinc-500 mt-2">Precision logistics powered by dedicated Pan-India Air Express channels.</p>
     </div>
 
     <!-- 4 Stats Cards -->
@@ -36,7 +36,7 @@ export function render(container) {
       <div class="p-4 bg-white border border-zinc-200 rounded-none sm:rounded-sm">
         <span class="text-2xl font-bold font-headline text-zinc-950">Air</span>
         <p class="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mt-1 font-headline">Express Transit</p>
-        <p class="text-[11px] text-zinc-500 mt-0.5">BlueDart &amp; Delhivery Priority</p>
+        <p class="text-[11px] text-zinc-500 mt-0.5">Pan-India Express Air</p>
       </div>
     </div>
 
@@ -75,7 +75,7 @@ export function render(container) {
       <h3 class="font-headline text-xs font-bold uppercase tracking-wider text-zinc-900">Important Shipping Details</h3>
       <p>• <strong>Same-Day Dispatch Cutoff:</strong> All orders confirmed prior to 2:00 PM IST Monday through Saturday are packed and handed over to air cargo carriers the exact same day.</p>
       <p>• <strong>Tamper-Proof Packaging:</strong> Every BEAR drop is enclosed in double-sealed waterproof poly mailers with tamper indicator strips.</p>
-      <p>• <strong>Delivery Rescheduling:</strong> Receive an interactive WhatsApp notification from BlueDart/Delhivery on delivery morning to update delivery slot or instruct security drop.</p>
+      <p>• <strong>Delivery Rescheduling:</strong> Receive an interactive WhatsApp notification from our logistics courier on delivery morning to update delivery slot or instruct security drop.</p>
     </div>
   `;
 

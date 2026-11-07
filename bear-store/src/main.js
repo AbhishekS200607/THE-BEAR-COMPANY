@@ -177,7 +177,7 @@ async function router(options = {}) {
       const { render } = await import('./pages/faq.js');
       render(pageContainer);
     } else if (path === 'track-order') {
-      setPageMeta({ title: 'BEAR. — Track Shipment & PIN Serviceability', description: 'Live BlueDart express air logistics and pin code transit tracker.' });
+      setPageMeta({ title: 'BEAR. — Track Shipment & PIN Serviceability', description: 'Live pan-India express air logistics and pin code transit tracker.' });
       showPageSkeleton();
       const { render } = await import('./pages/trackOrder.js');
       render(pageContainer);
