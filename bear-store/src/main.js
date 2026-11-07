@@ -8,10 +8,7 @@ import { hasConsent } from './services/cookieService.js';
 import { mount as mountAnnouncement } from './components/announcementBar.js';
 import { mount as mountHeader } from './components/header.js';
 import { mount as mountFooter } from './components/footer.js';
-import { mount as mountCartDrawer } from './components/cartDrawer.js';
-import { mount as mountSearchOverlay } from './components/searchOverlay.js';
 import { mount as mountToast } from './components/toast.js';
-import { mount as mountCookieBanner } from './components/cookieBanner.js';
 import { initLoadingBar, startLoading, completeLoading } from './components/loadingBar.js';
 import { mountScrollToTop } from './components/scrollToTop.js';
 import { mountFloatingWhatsApp } from './components/floatingWhatsApp.js';
@@ -282,14 +279,49 @@ function init() {
   mountScrollToTop();
   mountFloatingWhatsApp();
 
-  // 3. Mount permanent layout components
+  // 3. Mount critical above-the-fold layout components
   if (announcementContainer) mountAnnouncement(announcementContainer);
   if (headerContainer) mountHeader(headerContainer);
   if (footerContainer) mountFooter(footerContainer);
-  if (cartDrawerContainer) mountCartDrawer(cartDrawerContainer);
-  if (searchOverlayContainer) mountSearchOverlay(searchOverlayContainer);
   if (toastContainer) mountToast(toastContainer);
-  if (cookieBannerContainer) mountCookieBanner(cookieBannerContainer);
+
+  // 3b. Defer non-critical overlays to idle time / user interaction to maximize First Contentful Paint
+  let cartMounted = false;
+  let searchMounted = false;
+
+  async function ensureCartMounted() {
+    if (cartMounted || !cartDrawerContainer) return;
+    cartMounted = true;
+    const { mount } = await import('./components/cartDrawer.js');
+    mount(cartDrawerContainer);
+  }
+
+  async function ensureSearchMounted() {
+    if (searchMounted || !searchOverlayContainer) return;
+    searchMounted = true;
+    const { mount } = await import('./components/searchOverlay.js');
+    mount(searchOverlayContainer);
+  }
+
+  // Eagerly mount if user triggers search or cart before idle callback
+  subscribe((state) => {
+    if (state.cartOpen) ensureCartMounted();
+    if (state.searchOpen) ensureSearchMounted();
+  });
+
+  const mountDeferredOverlays = () => {
+    ensureCartMounted();
+    ensureSearchMounted();
+    if (cookieBannerContainer) {
+      import('./components/cookieBanner.js').then((m) => m.mount(cookieBannerContainer));
+    }
+  };
+
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(mountDeferredOverlays, { timeout: 1500 });
+  } else {
+    setTimeout(mountDeferredOverlays, 300);
+  }
 
   // 4. Listen for hash changes
   window.addEventListener('hashchange', () => router());
@@ -318,6 +350,33 @@ function init() {
   initAnalytics();
   // Re-check when consent changes (user updates preferences)
   window.addEventListener('bear:consent', () => initAnalytics());
+  // 8. Predictive Route Preloader (on pointer hover/touch start)
+  const prefetchedRoutes = new Set();
+  const prefetchRoute = (hash) => {
+    if (!hash || prefetchedRoutes.has(hash)) return;
+    prefetchedRoutes.add(hash);
+    if (hash === 'collection') import('./pages/collection.js');
+    else if (hash.startsWith('product/')) import('./pages/product.js');
+    else if (hash === 'cart') import('./pages/cart.js');
+    else if (hash === 'checkout') import('./pages/checkout.js');
+    else if (hash === 'account') import('./pages/account.js');
+    else if (hash === 'auth') import('./pages/auth.js');
+    else if (hash === 'track-order') import('./pages/trackOrder.js');
+  };
+
+  document.addEventListener('mouseover', (e) => {
+    const link = e.target.closest('a[href^="#"]');
+    if (!link) return;
+    const hash = link.getAttribute('href').replace(/^#\/?/, '').split('?')[0];
+    prefetchRoute(hash);
+  }, { passive: true });
+
+  document.addEventListener('touchstart', (e) => {
+    const link = e.target.closest('a[href^="#"]');
+    if (!link) return;
+    const hash = link.getAttribute('href').replace(/^#\/?/, '').split('?')[0];
+    prefetchRoute(hash);
+  }, { passive: true });
 }
 
 // Start app when DOM is ready

@@ -18,7 +18,7 @@ export async function render(container) {
     <!-- Top Hero Campaign Section -->
     <section class="relative w-full max-w-[1360px] mx-auto px-4 md:px-gutter-desktop mt-2 md:mt-space-lg mb-6 md:mb-space-2xl">
       <div class="relative w-full min-h-[440px] md:min-h-[580px] rounded-2xl md:rounded-lg overflow-hidden shadow-sm flex items-center bg-primary" id="campaign-banner">
-        <!-- Hero Background Image -->
+        <!-- Hero Background Image (LCP Prioritized) -->
         <img 
           src="${isSow 
             ? 'https://lh3.googleusercontent.com/aida-public/AB6AXuAwJwjClrMEmcZdI7T5_s4E_hHPVNSvONzixL7JG9-QvsrOFNVHsJuM34lczkEnDZwBuddxz_XYgYNG3dVxfyDWbS9nWSmYIm9hoZqLJC2kjzY0eZzeqffaWX-YYCyBV25Vha3ShEgy8-DsQyeiv8v-7doFJr0Aw4myGI4pHt412ia-kqZZyIN1J3O23yjiYoMKkZDS_f51t6qAJ4pXlwdu3EG3rgGzswUdnY2fxQ' 
@@ -26,6 +26,9 @@ export async function render(container) {
           alt="${isSow ? 'SOW Athletic Luxury Campaign' : 'BEAR High-Performance Campaign'}" 
           class="absolute inset-0 w-full h-full object-cover object-top"
           id="hero-bg-img"
+          fetchpriority="high"
+          loading="eager"
+          decoding="async"
         />
         <!-- Ambient Gradient Overlay -->
         <div class="absolute inset-0 pointer-events-none" style="background: linear-gradient(to right, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.65) 50%, rgba(0,0,0,0.2) 100%);"></div>

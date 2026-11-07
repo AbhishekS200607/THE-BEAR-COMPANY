@@ -16,6 +16,7 @@ export async function handleGetCategories(req, res, next) {
     const { data, error } = await query;
     if (error) throw error;
 
+    res.set('Cache-Control', 'public, max-age=120, s-maxage=300, stale-while-revalidate=600');
     return successResponse(res, data || []);
   } catch (err) {
     return next(err);

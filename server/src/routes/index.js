@@ -24,6 +24,7 @@ router.get('/health', (req, res) => {
 // Public promotions endpoint
 router.get('/promotions', (req, res) => {
   const promos = getStoredPromotions();
+  res.set('Cache-Control', 'public, max-age=120, s-maxage=300, stale-while-revalidate=600');
   return successResponse(res, promos);
 });
 

@@ -9,10 +9,17 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     cssCodeSplit: true,
+    target: 'es2022',
+    minify: 'esbuild',
     rollupOptions: {
       output: {
-        manualChunks: {
-          router: ['./src/main.js'],
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            return 'vendor';
+          }
+          if (id.includes('/data/products') || id.includes('/data/collections')) {
+            return 'catalog-data';
+          }
         },
       },
     },

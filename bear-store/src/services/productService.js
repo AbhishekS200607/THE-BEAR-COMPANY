@@ -6,18 +6,20 @@ import { API_V1 } from '../config/api.js';
 const API_BASE = API_V1;
 
 async function fetchAllLiveProducts() {
-  try {
-    const res = await fetch(`${API_BASE}/products`);
-    if (res.ok) {
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-        return json.data.map(normalizeProduct);
+  return remember('all_live_products', async () => {
+    try {
+      const res = await fetch(`${API_BASE}/products`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          return json.data.map(normalizeProduct);
+        }
       }
+    } catch (err) {
+      console.warn('[BEAR Store] Could not reach products API, using static fallback:', err.message);
     }
-  } catch (err) {
-    console.warn('[BEAR Store] Could not reach products API, using static fallback:', err.message);
-  }
-  return fallbackProducts.map(normalizeProduct);
+    return fallbackProducts.map(normalizeProduct);
+  }, 2 * 60 * 1000);
 }
 
 function normalizeProduct(p) {

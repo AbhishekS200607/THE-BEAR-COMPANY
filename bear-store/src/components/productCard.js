@@ -261,7 +261,7 @@ export function createProductCard(product) {
       <a href="#product/${product.slug}" class="block w-full h-full no-underline hover:no-underline" aria-label="View ${product.name}">
         ${
           firstImage
-            ? `<img src="${firstImage}" alt="${product.name}" width="600" height="600" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300" loading="lazy" data-fallback-name="${product.name}" data-fallback-mode="${product.mode}" />`
+            ? `<img src="${firstImage}" alt="${product.name}" width="600" height="600" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300" loading="lazy" decoding="async" data-fallback-name="${product.name}" data-fallback-mode="${product.mode}" />`
             : makePlaceholderSVG(product.name, product.mode)
         }
       </a>
