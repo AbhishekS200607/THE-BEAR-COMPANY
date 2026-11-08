@@ -4,6 +4,8 @@ import { createProductCard } from '../components/productCard.js';
 import { getRecentlyViewedIds } from '../services/recentlyViewedService.js';
 import { products } from '../data/products.js';
 import { skeletonHome } from '../utils/skeletons.js';
+import heroBearImg from '../assets/hero/hero-bear.webp';
+import heroSowImg from '../assets/hero/hero-sow.webp';
 
 export async function render(container) {
   const currentMode = getMode();
@@ -20,11 +22,9 @@ export async function render(container) {
       <div class="relative w-full min-h-[440px] md:min-h-[580px] rounded-2xl md:rounded-lg overflow-hidden shadow-sm flex items-center bg-primary" id="campaign-banner">
         <!-- Hero Background Image (LCP Prioritized) -->
         <img 
-          src="${isSow 
-            ? 'https://lh3.googleusercontent.com/aida-public/AB6AXuAwJwjClrMEmcZdI7T5_s4E_hHPVNSvONzixL7JG9-QvsrOFNVHsJuM34lczkEnDZwBuddxz_XYgYNG3dVxfyDWbS9nWSmYIm9hoZqLJC2kjzY0eZzeqffaWX-YYCyBV25Vha3ShEgy8-DsQyeiv8v-7doFJr0Aw4myGI4pHt412ia-kqZZyIN1J3O23yjiYoMKkZDS_f51t6qAJ4pXlwdu3EG3rgGzswUdnY2fxQ' 
-            : 'https://lh3.googleusercontent.com/aida-public/AB6AXuC_vt3-yhwyyME5_KhwDPsuet5gX1jptpflQhFdHmb5tVbgcgIczBJgAb9QGPF2ouw_6YFT8UCUqCxPFPi2MPKY0XHZHfFUiybXRhZ9tXmnHYr97LqU1n8pbc1TtMcci0D_xC4k_-Ub7e7aEhmFH8ZVrv8J7yDBPPmgJtg1-xZ0s4k9OPIVMBnoSaF0I7ABdrWr81Fbgn9SOTyg0lLjej86iO7ebRI2qqIRgF4gCA'}" 
+          src="${isSow ? heroSowImg : heroBearImg}" 
           alt="${isSow ? 'SOW Athletic Luxury Campaign' : 'BEAR High-Performance Campaign'}" 
-          class="absolute inset-0 w-full h-full object-cover object-top"
+          class="absolute inset-0 w-full h-full object-cover object-center"
           id="hero-bg-img"
           fetchpriority="high"
           loading="eager"
@@ -80,10 +80,10 @@ export async function render(container) {
                 </div>
                 <div>
                   <p class="font-headline text-sm text-zinc-900 uppercase font-bold">
-                    ${isSow ? 'Sculpt Flex Bra' : 'Heavy Oversized Tee'}
+                    ${isSow ? 'BEAR Vintage Ringer Tee' : 'Heavy Oversized Tee'}
                   </p>
                   <p class="text-xs text-zinc-500">
-                    ${isSow ? 'Terracotta Clay • Medium Support' : 'Washed Carbon Black • Regular Fit'}
+                    ${isSow ? 'Terracotta / Washed Rose • Relaxed Fit' : 'Washed Oatmeal • Oversized Fit'}
                   </p>
                 </div>
               </div>
@@ -95,6 +95,9 @@ export async function render(container) {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
         </div>
       </div>
     </section>
