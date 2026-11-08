@@ -1,12 +1,4 @@
-/* Local Bundled Material Symbols Font (Zero FOUT / Instant Offline Rendering) */
-@font-face {
-  font-family: 'Material Symbols Outlined';
-  font-style: normal;
-  font-weight: 100 700;
-  font-display: block;
-  src: url('/fonts/material-symbols.woff2') format('woff2');
-}
-
+/* BEAR Admin Pure SVG UI System */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; background: #09090b; color: #f4f4f5; font-family: 'Plus Jakarta Sans', sans-serif; }
 #app { height: 100%; }

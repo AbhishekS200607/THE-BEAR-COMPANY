@@ -51,6 +51,8 @@ export async function render(container) {
       filtered.sort((a, b) => b.price - a.price);
     } else if (sortOrder === 'rating') {
       filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    } else if (sortOrder === 'newest') {
+      filtered.sort((a, b) => new Date(b.createdAt || b.created_at || 0) - new Date(a.createdAt || a.created_at || 0));
     }
 
     currentFilteredProducts = filtered;

@@ -477,6 +477,10 @@ export async function handleGetAdminProducts(req, res, next) {
         price_paise,
         compare_at_price_paise,
         description,
+        fit_details,
+        fabric_details,
+        care_instructions,
+        delivery_info,
         is_active,
         is_featured,
         is_bestseller,
@@ -523,6 +527,18 @@ export async function handleGetAdminProducts(req, res, next) {
         colours: colours.length ? colours : (p.mode === 'bear' ? ['Pitch Black'] : ['Terracotta']),
         sizes: sizes.length ? sizes : ['S', 'M', 'L', 'XL', 'XXL'],
         description: p.description,
+        fit: p.fit_details,
+        fitDetails: p.fit_details,
+        fit_details: p.fit_details,
+        fabric: p.fabric_details,
+        fabricDetails: p.fabric_details,
+        fabric_details: p.fabric_details,
+        care: p.care_instructions,
+        careInstructions: p.care_instructions,
+        care_instructions: p.care_instructions,
+        delivery: p.delivery_info,
+        deliveryInfo: p.delivery_info,
+        delivery_info: p.delivery_info,
         isPublished: p.is_active,
         isFeatured: p.is_featured,
         isBestseller: p.is_bestseller,
@@ -548,9 +564,13 @@ export async function handleCreateProduct(req, res, next) {
       compareAtPrice,
       description,
       fit,
+      fitDetails,
       fabric,
+      fabricDetails,
       care,
+      careInstructions,
       delivery,
+      deliveryInfo,
       isPublished,
       isActive,
       colours = [],
@@ -563,6 +583,11 @@ export async function handleCreateProduct(req, res, next) {
     const resolvedCategory = category || categoryName;
     const resolvedComparePrice = comparePrice !== undefined ? comparePrice : compareAtPrice;
     const resolvedActive = isPublished !== undefined ? isPublished : (isActive !== undefined ? isActive : true);
+
+    const fitVal = fit ?? fitDetails ?? req.body.fit_details ?? null;
+    const fabricVal = fabric ?? fabricDetails ?? req.body.fabric_details ?? null;
+    const careVal = care ?? careInstructions ?? req.body.care_instructions ?? null;
+    const deliveryVal = delivery ?? deliveryInfo ?? req.body.delivery_info ?? null;
 
     const baseSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     const slug = `${baseSlug}-${Date.now().toString(36)}`;
@@ -578,10 +603,10 @@ export async function handleCreateProduct(req, res, next) {
         price_paise: Math.round(price * 100),
         compare_at_price_paise: resolvedComparePrice ? Math.round(resolvedComparePrice * 100) : null,
         description,
-        fit_details: fit || null,
-        fabric_details: fabric || null,
-        care_instructions: care || null,
-        delivery_info: delivery || null,
+        fit_details: fitVal,
+        fabric_details: fabricVal,
+        care_instructions: careVal,
+        delivery_info: deliveryVal,
         is_active: resolvedActive,
       })
       .select()
@@ -611,9 +636,9 @@ export async function handleCreateProduct(req, res, next) {
       if (!varErr && variant) {
         await supabaseAdmin.from('inventory').insert({
           variant_id: variant.id,
-          quantity_available: 30,
+          quantity_available: initialStock || 30,
           quantity_reserved: 0,
-          low_stock_threshold: 5,
+          low_stock_threshold: lowStockThreshold || 5,
         });
       }
     }
@@ -658,9 +683,13 @@ export async function handleUpdateProduct(req, res, next) {
       compareAtPrice,
       description,
       fit,
+      fitDetails,
       fabric,
+      fabricDetails,
       care,
+      careInstructions,
       delivery,
+      deliveryInfo,
       isPublished,
       isActive,
       isFeatured,
@@ -678,10 +707,20 @@ export async function handleUpdateProduct(req, res, next) {
       updates.compare_at_price_paise = cmp ? Math.round(cmp * 100) : null;
     }
     if (description) updates.description = description;
-    if (fit !== undefined) updates.fit_details = fit || null;
-    if (fabric !== undefined) updates.fabric_details = fabric || null;
-    if (care !== undefined) updates.care_instructions = care || null;
-    if (delivery !== undefined) updates.delivery_info = delivery || null;
+
+    // Only update detail fields if explicitly provided in request body
+    const rawFit = fit !== undefined ? fit : (fitDetails !== undefined ? fitDetails : req.body.fit_details);
+    if (rawFit !== undefined) updates.fit_details = rawFit || null;
+
+    const rawFabric = fabric !== undefined ? fabric : (fabricDetails !== undefined ? fabricDetails : req.body.fabric_details);
+    if (rawFabric !== undefined) updates.fabric_details = rawFabric || null;
+
+    const rawCare = care !== undefined ? care : (careInstructions !== undefined ? careInstructions : req.body.care_instructions);
+    if (rawCare !== undefined) updates.care_instructions = rawCare || null;
+
+    const rawDelivery = delivery !== undefined ? delivery : (deliveryInfo !== undefined ? deliveryInfo : req.body.delivery_info);
+    if (rawDelivery !== undefined) updates.delivery_info = rawDelivery || null;
+
     if (isPublished !== undefined) updates.is_active = isPublished;
     if (isActive !== undefined) updates.is_active = isActive;
     if (typeof isFeatured === 'boolean') updates.is_featured = isFeatured;

@@ -252,6 +252,13 @@ export function createProductCard(product) {
     ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100) 
     : null;
 
+  const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
+  const isRecentCreation = (product.createdAt || product.created_at) 
+    ? ((Date.now() - new Date(product.createdAt || product.created_at).getTime()) <= FOURTEEN_DAYS_MS && 
+       (Date.now() - new Date(product.createdAt || product.created_at).getTime()) >= 0)
+    : false;
+  const isNewArrival = Boolean(product.new || isRecentCreation);
+
   card.innerHTML = `
     <!-- Dynamic Light Sheen Overlay -->
     <div class="card-sheen"></div>
@@ -268,7 +275,12 @@ export function createProductCard(product) {
 
       <!-- Badges: Top Left with Live Scarcity Radar Pulse -->
       <div class="absolute top-2 left-2 flex flex-col gap-1 z-10 pointer-events-none">
-        ${product.new ? '<span class="px-2 py-0.5 rounded-full bg-black text-white font-headline text-[9px] uppercase font-bold tracking-wider shadow-xs">New</span>' : ''}
+        ${isNewArrival ? `
+          <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-zinc-950/90 backdrop-blur-md text-white font-headline text-[8.5px] uppercase font-bold tracking-wider shadow-xs border border-white/20">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            <span>NEW ARRIVAL</span>
+          </span>
+        ` : ''}
         ${product.bestseller ? '<span class="px-2 py-0.5 rounded-full bg-amber-500 text-white font-headline text-[9px] uppercase font-bold tracking-wider shadow-xs">Top Seller</span>' : ''}
         ${(product.bestseller || (product.rating && product.rating >= 4.8)) ? `
           <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-black/80 backdrop-blur-md text-amber-300 font-headline text-[8.5px] uppercase font-bold tracking-wider shadow-xs border border-amber-400/30">

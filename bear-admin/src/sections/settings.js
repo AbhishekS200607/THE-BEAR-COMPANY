@@ -1,6 +1,7 @@
 import { getSettings, saveSettings } from '../services/adminService.js';
 import { spinner, showToast } from '../helpers.js';
 import { supabase } from '../auth.js';
+import { getIcon } from '../utils/icons.js';
 
 export async function renderSettings(container) {
   container.innerHTML = spinner();
@@ -9,7 +10,7 @@ export async function renderSettings(container) {
   if (_error) {
     container.innerHTML = `
       <div style="padding:40px;text-align:center;background:#18181b;border:1px solid #27272a;">
-        <span class="material-symbols-outlined" style="font-size:36px;color:#f87171;margin-bottom:12px;">settings</span>
+        <span style="font-size:36px;color:#f87171;margin-bottom:12px;display:inline-block;">${getIcon('settings')}</span>
         <p style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:#f4f4f5;margin-bottom:6px;">Error Loading Settings</p>
         <p style="font-size:12px;color:#71717a;margin-bottom:20px;">${_error}</p>
         <button id="settings-retry-btn" class="admin-btn primary">Retry</button>
@@ -70,7 +71,7 @@ export async function renderSettings(container) {
         <div style="display:flex;flex-direction:column;gap:12px;">
           <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#27272a;border-radius:4px;">
             <div style="display:flex;align-items:center;gap:10px;">
-              <span class="material-symbols-outlined" style="color:#34d399;font-size:18px;">dns</span>
+              <span style="color:#34d399;display:inline-flex;">${getIcon('server')}</span>
               <span style="font-size:12px;font-family:'Space Grotesk',sans-serif;color:#f4f4f5;">Node.js Express REST API (Port 4000)</span>
             </div>
             <span class="badge badge-green">HEALTHY (ONLINE)</span>
@@ -78,7 +79,7 @@ export async function renderSettings(container) {
 
           <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#27272a;border-radius:4px;">
             <div style="display:flex;align-items:center;gap:10px;">
-              <span class="material-symbols-outlined" style="color:#34d399;font-size:18px;">database</span>
+              <span style="color:#34d399;display:inline-flex;">${getIcon('database')}</span>
               <span style="font-size:12px;font-family:'Space Grotesk',sans-serif;color:#f4f4f5;">PostgreSQL Atomic Reservation Engine</span>
             </div>
             <span class="badge badge-green">MIGRATIONS ACTIVE</span>
@@ -86,7 +87,7 @@ export async function renderSettings(container) {
 
           <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#27272a;border-radius:4px;">
             <div style="display:flex;align-items:center;gap:10px;">
-              <span class="material-symbols-outlined" style="color:#22d3ee;font-size:18px;">timer</span>
+              <span style="color:#22d3ee;display:inline-flex;">${getIcon('clock')}</span>
               <span style="font-size:12px;font-family:'Space Grotesk',sans-serif;color:#f4f4f5;">Reservation Expiry Background Sweeper (60s loop)</span>
             </div>
             <span class="badge badge-cyan">ACTIVE POLLING</span>
@@ -97,7 +98,7 @@ export async function renderSettings(container) {
       <!-- Administrator Credentials & Password -->
       <div class="card" style="padding:20px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-          <span class="material-symbols-outlined" style="font-size:18px;color:#f59e0b;">lock_reset</span>
+          <span style="color:#f59e0b;display:inline-flex;">${getIcon('key')}</span>
           <p style="font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;color:#f4f4f5;">Change Admin Password</p>
         </div>
         <p style="font-size:12px;color:#71717a;margin-bottom:16px;">
@@ -114,8 +115,8 @@ export async function renderSettings(container) {
             <input id="set-confirm-pass" type="password" class="admin-input" placeholder="••••••••••••" minlength="6" required autocomplete="new-password" />
           </div>
           <div style="grid-column:1 / -1;display:flex;justify-content:flex-end;">
-            <button type="submit" id="update-pass-btn" class="admin-btn primary">
-              <span class="material-symbols-outlined" style="font-size:15px;">check</span>
+            <button type="submit" id="update-pass-btn" class="admin-btn primary" style="display:inline-flex;align-items:center;gap:6px;">
+              ${getIcon('check')}
               <span>Update Password</span>
             </button>
           </div>
@@ -173,7 +174,7 @@ export async function renderSettings(container) {
     } finally {
       btn.disabled = false;
       btn.innerHTML = `
-        <span class="material-symbols-outlined" style="font-size:15px;">check</span>
+        ${getIcon('check')}
         <span>Update Password</span>
       `;
     }

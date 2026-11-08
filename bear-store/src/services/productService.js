@@ -53,6 +53,11 @@ function normalizeProduct(p) {
 
   return {
     ...p,
+    createdAt: p.createdAt || p.created_at || null,
+    fit: p.fit || p.fit_details || p.fitDetails || null,
+    fabric: p.fabric || p.fabric_details || p.fabricDetails || null,
+    care: p.care || p.care_instructions || p.careInstructions || null,
+    delivery: p.delivery || p.delivery_info || p.deliveryInfo || null,
     rating: p.rating || 4.8,
     reviewCount: p.reviewCount || 128,
     sizes: uniqueSizes,
@@ -102,7 +107,7 @@ export async function getProducts(mode, filters = {}, sort = 'featured') {
         result.sort((a, b) => b.price - a.price);
         break;
       case 'newest':
-        result.sort((a, b) => (b.new ? 1 : 0) - (a.new ? 1 : 0));
+        result.sort((a, b) => new Date(b.createdAt || b.created_at || 0) - new Date(a.createdAt || a.created_at || 0));
         break;
       case 'rating':
         result.sort((a, b) => b.rating - a.rating);
@@ -172,7 +177,25 @@ export async function getBestsellers(mode) {
 export async function getNewArrivals(mode) {
   return remember(`newArrivals:${mode}`, async () => {
     const all = await fetchAllLiveProducts();
-    return all.filter((p) => p.mode === mode && p.new);
+    const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const modeProducts = all.filter((p) => p.mode === mode);
+    
+    // Check for products created in the last 14 days or explicitly marked new
+    const recent = modeProducts.filter((p) => {
+      if (p.new) return true;
+      const created = p.createdAt || p.created_at;
+      if (created) {
+        const diff = now - new Date(created).getTime();
+        return diff >= 0 && diff <= FOURTEEN_DAYS_MS;
+      }
+      return false;
+    });
+
+    const candidateList = recent.length > 0 ? recent : modeProducts;
+    return [...candidateList]
+      .sort((a, b) => new Date(b.createdAt || b.created_at || 0) - new Date(a.createdAt || a.created_at || 0))
+      .slice(0, 4);
   }, 60 * 1000);
 }
 

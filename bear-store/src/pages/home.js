@@ -1,5 +1,5 @@
 import { getMode, setMode, subscribe } from '../state/store.js';
-import { getFeatured, getProducts } from '../services/productService.js';
+import { getFeatured, getProducts, getNewArrivals } from '../services/productService.js';
 import { createProductCard } from '../components/productCard.js';
 import { getRecentlyViewedIds } from '../services/recentlyViewedService.js';
 import { products } from '../data/products.js';
@@ -163,6 +163,43 @@ export async function render(container) {
       </div>
     </section>
 
+    <!-- New Arrivals Section -->
+    <section class="w-full max-w-[1360px] mx-auto px-4 md:px-gutter-desktop mb-8 md:mb-space-2xl" id="home-new-arrivals-section">
+      <div class="flex items-end justify-between mb-3 md:mb-space-lg">
+        <div>
+          <div class="flex items-center gap-1.5 text-zinc-400 mb-0.5">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-zinc-950 text-white text-[9px] uppercase font-bold tracking-wider font-headline border border-white/10">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>JUST DROPPED</span>
+            </span>
+            <span>•</span>
+            <span class="text-[10px] md:text-xs text-zinc-500 uppercase font-bold font-headline">LATEST 14-DAY RELEASES</span>
+          </div>
+          <h2 class="font-headline text-lg md:text-2xl text-zinc-950 uppercase font-bold tracking-tight">
+            ${isSow ? 'SOW New Arrivals' : 'New Arrivals'}
+          </h2>
+        </div>
+        <a href="#collection" class="text-xs font-bold text-zinc-700 hover:text-black uppercase font-headline">
+          Explore All <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+        </a>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5 md:gap-4" id="home-new-arrivals-grid">
+        ${[1, 2, 3, 4]
+          .map(
+            () => `
+          <div class="animate-pulse bg-white rounded-xl sm:rounded-2xl p-2.5 sm:p-3 border border-zinc-200/80 flex flex-col">
+            <div class="w-full aspect-[4/5] bg-zinc-100 rounded-lg sm:rounded-xl mb-3"></div>
+            <div class="h-3 bg-zinc-100 rounded w-2/3 mb-2"></div>
+            <div class="h-3 bg-zinc-100 rounded w-1/3 mb-4"></div>
+            <div class="h-6 bg-zinc-100 rounded-full w-full mt-auto"></div>
+          </div>
+        `
+          )
+          .join('')}
+      </div>
+    </section>
+
     <!-- Engineered Drops -->
     <section class="w-full max-w-[1360px] mx-auto px-4 md:px-gutter-desktop mb-8 md:mb-space-2xl" id="core-drops-section">
       <div class="flex items-end justify-between mb-3 md:mb-space-lg">
@@ -276,10 +313,26 @@ export async function render(container) {
   container.innerHTML = '';
   container.appendChild(page);
 
-  // Await product fetching and cleanly replace skeletons
-  const activeProducts = await getProducts(currentMode);
-  const primaryGrid = page.querySelector('#home-primary-grid');
+  // Await product fetching in parallel and cleanly replace skeletons
+  const [activeProducts, newArrivalProducts] = await Promise.all([
+    getProducts(currentMode),
+    getNewArrivals(currentMode),
+  ]);
 
+  const newArrivalsGrid = page.querySelector('#home-new-arrivals-grid');
+  const newArrivalsSection = page.querySelector('#home-new-arrivals-section');
+  if (newArrivalsGrid) {
+    newArrivalsGrid.innerHTML = '';
+    if (newArrivalProducts && newArrivalProducts.length > 0) {
+      newArrivalProducts.slice(0, 4).forEach((p) => {
+        newArrivalsGrid.appendChild(createProductCard(p));
+      });
+    } else if (newArrivalsSection) {
+      newArrivalsSection.classList.add('hidden');
+    }
+  }
+
+  const primaryGrid = page.querySelector('#home-primary-grid');
   if (primaryGrid) {
     primaryGrid.innerHTML = '';
     activeProducts.slice(0, 8).forEach((p) => {

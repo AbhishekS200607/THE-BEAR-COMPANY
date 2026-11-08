@@ -148,10 +148,26 @@ export async function deleteCategory(id) {
   throw new Error(d?.error?.message || 'Failed to delete category');
 }
 
-export async function getProducts() {
+let productsCache = null;
+let productsCacheTime = 0;
+const PRODUCTS_CACHE_TTL = 30 * 1000; // 30s cache
+
+export function invalidateProductsCache() {
+  productsCache = null;
+  productsCacheTime = 0;
+}
+
+export async function getProducts(forceRefresh = false) {
+  if (!forceRefresh && productsCache && (Date.now() - productsCacheTime < PRODUCTS_CACHE_TTL)) {
+    return { products: productsCache, _error: null };
+  }
   const d = await apiFetch('/products');
-  if (d?.success) return { products: d.data, _error: null };
-  return { products: [], _error: d?.error?.message || 'Failed to load products' };
+  if (d?.success) {
+    productsCache = d.data;
+    productsCacheTime = Date.now();
+    return { products: d.data, _error: null };
+  }
+  return { products: productsCache || [], _error: d?.error?.message || 'Failed to load products' };
 }
 
 export async function createProduct(payload) {
@@ -159,7 +175,10 @@ export async function createProduct(payload) {
     method: 'POST',
     body: JSON.stringify(payload),
   });
-  if (d?.success) return { product: d.data, _error: null };
+  if (d?.success) {
+    invalidateProductsCache();
+    return { product: d.data, _error: null };
+  }
   throw new Error(d?.error?.message || 'Failed to create product');
 }
 
@@ -168,7 +187,10 @@ export async function updateProduct(id, payload) {
     method: 'PATCH',
     body: JSON.stringify(payload),
   });
-  if (d?.success) return { product: d.data, _error: null };
+  if (d?.success) {
+    invalidateProductsCache();
+    return { product: d.data, _error: null };
+  }
   throw new Error(d?.error?.message || 'Failed to update product');
 }
 
@@ -177,7 +199,10 @@ export async function archiveProduct(id, isArchived = true) {
     method: 'POST',
     body: JSON.stringify({ isArchived }),
   });
-  if (d?.success) return { success: true, product: d.data };
+  if (d?.success) {
+    invalidateProductsCache();
+    return { success: true, product: d.data };
+  }
   throw new Error(d?.error?.message || 'Failed to update product archive status');
 }
 
@@ -185,12 +210,16 @@ export async function deleteProduct(id) {
   const d = await apiFetch(`/products/${id}`, {
     method: 'DELETE',
   });
-  if (d?.success) return { success: true, data: d.data };
+  if (d?.success) {
+    invalidateProductsCache();
+    return { success: true, data: d.data };
+  }
   throw new Error(d?.error?.message || 'Failed to delete product');
 }
 
 export async function bulkDeleteProducts(ids) {
   const results = await Promise.allSettled(ids.map(id => deleteProduct(id)));
+  invalidateProductsCache();
   const failed = results.filter(r => r.status === 'rejected');
   if (failed.length > 0 && failed.length === ids.length) {
     throw new Error('Failed to delete selected products');

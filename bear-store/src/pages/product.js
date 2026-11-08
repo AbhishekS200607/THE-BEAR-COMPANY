@@ -329,7 +329,7 @@ export async function render(container, slug) {
                 <span class="material-symbols-outlined text-[20px] text-zinc-400 transition-transform duration-200 group-open:rotate-180">expand_more</span>
               </summary>
               <div class="pt-2 text-xs text-zinc-600 leading-relaxed">
-                ${product.fit}
+                ${product.fit || product.fit_details || product.fitDetails || 'Boxy drop-shoulder oversized fit engineered for discipline and unrestricted range of motion.'}
               </div>
             </details>
 
@@ -339,8 +339,8 @@ export async function render(container, slug) {
                 <span class="material-symbols-outlined text-[20px] text-zinc-400 transition-transform duration-200 group-open:rotate-180">expand_more</span>
               </summary>
               <div class="pt-2 text-xs text-zinc-600 leading-relaxed space-y-1">
-                <p><strong>Fabric:</strong> ${product.fabric}</p>
-                <p><strong>Care:</strong> ${product.care}</p>
+                <p><strong>Fabric:</strong> ${product.fabric || product.fabric_details || product.fabricDetails || '100% Combed Compact Cotton, 260 GSM Heavyweight Interlock Knit.'}</p>
+                <p><strong>Care:</strong> ${product.care || product.care_instructions || product.careInstructions || 'Machine wash cold inside out with like colours. Hang dry in shade or tumble dry low.'}</p>
               </div>
             </details>
 
@@ -350,7 +350,7 @@ export async function render(container, slug) {
                 <span class="material-symbols-outlined text-[20px] text-zinc-400 transition-transform duration-200 group-open:rotate-180">expand_more</span>
               </summary>
               <div class="pt-2 text-xs text-zinc-600 leading-relaxed">
-                ${product.delivery}
+                ${product.delivery || product.delivery_info || product.deliveryInfo || 'Dispatched within 24–48 business hours with door-to-door tracking. Complimentary 7-day doorstep size exchange.'}
               </div>
             </details>
           </div>

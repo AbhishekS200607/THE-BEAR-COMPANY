@@ -639,22 +639,22 @@ function openProductDrawer(product, onSave) {
 
       <div>
         <label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;text-transform:uppercase;">Fit Details</label>
-        <textarea id="p-fit" class="admin-input" rows="2" style="resize:none;" placeholder="e.g. Boxy drop-shoulder oversized fit. Model is 6'1&quot; wearing size L.">${product?.fit || ''}</textarea>
+        <textarea id="p-fit" class="admin-input" rows="2" style="resize:none;" placeholder="e.g. Boxy drop-shoulder oversized fit. Model is 6'1&quot; wearing size L.">${product?.fit || product?.fit_details || product?.fitDetails || ''}</textarea>
       </div>
 
       <div>
         <label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;text-transform:uppercase;">Fabric Details</label>
-        <textarea id="p-fabric" class="admin-input" rows="2" style="resize:none;" placeholder="e.g. 100% Combed Compact Cotton, 260 GSM Heavyweight Interlock Knit.">${product?.fabric || ''}</textarea>
+        <textarea id="p-fabric" class="admin-input" rows="2" style="resize:none;" placeholder="e.g. 100% Combed Compact Cotton, 260 GSM Heavyweight Interlock Knit.">${product?.fabric || product?.fabric_details || product?.fabricDetails || ''}</textarea>
       </div>
 
       <div>
         <label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;text-transform:uppercase;">Care Instructions</label>
-        <textarea id="p-care" class="admin-input" rows="2" style="resize:none;" placeholder="e.g. Machine wash cold inside out. Hang dry or tumble dry low.">${product?.care || ''}</textarea>
+        <textarea id="p-care" class="admin-input" rows="2" style="resize:none;" placeholder="e.g. Machine wash cold inside out. Hang dry or tumble dry low.">${product?.care || product?.care_instructions || product?.careInstructions || ''}</textarea>
       </div>
 
       <div>
         <label style="display:block;font-size:11px;color:#71717a;margin-bottom:5px;text-transform:uppercase;">Delivery Info</label>
-        <textarea id="p-delivery" class="admin-input" rows="2" style="resize:none;" placeholder="e.g. Free domestic express shipping over ₹1,999. 7-day doorstep exchange.">${product?.delivery || ''}</textarea>
+        <textarea id="p-delivery" class="admin-input" rows="2" style="resize:none;" placeholder="e.g. Free domestic express shipping over ₹1,999. 7-day doorstep exchange.">${product?.delivery || product?.delivery_info || product?.deliveryInfo || ''}</textarea>
       </div>
 
       <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">

@@ -1,6 +1,19 @@
 import { supabaseAdmin } from '../config/supabase.js';
 
+let cachedStats = null;
+let cachedStatsTime = 0;
+const STATS_TTL_MS = 20 * 1000; // 20s in-memory cache
+
+export function invalidateDashboardStatsCache() {
+  cachedStats = null;
+  cachedStatsTime = 0;
+}
+
 export async function getDashboardStats() {
+  if (cachedStats && (Date.now() - cachedStatsTime < STATS_TTL_MS)) {
+    return cachedStats;
+  }
+
   const [ordersRes, itemsRes, inventoryRes, recentOrdersRes] = await Promise.all([
     supabaseAdmin.from('orders').select('id, status, total_paise, created_at'),
     supabaseAdmin.from('order_items').select('sku, total_price_paise, orders(status)'),
@@ -58,7 +71,7 @@ export async function getDashboardStats() {
     createdAt: o.created_at,
   }));
 
-  return {
+  const result = {
     totalRevenue: totalRevenuePaise / 100,
     bearRevenue: bearPaise / 100,
     sowRevenue: sowPaise / 100,
@@ -72,6 +85,10 @@ export async function getDashboardStats() {
     lowStockCount,
     recentOrders: formattedRecentOrders,
   };
+
+  cachedStats = result;
+  cachedStatsTime = Date.now();
+  return result;
 }
 
 export async function logAdminAction({ adminId, action, targetEntity, targetId, changes, ipAddress }) {

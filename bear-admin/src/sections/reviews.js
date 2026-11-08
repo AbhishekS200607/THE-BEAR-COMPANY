@@ -6,6 +6,7 @@ import {
   getProducts,
 } from '../services/adminService.js';
 import { spinner, showToast, openModal } from '../helpers.js';
+import { getIcon } from '../utils/icons.js';
 
 export async function renderReviews(container) {
   container.innerHTML = spinner();
@@ -31,7 +32,7 @@ export async function renderReviews(container) {
     if (res._error) {
       container.innerHTML = `
         <div style="padding:40px;text-align:center;background:#18181b;border:1px solid #27272a;">
-          <span class="material-symbols-outlined" style="font-size:36px;color:#f87171;margin-bottom:12px;">error</span>
+          <span style="font-size:36px;color:#f87171;margin-bottom:12px;display:inline-block;">${getIcon('error')}</span>
           <p style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:#f4f4f5;margin-bottom:6px;">Error Loading Reviews</p>
           <p style="font-size:12px;color:#71717a;margin-bottom:20px;">${res._error}</p>
           <button id="rev-retry-btn" class="admin-btn primary">Retry</button>
@@ -129,7 +130,7 @@ export async function renderReviews(container) {
           <label style="font-size:10px;color:#71717a;text-transform:uppercase;font-weight:600;">Search Keyword</label>
           <div style="position:relative;">
             <input id="filter-search" class="admin-input" placeholder="Search author, title, words..." value="${searchQuery}" style="font-size:12px;padding:6px 28px 6px 10px;width:200px;" />
-            <span class="material-symbols-outlined" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:16px;color:#71717a;pointer-events:none;">search</span>
+            <span style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:16px;color:#71717a;pointer-events:none;display:inline-flex;">${getIcon('search')}</span>
           </div>
         </div>
       </div>

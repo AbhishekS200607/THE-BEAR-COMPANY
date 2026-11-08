@@ -1,5 +1,6 @@
 import { getOrders, updateOrderStatus } from '../services/adminService.js';
 import { statusBadge, openModal, showToast, spinner } from '../helpers.js';
+import { getIcon } from '../utils/icons.js';
 
 export async function renderShipping(container) {
   container.innerHTML = spinner();
@@ -8,7 +9,7 @@ export async function renderShipping(container) {
   if (_error) {
     container.innerHTML = `
       <div style="padding:40px;text-align:center;background:#18181b;border:1px solid #27272a;">
-        <span class="material-symbols-outlined" style="font-size:36px;color:#f87171;margin-bottom:12px;">flight_takeoff</span>
+        <span style="font-size:36px;color:#f87171;margin-bottom:12px;display:inline-block;">${getIcon('shipping')}</span>
         <p style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:#f4f4f5;margin-bottom:6px;">Error Loading Logistics</p>
         <p style="font-size:12px;color:#71717a;margin-bottom:20px;">${_error}</p>
         <button id="ship-retry-btn" class="admin-btn primary">Retry</button>
@@ -31,17 +32,17 @@ export async function renderShipping(container) {
     <!-- Logistics Policy Quick Reference -->
     <div style="background:#18181b;border:1px solid #27272a;padding:16px;margin-bottom:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;">
       <div>
-        <span class="material-symbols-outlined" style="color:#22d3ee;font-size:20px;">flight_takeoff</span>
+        <span style="color:#22d3ee;display:inline-flex;">${getIcon('shipping')}</span>
         <p style="font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700;color:#f4f4f5;margin-top:4px;">AIR EXPRESS PRIORITY</p>
         <p style="font-size:11px;color:#71717a;">Pan-India Priority Express Air Delivery. Complimentary ₹0 shipping.</p>
       </div>
       <div>
-        <span class="material-symbols-outlined" style="color:#fbbf24;font-size:20px;">schedule</span>
+        <span style="color:#fbbf24;display:inline-flex;">${getIcon('clock')}</span>
         <p style="font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700;color:#f4f4f5;margin-top:4px;">DISPATCH SLA</p>
         <p style="font-size:11px;color:#71717a;">Bengaluru Central Fulfillment Hub dispatches within 24–48 hours of verification.</p>
       </div>
       <div>
-        <span class="material-symbols-outlined" style="color:#34d399;font-size:20px;">pin_drop</span>
+        <span style="color:#34d399;display:inline-flex;">${getIcon('mapPin')}</span>
         <p style="font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700;color:#f4f4f5;margin-top:4px;">PAN-INDIA SERVICEABILITY</p>
         <p style="font-size:11px;color:#71717a;">19,000+ PIN codes covered via domestic cargo network.</p>
       </div>

@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import { getInventory, updateInventory, bulkImportInventory } from '../services/adminService.js';
 import { stockChip, modeBadge, spinner, showToast, openModal } from '../helpers.js';
+import { getIcon } from '../utils/icons.js';
 
 export async function renderInventory(container) {
   container.innerHTML = spinner();
@@ -9,7 +10,7 @@ export async function renderInventory(container) {
   if (_error) {
     container.innerHTML = `
       <div style="padding:40px;text-align:center;background:#18181b;border:1px solid #27272a;">
-        <span class="material-symbols-outlined" style="font-size:36px;color:#f87171;margin-bottom:12px;">warehouse</span>
+        <span style="font-size:36px;color:#f87171;margin-bottom:12px;display:inline-block;">${getIcon('inventory')}</span>
         <p style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:#f4f4f5;margin-bottom:6px;">Error Loading Inventory</p>
         <p style="font-size:12px;color:#71717a;margin-bottom:20px;">${_error}</p>
         <button id="inv-retry-btn" class="admin-btn primary">Retry</button>
@@ -35,14 +36,14 @@ export async function renderInventory(container) {
         <p class="section-subtitle">${inventory.length} tracked variant SKUs · ${lowCount} low stock alerts · Real-time Supabase stock</p>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <button id="inv-export-btn" class="admin-btn" title="Export current inventory to Excel (.xlsx)">
-          <span class="material-symbols-outlined" style="font-size:16px;">download</span> Export Excel
+        <button id="inv-export-btn" class="admin-btn" title="Export current inventory to Excel (.xlsx)" style="display:inline-flex;align-items:center;gap:6px;">
+          ${getIcon('download')} <span>Export Excel</span>
         </button>
-        <button id="inv-template-btn" class="admin-btn" title="Download Excel template for inventory updates">
-          <span class="material-symbols-outlined" style="font-size:16px;">description</span> Template
+        <button id="inv-template-btn" class="admin-btn" title="Download Excel template for inventory updates" style="display:inline-flex;align-items:center;gap:6px;">
+          ${getIcon('fileText')} <span>Template</span>
         </button>
-        <button id="inv-import-btn" class="admin-btn primary" title="Upload Excel spreadsheet to bulk update stock">
-          <span class="material-symbols-outlined" style="font-size:16px;">upload_file</span> Import Excel
+        <button id="inv-import-btn" class="admin-btn primary" title="Upload Excel spreadsheet to bulk update stock" style="display:inline-flex;align-items:center;gap:6px;">
+          ${getIcon('cloudUpload')} <span>Import Excel</span>
         </button>
       </div>
     </div>
@@ -54,10 +55,10 @@ export async function renderInventory(container) {
         <div class="card">
           <div style="padding:12px 16px;border-bottom:1px solid #27272a;display:flex;align-items:center;gap:12px;">
             ${variants[0]?.imageUrl ? `
-              <img src="${variants[0].imageUrl}" alt="${name}" style="width:36px;height:44px;object-fit:cover;border-radius:2px;border:1px solid #27272a;background:#09090b;display:block;" onerror="this.onerror=null;this.parentElement.innerHTML='<div style=\\'width:36px;height:44px;border-radius:2px;border:1px dashed #3f3f46;background:#18181b;display:flex;align-items:center;justify-content:center;color:#52525b;\\'><span class=\\'material-symbols-outlined\\' style=\\'font-size:18px;\\'>image</span></div>';" />
+              <img src="${variants[0].imageUrl}" alt="${name}" style="width:36px;height:44px;object-fit:cover;border-radius:2px;border:1px solid #27272a;background:#09090b;display:block;" onerror="this.onerror=null;this.parentElement.innerHTML='<div style=\\'width:36px;height:44px;border-radius:2px;border:1px dashed #3f3f46;background:#18181b;display:flex;align-items:center;justify-content:center;color:#52525b;\\'>${getIcon('image')}</div>';" />
             ` : `
               <div style="width:36px;height:44px;border-radius:2px;border:1px dashed #3f3f46;background:#18181b;display:flex;align-items:center;justify-content:center;color:#52525b;">
-                <span class="material-symbols-outlined" style="font-size:18px;">image</span>
+                ${getIcon('image')}
               </div>
             `}
             <div>
@@ -334,7 +335,7 @@ function openImportModal(inventory, onComplete) {
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
       <div>
         <p style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:#f4f4f5;display:flex;align-items:center;gap:8px;">
-          <span class="material-symbols-outlined" style="color:#fbbf24;">upload_file</span>
+          <span style="color:#fbbf24;display:inline-flex;">${getIcon('cloudUpload')}</span>
           Import Inventory from Excel / CSV
         </p>
         <p style="font-size:12px;color:#71717a;margin-top:4px;">
@@ -346,7 +347,7 @@ function openImportModal(inventory, onComplete) {
 
     <!-- Drop Zone -->
     <div id="import-drop-zone" style="border:2px dashed #3f3f46;background:#141417;padding:30px 20px;text-align:center;cursor:pointer;transition:border-color 0.2s, background 0.2s;margin-bottom:16px;border-radius:4px;">
-      <span class="material-symbols-outlined" style="font-size:36px;color:#71717a;margin-bottom:6px;">table_chart</span>
+      <span style="font-size:36px;color:#71717a;margin-bottom:6px;display:inline-block;">${getIcon('table')}</span>
       <p style="font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;color:#e4e4e7;margin-bottom:4px;">
         Click to browse or drag & drop Excel / CSV file here
       </p>
@@ -387,9 +388,9 @@ function openImportModal(inventory, onComplete) {
     <!-- Actions -->
     <div style="display:flex;justify-content:flex-end;gap:10px;align-items:center;">
       <button id="import-cancel-btn" class="admin-btn">Cancel</button>
-      <button id="import-apply-btn" class="admin-btn primary" disabled>
-        <span class="material-symbols-outlined" style="font-size:16px;">check</span>
-        Apply Bulk Stock Update
+      <button id="import-apply-btn" class="admin-btn primary" disabled style="display:inline-flex;align-items:center;gap:6px;">
+        ${getIcon('check')}
+        <span>Apply Bulk Stock Update</span>
       </button>
     </div>
   `;
@@ -586,14 +587,14 @@ function openImportModal(inventory, onComplete) {
     if (parsedItemsToApply.length > 0) {
       applyBtn.removeAttribute('disabled');
       applyBtn.innerHTML = `
-        <span class="material-symbols-outlined" style="font-size:16px;">check</span>
-        Apply Stock Update (${parsedItemsToApply.length} items)
+        ${getIcon('check')}
+        <span>Apply Stock Update (${parsedItemsToApply.length} items)</span>
       `;
     } else {
       applyBtn.setAttribute('disabled', 'true');
       applyBtn.innerHTML = `
-        <span class="material-symbols-outlined" style="font-size:16px;">block</span>
-        No Valid Rows to Apply
+        ${getIcon('block')}
+        <span>No Valid Rows to Apply</span>
       `;
     }
   }
@@ -620,8 +621,8 @@ function openImportModal(inventory, onComplete) {
       showToast('Import failed: ' + err.message, 'error');
       applyBtn.removeAttribute('disabled');
       applyBtn.innerHTML = `
-        <span class="material-symbols-outlined" style="font-size:16px;">check</span>
-        Apply Stock Update (${parsedItemsToApply.length} items)
+        ${getIcon('check')}
+        <span>Apply Stock Update (${parsedItemsToApply.length} items)</span>
       `;
     }
   });
