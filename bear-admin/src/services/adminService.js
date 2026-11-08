@@ -78,6 +78,16 @@ export async function updateOrderStatus(id, payload) {
   throw new Error(d?.error?.message || 'Failed to update order status');
 }
 
+export async function bulkUpdateOrderStatus(orderIds, status, notes = '') {
+  const d = await apiFetch('/fulfillment/bulk-status', {
+    method: 'PATCH',
+    body: JSON.stringify({ orderIds, status, notes }),
+  });
+  if (d?.success) return d.data;
+  const results = await Promise.allSettled(orderIds.map(id => updateOrderStatus(id, { status, adminNotes: notes })));
+  return { success: true, count: results.filter(r => r.status === 'fulfilled').length };
+}
+
 // ── 3. Inventory Matrix ───────────────────────────────────────────────────────
 
 export async function getInventory() {
@@ -177,6 +187,33 @@ export async function deleteProduct(id) {
   });
   if (d?.success) return { success: true, data: d.data };
   throw new Error(d?.error?.message || 'Failed to delete product');
+}
+
+export async function bulkDeleteProducts(ids) {
+  const results = await Promise.allSettled(ids.map(id => deleteProduct(id)));
+  const failed = results.filter(r => r.status === 'rejected');
+  if (failed.length > 0 && failed.length === ids.length) {
+    throw new Error('Failed to delete selected products');
+  }
+  return { success: true, count: ids.length - failed.length };
+}
+
+export async function bulkUpdateProducts(ids, updates) {
+  const results = await Promise.allSettled(ids.map(id => updateProduct(id, updates)));
+  const failed = results.filter(r => r.status === 'rejected');
+  if (failed.length > 0 && failed.length === ids.length) {
+    throw new Error('Failed to update selected products');
+  }
+  return { success: true, count: ids.length - failed.length };
+}
+
+export async function bulkArchiveProducts(ids, isArchived = true) {
+  const results = await Promise.allSettled(ids.map(id => archiveProduct(id, isArchived)));
+  const failed = results.filter(r => r.status === 'rejected');
+  if (failed.length > 0 && failed.length === ids.length) {
+    throw new Error('Failed to update archive status for selected products');
+  }
+  return { success: true, count: ids.length - failed.length };
 }
 
 export async function uploadProductImage(base64Data, filename) {

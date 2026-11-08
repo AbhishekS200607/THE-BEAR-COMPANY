@@ -1,4 +1,14 @@
-import { getProducts, createProduct, updateProduct, archiveProduct, deleteProduct, uploadProductImage } from '../services/adminService.js';
+import { 
+  getProducts, 
+  createProduct, 
+  updateProduct, 
+  archiveProduct, 
+  deleteProduct, 
+  bulkDeleteProducts, 
+  bulkUpdateProducts, 
+  bulkArchiveProducts, 
+  uploadProductImage 
+} from '../services/adminService.js';
 import { fmtCurrency, modeBadge, spinner, showToast, openModal } from '../helpers.js';
 import { compressImageToWebP, formatBytes } from '../utils/imageCompressor.js';
 import { getIcon } from '../utils/icons.js';
@@ -20,151 +30,502 @@ export async function renderProducts(container) {
     return;
   }
 
-  container.innerHTML = `
-    <div class="section-header">
-      <div>
-        <p class="section-title">Products</p>
-        <p class="section-subtitle">${products.length} catalog items · Synchronized with Supabase</p>
+  // State management for Search, Sort, Filter, and Select All
+  let searchQuery = '';
+  let modeFilter = 'all';
+  let statusFilter = 'all';
+  let categoryFilter = 'all';
+  let sortBy = 'newest';
+  const selectedIds = new Set();
+
+  // Extract unique categories
+  const categories = Array.from(new Set(products.map(p => p.category || 'General').filter(Boolean))).sort();
+
+  function getFilteredAndSorted() {
+    return products
+      .filter(p => {
+        if (modeFilter !== 'all' && p.mode !== modeFilter) return false;
+        if (statusFilter === 'published' && !p.isPublished) return false;
+        if (statusFilter === 'archived' && p.isPublished) return false;
+        if (categoryFilter !== 'all' && (p.category || 'General').toLowerCase() !== categoryFilter.toLowerCase()) return false;
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase().trim();
+          const matchName = (p.name || '').toLowerCase().includes(q);
+          const matchSku = (p.skuBase || p.slug || '').toLowerCase().includes(q);
+          const matchCat = (p.category || '').toLowerCase().includes(q);
+          const matchColours = (p.colours || []).some(c => c.toLowerCase().includes(q));
+          if (!matchName && !matchSku && !matchCat && !matchColours) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'newest') return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+        if (sortBy === 'oldest') return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+        if (sortBy === 'price_asc') return (a.price || 0) - (b.price || 0);
+        if (sortBy === 'price_desc') return (b.price || 0) - (a.price || 0);
+        if (sortBy === 'name_asc') return (a.name || '').localeCompare(b.name || '');
+        if (sortBy === 'name_desc') return (b.name || '').localeCompare(a.name || '');
+        return 0;
+      });
+  }
+
+  function renderView() {
+    const displayed = getFilteredAndSorted();
+    const allVisibleSelected = displayed.length > 0 && displayed.every(p => selectedIds.has(p.id));
+    const someVisibleSelected = displayed.some(p => selectedIds.has(p.id));
+
+    container.innerHTML = `
+      <!-- Section Header -->
+      <div class="section-header" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+        <div>
+          <p class="section-title">Products Catalog</p>
+          <p class="section-subtitle">${products.length} catalog items total · ${displayed.length} shown in view</p>
+        </div>
+        <button class="admin-btn primary" id="add-product-btn" style="display:flex;align-items:center;gap:6px;">
+          ${getIcon('plus')}
+          <span>Add Product</span>
+        </button>
       </div>
-      <button class="admin-btn primary" id="add-product-btn" style="display:flex;align-items:center;gap:6px;">
-        ${getIcon('plus')}
-        <span>Add Product</span>
-      </button>
-    </div>
 
-    <div class="card" style="overflow-x:auto;">
-      <table>
-        <thead><tr>
-          <th style="width:50px;">Photo</th>
-          <th>Product</th>
-          <th>Mode</th>
-          <th>Category</th>
-          <th>Price</th>
-          <th>SKU Identifier</th>
-          <th>Status</th>
-          <th style="text-align:right;">Actions</th>
-        </tr></thead>
-        <tbody>
-          ${products.length === 0 ? `
-            <tr><td colspan="8" style="text-align:center;color:#52525b;padding:32px;">No products found in database.</td></tr>
-          ` : products.map(p => {
-            const displayImg = p.primaryImage || (p.images && p.images[0]) || null;
-            return `
-            <tr data-product-id="${p.id}">
-              <td>
-                ${displayImg ? `
-                  <img src="${displayImg}" alt="${p.name}" style="width:38px;height:48px;object-fit:cover;border-radius:2px;border:1px solid #27272a;background:#09090b;display:block;" onerror="this.onerror=null;this.parentElement.innerHTML='<div style=\\'width:38px;height:48px;border-radius:2px;border:1px dashed #3f3f46;background:#18181b;display:flex;align-items:center;justify-content:center;color:#52525b;\\'>${getIcon('brokenImage')}</div>';" />
-                ` : `
-                  <div style="width:38px;height:48px;border-radius:2px;border:1px dashed #3f3f46;background:#18181b;display:flex;align-items:center;justify-content:center;color:#52525b;">
-                    ${getIcon('image')}
-                  </div>
-                `}
-              </td>
-              <td>
-                <p style="color:#e4e4e7;font-weight:500;">${p.name}</p>
-                <p style="font-size:11px;color:#52525b;">${(p.colours || []).join(', ')}</p>
-              </td>
-              <td>${modeBadge(p.mode)}</td>
-              <td style="color:#a1a1aa;font-size:12px;">${p.category || 'General'}</td>
-              <td>
-                <p style="font-family:'Space Grotesk',sans-serif;font-weight:600;">${fmtCurrency(p.price)}</p>
-                ${p.comparePrice ? `<p style="font-size:11px;color:#52525b;text-decoration:line-through;">${fmtCurrency(p.comparePrice)}</p>` : ''}
-              </td>
-              <td style="font-size:11px;color:#52525b;font-family:'Space Grotesk',sans-serif;">${p.skuBase || p.slug}</td>
-              <td>
-                <span class="badge ${p.isPublished ? 'badge-green' : 'badge-zinc'}">${p.isPublished ? 'Published' : 'Archived / Draft'}</span>
-              </td>
-              <td>
-                <div style="display:flex;gap:5px;justify-content:flex-end;">
-                  <button class="admin-btn product-edit-btn" data-id="${p.id}" style="padding:4px 8px;font-size:10px;gap:4px;display:flex;align-items:center;" title="Edit product details">
-                    ${getIcon('edit')}
-                    <span>Edit</span>
-                  </button>
-                  <button class="admin-btn product-toggle-btn ${p.isPublished ? '' : 'primary'}" data-id="${p.id}" data-published="${p.isPublished}" style="padding:4px 8px;font-size:10px;gap:4px;display:flex;align-items:center;" title="${p.isPublished ? 'Unpublish from store' : 'Publish to store'}">
-                    ${p.isPublished ? getIcon('eyeOff') : getIcon('eye')}
-                    <span>${p.isPublished ? 'Unpublish' : 'Publish'}</span>
-                  </button>
-                  <button class="admin-btn product-archive-btn" data-id="${p.id}" data-archived="${!p.isPublished}" style="padding:4px 8px;font-size:10px;gap:4px;display:flex;align-items:center;" title="${p.isPublished ? 'Archive (deactivate product)' : 'Restore to active status'}">
-                    ${p.isPublished ? getIcon('archive') : getIcon('unarchive')}
-                    <span>${p.isPublished ? 'Archive' : 'Restore'}</span>
-                  </button>
-                  <button class="admin-btn product-delete-btn danger" data-id="${p.id}" data-name="${p.name.replace(/"/g, '&quot;')}" style="padding:4px 8px;font-size:10px;gap:4px;display:flex;align-items:center;background:#7f1d1d;border-color:#991b1b;color:#fecaca;" title="Permanently delete product from database">
-                    ${getIcon('trash')}
-                    <span>Delete</span>
-                  </button>
-                </div>
-              </td>
+      <!-- Controls Bar: Search, Filters & Sort -->
+      <div style="background:#111113;border:1px solid #27272a;border-radius:6px;padding:12px 14px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;">
+        
+        <!-- Live Search Input -->
+        <div style="position:relative;flex:1;min-width:240px;max-width:380px;">
+          <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#71717a;display:flex;align-items:center;pointer-events:none;">
+            ${getIcon('search')}
+          </span>
+          <input 
+            id="product-search-input" 
+            class="admin-input" 
+            type="text" 
+            placeholder="Search products by title, SKU, colour, category..." 
+            value="${searchQuery}" 
+            style="padding-left:34px;padding-right:28px;width:100%;height:36px;font-size:12px;" 
+          />
+          ${searchQuery ? `
+            <button id="clear-search-btn" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#a1a1aa;cursor:pointer;padding:2px;display:flex;align-items:center;">
+              ${getIcon('close')}
+            </button>
+          ` : ''}
+        </div>
+
+        <!-- Filter Dropdowns & Sort -->
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+          
+          <!-- Mode Filter -->
+          <select id="filter-mode" class="admin-select" style="height:36px;font-size:11px;padding:0 8px;">
+            <option value="all" ${modeFilter === 'all' ? 'selected' : ''}>All Brands (BEAR & SOW)</option>
+            <option value="bear" ${modeFilter === 'bear' ? 'selected' : ''}>BEAR (Men / Unisex)</option>
+            <option value="sow" ${modeFilter === 'sow' ? 'selected' : ''}>SOW (Women)</option>
+          </select>
+
+          <!-- Status Filter -->
+          <select id="filter-status" class="admin-select" style="height:36px;font-size:11px;padding:0 8px;">
+            <option value="all" ${statusFilter === 'all' ? 'selected' : ''}>All Statuses</option>
+            <option value="published" ${statusFilter === 'published' ? 'selected' : ''}>Published Only</option>
+            <option value="archived" ${statusFilter === 'archived' ? 'selected' : ''}>Archived / Draft Only</option>
+          </select>
+
+          <!-- Category Filter -->
+          <select id="filter-category" class="admin-select" style="height:36px;font-size:11px;padding:0 8px;">
+            <option value="all" ${categoryFilter === 'all' ? 'selected' : ''}>All Categories</option>
+            ${categories.map(c => `
+              <option value="${c}" ${categoryFilter.toLowerCase() === c.toLowerCase() ? 'selected' : ''}>${c}</option>
+            `).join('')}
+          </select>
+
+          <!-- Sort Dropdown -->
+          <select id="sort-products" class="admin-select" style="height:36px;font-size:11px;padding:0 8px;">
+            <option value="newest" ${sortBy === 'newest' ? 'selected' : ''}>Sort: Newest First</option>
+            <option value="oldest" ${sortBy === 'oldest' ? 'selected' : ''}>Sort: Oldest First</option>
+            <option value="price_asc" ${sortBy === 'price_asc' ? 'selected' : ''}>Price: Low → High</option>
+            <option value="price_desc" ${sortBy === 'price_desc' ? 'selected' : ''}>Price: High → Low</option>
+            <option value="name_asc" ${sortBy === 'name_asc' ? 'selected' : ''}>Name: A → Z</option>
+            <option value="name_desc" ${sortBy === 'name_desc' ? 'selected' : ''}>Name: Z → A</option>
+          </select>
+
+          <!-- Reset Filters Button -->
+          ${(searchQuery || modeFilter !== 'all' || statusFilter !== 'all' || categoryFilter !== 'all' || sortBy !== 'newest') ? `
+            <button id="reset-filters-btn" class="admin-btn" style="height:36px;padding:0 10px;font-size:11px;" title="Reset search & filters">
+              Reset
+            </button>
+          ` : ''}
+        </div>
+      </div>
+
+      <!-- Batch Actions Bar (when products are selected) -->
+      ${selectedIds.size > 0 ? `
+        <div style="background:#18181b;border:1px solid #3b82f6;border-radius:6px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;animation:fadeIn 0.15s ease-in-out;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700;color:#93c5fd;display:flex;align-items:center;gap:6px;">
+              ${getIcon('check')}
+              <span>${selectedIds.size} product${selectedIds.size > 1 ? 's' : ''} selected</span>
+            </span>
+            <button id="batch-clear-btn" class="admin-btn" style="padding:3px 8px;font-size:10px;color:#a1a1aa;">
+              Deselect All
+            </button>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <button id="batch-publish-btn" class="admin-btn" style="padding:5px 10px;font-size:11px;display:flex;align-items:center;gap:4px;">
+              ${getIcon('eye')}
+              <span>Publish Selected</span>
+            </button>
+            <button id="batch-unpublish-btn" class="admin-btn" style="padding:5px 10px;font-size:11px;display:flex;align-items:center;gap:4px;">
+              ${getIcon('eyeOff')}
+              <span>Unpublish</span>
+            </button>
+            <button id="batch-archive-btn" class="admin-btn" style="padding:5px 10px;font-size:11px;display:flex;align-items:center;gap:4px;">
+              ${getIcon('archive')}
+              <span>Archive</span>
+            </button>
+            <button id="batch-delete-btn" class="admin-btn danger" style="padding:5px 10px;font-size:11px;display:flex;align-items:center;gap:4px;background:#7f1d1d;border-color:#991b1b;color:#fecaca;">
+              ${getIcon('trash')}
+              <span>Delete (${selectedIds.size})</span>
+            </button>
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- Products Data Table -->
+      <div class="card" style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <!-- Master Select All Checkbox -->
+              <th style="width:38px;padding:10px 8px 10px 14px;">
+                <input 
+                  type="checkbox" 
+                  id="select-all-checkbox" 
+                  ${allVisibleSelected ? 'checked' : ''} 
+                  style="cursor:pointer;accent-color:#3b82f6;width:15px;height:15px;" 
+                  title="Select all ${displayed.length} visible products" 
+                />
+              </th>
+              <th style="width:50px;">Photo</th>
+              <th class="sortable-header" data-sort="name" style="cursor:pointer;" title="Click to sort by Name">
+                <span style="display:inline-flex;align-items:center;gap:4px;">
+                  <span>Product</span>
+                  ${sortBy === 'name_asc' ? getIcon('chevronUp') : sortBy === 'name_desc' ? getIcon('chevronDown') : getIcon('arrowUpDown')}
+                </span>
+              </th>
+              <th>Mode</th>
+              <th>Category</th>
+              <th class="sortable-header" data-sort="price" style="cursor:pointer;" title="Click to sort by Price">
+                <span style="display:inline-flex;align-items:center;gap:4px;">
+                  <span>Price</span>
+                  ${sortBy === 'price_asc' ? getIcon('chevronUp') : sortBy === 'price_desc' ? getIcon('chevronDown') : getIcon('arrowUpDown')}
+                </span>
+              </th>
+              <th>SKU Identifier</th>
+              <th class="sortable-header" data-sort="newest" style="cursor:pointer;" title="Click to sort by Date">
+                <span style="display:inline-flex;align-items:center;gap:4px;">
+                  <span>Status</span>
+                  ${sortBy === 'newest' ? getIcon('chevronDown') : sortBy === 'oldest' ? getIcon('chevronUp') : ''}
+                </span>
+              </th>
+              <th style="text-align:right;">Actions</th>
             </tr>
-          `;}).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
+          </thead>
+          <tbody>
+            ${displayed.length === 0 ? `
+              <tr>
+                <td colspan="9" style="text-align:center;color:#71717a;padding:40px 16px;">
+                  <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+                    <span style="color:#52525b;">${getIcon('search')}</span>
+                    <p style="font-size:13px;color:#a1a1aa;font-weight:500;">No products match your current search or filter criteria.</p>
+                    ${(searchQuery || modeFilter !== 'all' || statusFilter !== 'all' || categoryFilter !== 'all') ? `
+                      <button id="inline-reset-btn" class="admin-btn" style="margin-top:8px;font-size:11px;">Reset Search & Filters</button>
+                    ` : ''}
+                  </div>
+                </td>
+              </tr>
+            ` : displayed.map(p => {
+              const displayImg = p.primaryImage || (p.images && p.images[0]) || null;
+              const isSelected = selectedIds.has(p.id);
+              return `
+              <tr data-product-id="${p.id}" style="${isSelected ? 'background:rgba(59,130,246,0.06);' : ''}">
+                <td style="width:38px;padding:11px 8px 11px 14px;">
+                  <input 
+                    type="checkbox" 
+                    class="product-row-checkbox" 
+                    data-id="${p.id}" 
+                    ${isSelected ? 'checked' : ''} 
+                    style="cursor:pointer;accent-color:#3b82f6;width:15px;height:15px;" 
+                  />
+                </td>
+                <td>
+                  ${displayImg ? `
+                    <img src="${displayImg}" alt="${p.name}" style="width:38px;height:48px;object-fit:cover;border-radius:2px;border:1px solid #27272a;background:#09090b;display:block;" onerror="this.onerror=null;this.parentElement.innerHTML='<div style=\\'width:38px;height:48px;border-radius:2px;border:1px dashed #3f3f46;background:#18181b;display:flex;align-items:center;justify-content:center;color:#52525b;\\'>${getIcon('brokenImage')}</div>';" />
+                  ` : `
+                    <div style="width:38px;height:48px;border-radius:2px;border:1px dashed #3f3f46;background:#18181b;display:flex;align-items:center;justify-content:center;color:#52525b;">
+                      ${getIcon('image')}
+                    </div>
+                  `}
+                </td>
+                <td>
+                  <p style="color:#e4e4e7;font-weight:500;">${p.name}</p>
+                  <p style="font-size:11px;color:#52525b;">${(p.colours || []).join(', ')}</p>
+                </td>
+                <td>${modeBadge(p.mode)}</td>
+                <td style="color:#a1a1aa;font-size:12px;">${p.category || 'General'}</td>
+                <td>
+                  <p style="font-family:'Space Grotesk',sans-serif;font-weight:600;">${fmtCurrency(p.price)}</p>
+                  ${p.comparePrice ? `<p style="font-size:11px;color:#52525b;text-decoration:line-through;">${fmtCurrency(p.comparePrice)}</p>` : ''}
+                </td>
+                <td style="font-size:11px;color:#52525b;font-family:'Space Grotesk',sans-serif;">${p.skuBase || p.slug}</td>
+                <td>
+                  <span class="badge ${p.isPublished ? 'badge-green' : 'badge-zinc'}">${p.isPublished ? 'Published' : 'Archived / Draft'}</span>
+                </td>
+                <td>
+                  <div style="display:flex;gap:5px;justify-content:flex-end;">
+                    <button class="admin-btn product-edit-btn" data-id="${p.id}" style="padding:4px 8px;font-size:10px;gap:4px;display:flex;align-items:center;" title="Edit product details">
+                      ${getIcon('edit')}
+                      <span>Edit</span>
+                    </button>
+                    <button class="admin-btn product-toggle-btn ${p.isPublished ? '' : 'primary'}" data-id="${p.id}" data-published="${p.isPublished}" style="padding:4px 8px;font-size:10px;gap:4px;display:flex;align-items:center;" title="${p.isPublished ? 'Unpublish from store' : 'Publish to store'}">
+                      ${p.isPublished ? getIcon('eyeOff') : getIcon('eye')}
+                      <span>${p.isPublished ? 'Unpublish' : 'Publish'}</span>
+                    </button>
+                    <button class="admin-btn product-archive-btn" data-id="${p.id}" data-archived="${!p.isPublished}" style="padding:4px 8px;font-size:10px;gap:4px;display:flex;align-items:center;" title="${p.isPublished ? 'Archive (deactivate product)' : 'Restore to active status'}">
+                      ${p.isPublished ? getIcon('archive') : getIcon('unarchive')}
+                      <span>${p.isPublished ? 'Archive' : 'Restore'}</span>
+                    </button>
+                    <button class="admin-btn product-delete-btn danger" data-id="${p.id}" data-name="${p.name.replace(/"/g, '&quot;')}" style="padding:4px 8px;font-size:10px;gap:4px;display:flex;align-items:center;background:#7f1d1d;border-color:#991b1b;color:#fecaca;" title="Permanently delete product from database">
+                      ${getIcon('trash')}
+                      <span>Delete</span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            `;}).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
 
-  container.querySelector('#add-product-btn')?.addEventListener('click', () => {
-    openProductDrawer(null, () => renderProducts(container));
-  });
+    // ── Bind Event Listeners ──────────────────────────────────────────────────
+    
+    // Search input (preserves cursor position)
+    const searchInput = container.querySelector('#product-search-input');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        searchQuery = e.target.value;
+        renderView();
+        const updatedInput = container.querySelector('#product-search-input');
+        if (updatedInput) {
+          updatedInput.focus();
+          updatedInput.setSelectionRange(updatedInput.value.length, updatedInput.value.length);
+        }
+      });
+    }
 
-  container.querySelectorAll('.product-edit-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const p = products.find(x => x.id === btn.dataset.id);
-      if (p) openProductDrawer(p, () => renderProducts(container));
+    container.querySelector('#clear-search-btn')?.addEventListener('click', () => {
+      searchQuery = '';
+      renderView();
     });
-  });
 
-  container.querySelectorAll('.product-toggle-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const isPublished = btn.dataset.published === 'true';
+    container.querySelector('#filter-mode')?.addEventListener('change', (e) => {
+      modeFilter = e.target.value;
+      renderView();
+    });
+
+    container.querySelector('#filter-status')?.addEventListener('change', (e) => {
+      statusFilter = e.target.value;
+      renderView();
+    });
+
+    container.querySelector('#filter-category')?.addEventListener('change', (e) => {
+      categoryFilter = e.target.value;
+      renderView();
+    });
+
+    container.querySelector('#sort-products')?.addEventListener('change', (e) => {
+      sortBy = e.target.value;
+      renderView();
+    });
+
+    const resetHandler = () => {
+      searchQuery = '';
+      modeFilter = 'all';
+      statusFilter = 'all';
+      categoryFilter = 'all';
+      sortBy = 'newest';
+      renderView();
+    };
+    container.querySelector('#reset-filters-btn')?.addEventListener('click', resetHandler);
+    container.querySelector('#inline-reset-btn')?.addEventListener('click', resetHandler);
+
+    // Clickable table header sorting
+    container.querySelectorAll('.sortable-header').forEach(th => {
+      th.addEventListener('click', () => {
+        const type = th.dataset.sort;
+        if (type === 'name') {
+          sortBy = sortBy === 'name_asc' ? 'name_desc' : 'name_asc';
+        } else if (type === 'price') {
+          sortBy = sortBy === 'price_asc' ? 'price_desc' : 'price_asc';
+        } else if (type === 'newest') {
+          sortBy = sortBy === 'newest' ? 'oldest' : 'newest';
+        }
+        renderView();
+      });
+    });
+
+    // Master Select All Checkbox
+    container.querySelector('#select-all-checkbox')?.addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      displayed.forEach(p => {
+        if (checked) selectedIds.add(p.id);
+        else selectedIds.delete(p.id);
+      });
+      renderView();
+    });
+
+    // Row Checkboxes
+    container.querySelectorAll('.product-row-checkbox').forEach(cb => {
+      cb.addEventListener('change', (e) => {
+        const id = cb.dataset.id;
+        if (e.target.checked) selectedIds.add(id);
+        else selectedIds.delete(id);
+        renderView();
+      });
+    });
+
+    // Batch Actions
+    container.querySelector('#batch-clear-btn')?.addEventListener('click', () => {
+      selectedIds.clear();
+      renderView();
+    });
+
+    container.querySelector('#batch-publish-btn')?.addEventListener('click', async () => {
+      const ids = Array.from(selectedIds);
       try {
-        await updateProduct(btn.dataset.id, { isPublished: !isPublished });
-        showToast(`Product ${isPublished ? 'unpublished' : 'published'}.`);
+        await bulkUpdateProducts(ids, { isPublished: true });
+        showToast(`Published ${ids.length} product(s).`);
+        selectedIds.clear();
         renderProducts(container);
       } catch (err) {
         showToast(err.message, 'error');
       }
     });
-  });
 
-  container.querySelectorAll('.product-archive-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const isCurrentlyArchived = btn.dataset.archived === 'true';
-      const promptMsg = isCurrentlyArchived
-        ? 'Restore this product to active catalog status?'
-        : 'Archive this product? It will be marked inactive but historical order records remain intact.';
-      if (confirm(promptMsg)) {
+    container.querySelector('#batch-unpublish-btn')?.addEventListener('click', async () => {
+      const ids = Array.from(selectedIds);
+      try {
+        await bulkUpdateProducts(ids, { isPublished: false });
+        showToast(`Unpublished ${ids.length} product(s).`);
+        selectedIds.clear();
+        renderProducts(container);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    container.querySelector('#batch-archive-btn')?.addEventListener('click', async () => {
+      const ids = Array.from(selectedIds);
+      if (confirm(`Archive ${ids.length} selected product(s)?`)) {
         try {
-          await archiveProduct(btn.dataset.id, !isCurrentlyArchived);
-          showToast(`Product ${isCurrentlyArchived ? 'restored' : 'archived'}.`);
+          await bulkArchiveProducts(ids, true);
+          showToast(`Archived ${ids.length} product(s).`);
+          selectedIds.clear();
           renderProducts(container);
         } catch (err) {
           showToast(err.message, 'error');
         }
       }
     });
-  });
 
-  container.querySelectorAll('.product-delete-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const prodId = btn.dataset.id;
-      const prodName = btn.dataset.name || 'this product';
-      const confirmed = confirm(
-        `PERMANENT DELETION WARNING:\n\nAre you sure you want to permanently delete "${prodName}"?\n\nThis will remove the product, all its variants, images, inventory, and reviews from the database.\n\nThis action CANNOT be undone.`
+    container.querySelector('#batch-delete-btn')?.addEventListener('click', async () => {
+      const ids = Array.from(selectedIds);
+      const answer = prompt(
+        `PERMANENT BATCH DELETION:\n\nYou are about to permanently delete ${ids.length} product(s) and all their variants, inventory, and reviews.\n\nType DELETE to confirm:`
       );
-      if (!confirmed) return;
+      if (answer !== 'DELETE') {
+        if (answer !== null) showToast('Batch deletion cancelled.', 'error');
+        return;
+      }
 
-      btn.disabled = true;
-      btn.innerHTML = `${getIcon('refresh', 'spin')} <span>Deleting...</span>`;
       try {
-        await deleteProduct(prodId);
-        showToast(`Product "${prodName}" permanently deleted.`);
+        await bulkDeleteProducts(ids);
+        showToast(`Permanently deleted ${ids.length} product(s).`);
+        selectedIds.clear();
         renderProducts(container);
       } catch (err) {
         showToast(err.message, 'error');
-        btn.disabled = false;
-        btn.innerHTML = `${getIcon('trash')} <span>Delete</span>`;
       }
     });
-  });
+
+    // Row-level actions
+    container.querySelector('#add-product-btn')?.addEventListener('click', () => {
+      openProductDrawer(null, () => renderProducts(container));
+    });
+
+    container.querySelectorAll('.product-edit-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const p = products.find(x => x.id === btn.dataset.id);
+        if (p) openProductDrawer(p, () => renderProducts(container));
+      });
+    });
+
+    container.querySelectorAll('.product-toggle-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const isPublished = btn.dataset.published === 'true';
+        try {
+          await updateProduct(btn.dataset.id, { isPublished: !isPublished });
+          showToast(`Product ${isPublished ? 'unpublished' : 'published'}.`);
+          renderProducts(container);
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    });
+
+    container.querySelectorAll('.product-archive-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const isCurrentlyArchived = btn.dataset.archived === 'true';
+        const promptMsg = isCurrentlyArchived
+          ? 'Restore this product to active catalog status?'
+          : 'Archive this product? It will be marked inactive but historical order records remain intact.';
+        if (confirm(promptMsg)) {
+          try {
+            await archiveProduct(btn.dataset.id, !isCurrentlyArchived);
+            showToast(`Product ${isCurrentlyArchived ? 'restored' : 'archived'}.`);
+            renderProducts(container);
+          } catch (err) {
+            showToast(err.message, 'error');
+          }
+        }
+      });
+    });
+
+    container.querySelectorAll('.product-delete-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const prodId = btn.dataset.id;
+        const prodName = btn.dataset.name || 'this product';
+        const confirmed = confirm(
+          `PERMANENT DELETION WARNING:\n\nAre you sure you want to permanently delete "${prodName}"?\n\nThis will remove the product, all its variants, images, inventory, and reviews from the database.\n\nThis action CANNOT be undone.`
+        );
+        if (!confirmed) return;
+
+        btn.disabled = true;
+        btn.innerHTML = `${getIcon('refresh', 'spin')} <span>Deleting...</span>`;
+        try {
+          await deleteProduct(prodId);
+          showToast(`Product "${prodName}" permanently deleted.`);
+          selectedIds.delete(prodId);
+          renderProducts(container);
+        } catch (err) {
+          showToast(err.message, 'error');
+          btn.disabled = false;
+          btn.innerHTML = `${getIcon('trash')} <span>Delete</span>`;
+        }
+      });
+    });
+  }
+
+  // Initial render
+  renderView();
 }
 
 function openProductDrawer(product, onSave) {
