@@ -102,31 +102,40 @@ function renderShell() {
               ${renderNavLink('dashboard')}
             </div>
 
-            <!-- Group 2: STORE MANAGEMENT -->
+            <!-- Group 2: FULFILLMENT & LOGISTICS -->
             <div>
               <p style="font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#52525b;padding:0 8px 6px 8px;">
-                STORE MANAGEMENT
+                LOGISTICS & DISPATCH
+              </p>
+              ${renderNavLink('fulfillment')}
+              ${renderNavLink('orders')}
+              ${renderNavLink('cancellations')}
+              ${renderNavLink('shipping')}
+            </div>
+
+            <!-- Group 3: CATALOG & INVENTORY -->
+            <div>
+              <p style="font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#52525b;padding:0 8px 6px 8px;">
+                CATALOG & INVENTORY
               </p>
               ${renderNavLink('products')}
               ${renderNavLink('categories')}
               ${renderNavLink('inventory')}
-              ${renderNavLink('orders')}
               ${renderNavLink('reviews')}
-              ${renderNavLink('customers')}
-              ${renderNavLink('shipping')}
             </div>
 
-            <!-- Group 3: MARKETING -->
+            <!-- Group 4: MARKETING & CRM -->
             <div>
               <p style="font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#52525b;padding:0 8px 6px 8px;">
-                MARKETING
+                GROWTH & CRM
               </p>
+              ${renderNavLink('customers')}
               ${renderNavLink('discounts')}
               ${renderNavLink('promotions')}
               ${renderNavLink('notifications')}
             </div>
 
-            <!-- Group 4: SYSTEM (Super Admin Only) -->
+            <!-- Group 5: SYSTEM (Super Admin Only) -->
             ${currentAdmin.isSuperAdmin ? `
               <div>
                 <p style="font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#52525b;padding:0 8px 6px 8px;">

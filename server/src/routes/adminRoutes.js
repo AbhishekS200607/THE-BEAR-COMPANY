@@ -14,6 +14,7 @@ import {
   handleCreateProduct,
   handleUpdateProduct,
   handleArchiveProduct,
+  handleDeleteProduct,
   handleGetAdminProducts,
   handleGetCategories,
   handleCreateCategory,
@@ -220,7 +221,8 @@ router.delete('/categories/:id', handleDeleteCategory);
 router.get('/products', handleGetAdminProducts);
 router.post('/products', validate(createProductSchema), handleCreateProduct);
 router.patch('/products/:id', validate(updateProductSchema), handleUpdateProduct);
-router.delete('/products/:id', handleArchiveProduct);
+router.post('/products/:id/archive', handleArchiveProduct);
+router.delete('/products/:id', handleDeleteProduct);
 router.post('/upload-image', handleUploadImage);
 
 // 5. Customers

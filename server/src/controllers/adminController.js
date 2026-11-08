@@ -730,11 +730,13 @@ export async function handleUpdateProduct(req, res, next) {
 export async function handleArchiveProduct(req, res, next) {
   try {
     const { id } = req.params;
+    const isArchived = req.body?.isArchived !== false;
+    const targetActive = !isArchived;
 
-    // Safe archival: marks product as inactive so existing order history is never broken
+    // Safe archival: marks product as active or inactive
     const { data, error } = await supabaseAdmin
       .from('products')
-      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .update({ is_active: targetActive, updated_at: new Date().toISOString() })
       .eq('id', id)
       .select()
       .single();
@@ -743,14 +745,60 @@ export async function handleArchiveProduct(req, res, next) {
 
     await logAdminAction({
       adminId: req.user?.id,
-      action: 'ARCHIVE_PRODUCT',
+      action: targetActive ? 'RESTORE_PRODUCT' : 'ARCHIVE_PRODUCT',
       targetEntity: 'products',
       targetId: id,
-      changes: { is_active: false },
+      changes: { is_active: targetActive },
       ipAddress: req.ip,
     });
 
-    return successResponse(res, data, 200, 'Product archived successfully');
+    return successResponse(
+      res,
+      data,
+      200,
+      targetActive ? 'Product restored successfully' : 'Product archived successfully'
+    );
+  } catch (err) {
+    return next(err);
+  }
+}
+
+export async function handleDeleteProduct(req, res, next) {
+  try {
+    const { id } = req.params;
+
+    // 1. Verify existence and grab product data for audit
+    const { data: product, error: fetchErr } = await supabaseAdmin
+      .from('products')
+      .select('id, name, slug')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (fetchErr) throw fetchErr;
+    if (!product) {
+      return errorResponse(res, 'Product not found', 404);
+    }
+
+    // 2. Permanently delete product from database
+    // All variants, inventory rows, product images, and reviews cascade delete cleanly
+    const { error: deleteErr } = await supabaseAdmin
+      .from('products')
+      .delete()
+      .eq('id', id);
+
+    if (deleteErr) throw deleteErr;
+
+    // 3. Log admin audit record
+    await logAdminAction({
+      adminId: req.user?.id,
+      action: 'DELETE_PRODUCT',
+      targetEntity: 'products',
+      targetId: id,
+      changes: { deletedProduct: product },
+      ipAddress: req.ip,
+    });
+
+    return successResponse(res, { id, name: product.name }, 200, `Product "${product.name}" permanently deleted`);
   } catch (err) {
     return next(err);
   }

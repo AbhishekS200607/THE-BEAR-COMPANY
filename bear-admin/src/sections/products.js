@@ -1,6 +1,7 @@
-import { getProducts, createProduct, updateProduct, archiveProduct, uploadProductImage } from '../services/adminService.js';
+import { getProducts, createProduct, updateProduct, archiveProduct, deleteProduct, uploadProductImage } from '../services/adminService.js';
 import { fmtCurrency, modeBadge, spinner, showToast, openModal } from '../helpers.js';
 import { compressImageToWebP, formatBytes } from '../utils/imageCompressor.js';
+import { getIcon } from '../utils/icons.js';
 
 export async function renderProducts(container) {
   container.innerHTML = spinner();
@@ -9,7 +10,7 @@ export async function renderProducts(container) {
   if (_error) {
     container.innerHTML = `
       <div style="padding:40px;text-align:center;background:#18181b;border:1px solid #27272a;">
-        <span class="material-symbols-outlined" style="font-size:36px;color:#f87171;margin-bottom:12px;">error</span>
+        <span style="font-size:36px;color:#f87171;margin-bottom:12px;display:flex;justify-content:center;">${getIcon('error')}</span>
         <p style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:#f4f4f5;margin-bottom:6px;">Error Loading Products</p>
         <p style="font-size:12px;color:#71717a;margin-bottom:20px;">${_error}</p>
         <button id="prod-retry-btn" class="admin-btn primary">Retry</button>
@@ -25,7 +26,10 @@ export async function renderProducts(container) {
         <p class="section-title">Products</p>
         <p class="section-subtitle">${products.length} catalog items · Synchronized with Supabase</p>
       </div>
-      <button class="admin-btn primary" id="add-product-btn">+ Add Product</button>
+      <button class="admin-btn primary" id="add-product-btn" style="display:flex;align-items:center;gap:6px;">
+        ${getIcon('plus')}
+        <span>Add Product</span>
+      </button>
     </div>
 
     <div class="card" style="overflow-x:auto;">
@@ -38,7 +42,7 @@ export async function renderProducts(container) {
           <th>Price</th>
           <th>SKU Identifier</th>
           <th>Status</th>
-          <th>Actions</th>
+          <th style="text-align:right;">Actions</th>
         </tr></thead>
         <tbody>
           ${products.length === 0 ? `
@@ -49,10 +53,10 @@ export async function renderProducts(container) {
             <tr data-product-id="${p.id}">
               <td>
                 ${displayImg ? `
-                  <img src="${displayImg}" alt="${p.name}" style="width:38px;height:48px;object-fit:cover;border-radius:2px;border:1px solid #27272a;background:#09090b;display:block;" onerror="this.onerror=null;this.parentElement.innerHTML='<div style=\\'width:38px;height:48px;border-radius:2px;border:1px dashed #3f3f46;background:#18181b;display:flex;align-items:center;justify-content:center;color:#52525b;\\'><span class=\\'material-symbols-outlined\\' style=\\'font-size:18px;\\'>broken_image</span></div>';" />
+                  <img src="${displayImg}" alt="${p.name}" style="width:38px;height:48px;object-fit:cover;border-radius:2px;border:1px solid #27272a;background:#09090b;display:block;" onerror="this.onerror=null;this.parentElement.innerHTML='<div style=\\'width:38px;height:48px;border-radius:2px;border:1px dashed #3f3f46;background:#18181b;display:flex;align-items:center;justify-content:center;color:#52525b;\\'>${getIcon('brokenImage')}</div>';" />
                 ` : `
                   <div style="width:38px;height:48px;border-radius:2px;border:1px dashed #3f3f46;background:#18181b;display:flex;align-items:center;justify-content:center;color:#52525b;">
-                    <span class="material-symbols-outlined" style="font-size:18px;">image</span>
+                    ${getIcon('image')}
                   </div>
                 `}
               </td>
@@ -68,15 +72,26 @@ export async function renderProducts(container) {
               </td>
               <td style="font-size:11px;color:#52525b;font-family:'Space Grotesk',sans-serif;">${p.skuBase || p.slug}</td>
               <td>
-                <span class="badge ${p.isPublished ? 'badge-green' : 'badge-zinc'}">${p.isPublished ? 'Published' : 'Draft / Inactive'}</span>
+                <span class="badge ${p.isPublished ? 'badge-green' : 'badge-zinc'}">${p.isPublished ? 'Published' : 'Archived / Draft'}</span>
               </td>
               <td>
-                <div style="display:flex;gap:6px;">
-                  <button class="admin-btn product-edit-btn" data-id="${p.id}" style="padding:4px 8px;font-size:10px;">Edit</button>
-                  <button class="admin-btn product-toggle-btn ${p.isPublished ? '' : 'primary'}" data-id="${p.id}" data-published="${p.isPublished}" style="padding:4px 8px;font-size:10px;">
-                    ${p.isPublished ? 'Unpublish' : 'Publish'}
+                <div style="display:flex;gap:5px;justify-content:flex-end;">
+                  <button class="admin-btn product-edit-btn" data-id="${p.id}" style="padding:4px 8px;font-size:10px;gap:4px;display:flex;align-items:center;" title="Edit product details">
+                    ${getIcon('edit')}
+                    <span>Edit</span>
                   </button>
-                  <button class="admin-btn product-archive-btn danger" data-id="${p.id}" style="padding:4px 8px;font-size:10px;" title="Archive product safely">Archive</button>
+                  <button class="admin-btn product-toggle-btn ${p.isPublished ? '' : 'primary'}" data-id="${p.id}" data-published="${p.isPublished}" style="padding:4px 8px;font-size:10px;gap:4px;display:flex;align-items:center;" title="${p.isPublished ? 'Unpublish from store' : 'Publish to store'}">
+                    ${p.isPublished ? getIcon('eyeOff') : getIcon('eye')}
+                    <span>${p.isPublished ? 'Unpublish' : 'Publish'}</span>
+                  </button>
+                  <button class="admin-btn product-archive-btn" data-id="${p.id}" data-archived="${!p.isPublished}" style="padding:4px 8px;font-size:10px;gap:4px;display:flex;align-items:center;" title="${p.isPublished ? 'Archive (deactivate product)' : 'Restore to active status'}">
+                    ${p.isPublished ? getIcon('archive') : getIcon('unarchive')}
+                    <span>${p.isPublished ? 'Archive' : 'Restore'}</span>
+                  </button>
+                  <button class="admin-btn product-delete-btn danger" data-id="${p.id}" data-name="${p.name.replace(/"/g, '&quot;')}" style="padding:4px 8px;font-size:10px;gap:4px;display:flex;align-items:center;background:#7f1d1d;border-color:#991b1b;color:#fecaca;" title="Permanently delete product from database">
+                    ${getIcon('trash')}
+                    <span>Delete</span>
+                  </button>
                 </div>
               </td>
             </tr>
@@ -112,14 +127,41 @@ export async function renderProducts(container) {
 
   container.querySelectorAll('.product-archive-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
-      if (confirm('Archive this product? It will be marked inactive but historical order records will remain safe.')) {
+      const isCurrentlyArchived = btn.dataset.archived === 'true';
+      const promptMsg = isCurrentlyArchived
+        ? 'Restore this product to active catalog status?'
+        : 'Archive this product? It will be marked inactive but historical order records remain intact.';
+      if (confirm(promptMsg)) {
         try {
-          await archiveProduct(btn.dataset.id);
-          showToast('Product archived.');
+          await archiveProduct(btn.dataset.id, !isCurrentlyArchived);
+          showToast(`Product ${isCurrentlyArchived ? 'restored' : 'archived'}.`);
           renderProducts(container);
         } catch (err) {
           showToast(err.message, 'error');
         }
+      }
+    });
+  });
+
+  container.querySelectorAll('.product-delete-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const prodId = btn.dataset.id;
+      const prodName = btn.dataset.name || 'this product';
+      const confirmed = confirm(
+        `PERMANENT DELETION WARNING:\n\nAre you sure you want to permanently delete "${prodName}"?\n\nThis will remove the product, all its variants, images, inventory, and reviews from the database.\n\nThis action CANNOT be undone.`
+      );
+      if (!confirmed) return;
+
+      btn.disabled = true;
+      btn.innerHTML = `${getIcon('refresh', 'spin')} <span>Deleting...</span>`;
+      try {
+        await deleteProduct(prodId);
+        showToast(`Product "${prodName}" permanently deleted.`);
+        renderProducts(container);
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = `${getIcon('trash')} <span>Delete</span>`;
       }
     });
   });
@@ -179,7 +221,7 @@ function openProductDrawer(product, onSave) {
 
         <!-- Drag & Drop Zone -->
         <div id="dropzone" style="border:1.5px dashed #3f3f46;border-radius:4px;padding:16px 12px;text-align:center;background:#18181b;cursor:pointer;transition:all 0.15s ease-in-out;">
-          <span class="material-symbols-outlined" style="font-size:24px;color:#60a5fa;margin-bottom:4px;display:block;">cloud_upload</span>
+          <span style="display:flex;justify-content:center;color:#60a5fa;margin-bottom:6px;">${getIcon('cloudUpload')}</span>
           <p style="font-size:12px;color:#e4e4e7;margin-bottom:2px;">
             Drag & drop images here, or <span style="color:#60a5fa;text-decoration:underline;">browse files</span>
           </p>
@@ -259,9 +301,21 @@ function openProductDrawer(product, onSave) {
         <label for="p-published" style="font-size:12px;color:#e4e4e7;cursor:pointer;">Published in Storefront Catalog</label>
       </div>
 
+      ${!isNew ? `
+      <div style="display:flex;gap:10px;margin-top:12px;align-items:center;">
+        <button type="button" id="drawer-delete-prod-btn" class="admin-btn danger" style="padding:10px 14px;background:#7f1d1d;border-color:#991b1b;color:#fecaca;display:flex;align-items:center;gap:6px;" title="Permanently delete product from database">
+          ${getIcon('trash')}
+          <span>Delete Product</span>
+        </button>
+        <button type="submit" id="p-save" class="admin-btn primary" style="flex:1;justify-content:center;padding:10px;">
+          Save Changes
+        </button>
+      </div>
+      ` : `
       <button type="submit" id="p-save" class="admin-btn primary" style="justify-content:center;padding:10px;margin-top:8px;">
-        ${isNew ? 'Create Product & Save Photos' : 'Save Changes'}
+        Create Product & Save Photos
       </button>
+      `}
     </form>
   `);
 
@@ -270,6 +324,22 @@ function openProductDrawer(product, onSave) {
   }
 
   overlay.querySelector('#modal-close').addEventListener('click', close);
+
+  overlay.querySelector('#drawer-delete-prod-btn')?.addEventListener('click', async () => {
+    const confirmed = confirm(
+      `PERMANENT DELETION WARNING:\n\nAre you sure you want to permanently delete "${product.name}"?\n\nThis will remove the product, all its variants, images, inventory, and reviews from the database.\n\nThis action CANNOT be undone.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await deleteProduct(product.id);
+      showToast(`Product "${product.name}" permanently deleted.`);
+      close();
+      onSave();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
 
   // Gallery Preview Renderer
   const galleryEl = overlay.querySelector('#image-gallery-preview');
@@ -397,7 +467,7 @@ function openProductDrawer(product, onSave) {
       if (statusEl) {
         statusEl.style.display = 'flex';
         statusEl.innerHTML = `
-          <span class="material-symbols-outlined spin" style="font-size:16px;color:#60a5fa;">sync</span>
+          <span class="spin" style="color:#60a5fa;display:inline-flex;">${getIcon('refresh')}</span>
           <span>[${i + 1}/${fileList.length}] Compressing <strong>${file.name}</strong> to WebP...</span>
         `;
       }
@@ -412,7 +482,7 @@ function openProductDrawer(product, onSave) {
 
         if (statusEl) {
           statusEl.innerHTML = `
-            <span class="material-symbols-outlined spin" style="font-size:16px;color:#34d399;">cloud_upload</span>
+            <span class="spin" style="color:#34d399;display:inline-flex;">${getIcon('cloudUpload')}</span>
             <span>[${i + 1}/${fileList.length}] Uploading WebP (${formatBytes(compressed.compressedSize)}, -${compressed.savingsPercent}%) to Supabase...</span>
           `;
         }

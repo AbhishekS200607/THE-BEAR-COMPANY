@@ -162,12 +162,21 @@ export async function updateProduct(id, payload) {
   throw new Error(d?.error?.message || 'Failed to update product');
 }
 
-export async function archiveProduct(id) {
+export async function archiveProduct(id, isArchived = true) {
+  const d = await apiFetch(`/products/${id}/archive`, {
+    method: 'POST',
+    body: JSON.stringify({ isArchived }),
+  });
+  if (d?.success) return { success: true, product: d.data };
+  throw new Error(d?.error?.message || 'Failed to update product archive status');
+}
+
+export async function deleteProduct(id) {
   const d = await apiFetch(`/products/${id}`, {
     method: 'DELETE',
   });
-  if (d?.success) return { success: true };
-  throw new Error(d?.error?.message || 'Failed to archive product');
+  if (d?.success) return { success: true, data: d.data };
+  throw new Error(d?.error?.message || 'Failed to delete product');
 }
 
 export async function uploadProductImage(base64Data, filename) {

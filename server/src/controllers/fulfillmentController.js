@@ -126,3 +126,4 @@ export async function handlePrintBatchPackingSlips(req, res, next) {
     return next(err);
   }
 }
+

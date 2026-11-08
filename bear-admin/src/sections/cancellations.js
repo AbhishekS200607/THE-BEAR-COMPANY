@@ -1,5 +1,6 @@
 import { getOrders, updateOrderStatus } from '../services/adminService.js';
 import { fmtCurrency, fmtDate, timeAgo, openModal, showToast, spinner } from '../helpers.js';
+import { getIcon } from '../utils/icons.js';
 
 export async function renderCancellations(container, filter = 'all') {
   container.innerHTML = `
@@ -52,7 +53,7 @@ export async function renderCancellations(container, filter = 'all') {
           </p>
         </div>
         <button id="refresh-cancellations-btn" class="admin-btn" style="padding:6px 14px;font-size:11px;display:flex;align-items:center;gap:6px;">
-          <span class="material-symbols-outlined" style="font-size:16px;">refresh</span>
+          <span style="display:inline-flex;align-items:center;">${getIcon('refresh')}</span>
           <span>Refresh List</span>
         </button>
       </div>
