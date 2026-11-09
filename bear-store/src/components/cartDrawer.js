@@ -61,13 +61,13 @@ export function mount(container) {
       <!-- Drawer Header -->
       <div class="p-4 sm:p-5 border-b border-zinc-100 flex items-center justify-between">
         <div class="flex items-center gap-2">
-          <span class="material-symbols-outlined text-[20px] text-zinc-950">shopping_bag</span>
+          <svg class="w-5 h-5 text-zinc-950" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
           <h2 class="font-headline text-base font-extrabold uppercase tracking-tight text-zinc-950" id="cart-drawer-title">
             Your Bag (${itemCount})
           </h2>
         </div>
         <button class="w-8 h-8 rounded-full flex items-center justify-center text-zinc-400 hover:text-black hover:bg-zinc-100 transition-colors cursor-pointer" id="cart-close-btn" aria-label="Close cart">
-          <span class="material-symbols-outlined text-[20px]">close</span>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
       </div>
 
@@ -128,7 +128,7 @@ export function mount(container) {
                         </div>
                       </div>
                       <button class="cart-remove-btn text-zinc-300 hover:text-red-600 p-1 transition-colors cursor-pointer" data-id="${item.id}" data-size="${item.size}" data-colour="${item.colour}" title="Remove item">
-                        <span class="material-symbols-outlined text-[18px]">delete</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                       </button>
                     </div>
                   `;
@@ -187,7 +187,7 @@ export function mount(container) {
               </div>
               <a href="#checkout" id="cart-proceed-btn" class="w-full py-3.5 px-6 rounded-full bg-black hover:bg-zinc-800 text-white font-headline text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg active:scale-98 transition-all cursor-pointer no-underline">
                 <span>PROCEED TO CHECKOUT</span>
-                <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
               </a>
             </div>`
           : ''

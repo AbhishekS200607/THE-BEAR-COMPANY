@@ -6,6 +6,7 @@ import { products } from '../data/products.js';
 import { skeletonHome } from '../utils/skeletons.js';
 import heroBearImg from '../assets/hero/hero-bear.webp';
 import heroSowImg from '../assets/hero/hero-sow.webp';
+import { Icons } from '../utils/icons.js';
 
 // Canonical asset URL resolver with static fallback support
 const resolveAsset = (imported, staticPath) => {
@@ -24,10 +25,10 @@ export async function render(container) {
   const heroImageSrc = isSow ? HERO_SOW_SRC : HERO_BEAR_SRC;
   const heroFallbackPath = isSow ? '/assets/hero/hero-sow.webp' : '/assets/hero/hero-bear.webp';
 
-  // Explicit conditional styling for Call-To-Action button to preserve crisp white pill look in both modes
+  // GPU-accelerated transition classes and explicit styling for CTA button
   const ctaBtnClasses = isSow
-    ? 'inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-full bg-white text-zinc-950 text-xs md:text-sm font-bold font-headline shadow-lg hover:bg-zinc-100 hover:shadow-xl active:scale-[0.98] transition-all border border-white cursor-pointer select-none no-underline'
-    : 'inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-full bg-white text-black text-xs md:text-sm font-bold font-headline shadow-md hover:bg-zinc-100 hover:shadow-lg active:scale-[0.98] transition-all border border-white cursor-pointer select-none no-underline';
+    ? 'inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-full bg-white text-zinc-950 text-xs md:text-sm font-bold font-headline shadow-lg hover:bg-zinc-100 hover:shadow-xl active:scale-[0.98] transition-[transform,shadow,background-color] will-change-transform border border-white cursor-pointer select-none no-underline'
+    : 'inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-full bg-white text-black text-xs md:text-sm font-bold font-headline shadow-md hover:bg-zinc-100 hover:shadow-lg active:scale-[0.98] transition-[transform,shadow,background-color] will-change-transform border border-white cursor-pointer select-none no-underline';
 
   container.innerHTML = skeletonHome();
 
@@ -37,7 +38,7 @@ export async function render(container) {
   page.innerHTML = `
     <!-- Top Hero Campaign Section -->
     <section class="relative w-full max-w-[1360px] mx-auto px-4 md:px-gutter-desktop mt-2 md:mt-space-lg mb-6 md:mb-space-2xl">
-      <div class="relative w-full min-h-[440px] md:min-h-[580px] rounded-2xl md:rounded-lg overflow-hidden shadow-sm flex items-center bg-primary" id="campaign-banner">
+      <div class="relative w-full min-h-[440px] md:min-h-[580px] rounded-2xl md:rounded-lg overflow-hidden shadow-sm flex items-center bg-zinc-900" id="campaign-banner">
         <!-- Hero Background Image (LCP Prioritized with Static Public Fallback) -->
         <img 
           src="${heroImageSrc}" 
@@ -47,7 +48,7 @@ export async function render(container) {
           fetchpriority="high"
           loading="eager"
           decoding="async"
-          onerror="if (this.dataset.fallback !== '1') { this.dataset.fallback = '1'; this.src = '${heroFallbackPath}'; }"
+          onerror="this.onerror=null; this.src='${heroFallbackPath}';"
         />
         <!-- Ambient Gradient Overlay -->
         <div class="absolute inset-0 pointer-events-none" style="background: linear-gradient(to right, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.65) 50%, rgba(0,0,0,0.2) 100%);"></div>
@@ -85,10 +86,10 @@ export async function render(container) {
                 style="background-color: #ffffff !important; color: #111111 !important; border: 1.5px solid #ffffff !important; display: inline-flex !important;"
               >
                 <span>Shop Collection</span>
-                <span class="material-symbols-outlined text-[16px] font-bold">arrow_forward</span>
+                <span class="flex items-center justify-center">${Icons.arrowRight}</span>
               </a>
               <div class="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md text-white border border-white/20">
-                <span class="material-symbols-outlined text-[14px] ${isSow ? 'text-[#ffc3bb]' : 'text-green-400'}">verified</span>
+                <span class="${isSow ? 'text-[#ffc3bb]' : 'text-green-400'}">${Icons.verified}</span>
                 <span class="text-[11px] font-semibold">
                   ${isSow ? 'SculptSpun MicroRib™' : '260 GSM Interlock'}
                 </span>
@@ -133,15 +134,15 @@ export async function render(container) {
           </h2>
         </div>
         <a href="#collection" class="text-xs text-zinc-700 hover:text-black transition-colors inline-flex items-center gap-1 font-bold uppercase font-headline">
-          Explore All <span class="material-symbols-outlined text-[14px]">north_east</span>
+          Explore All <span>${Icons.northEast}</span>
         </a>
       </div>
 
       <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3.5 md:gap-gutter-desktop">
         <!-- Category 1 -->
-        <a href="#collection" class="group relative rounded-xl sm:rounded-2xl bg-white p-3 pb-4 sm:p-4 sm:pb-5 shadow-xs hover:shadow-md transition-all flex flex-col items-center border border-zinc-200/80 category-card-lift">
+        <a href="#collection" class="group relative rounded-xl sm:rounded-2xl bg-white p-3 pb-4 sm:p-4 sm:pb-5 shadow-xs hover:shadow-md transition-[transform,shadow] duration-300 ease-out hover:-translate-y-1 will-change-transform flex flex-col items-center border border-zinc-200/80">
           <div class="w-full aspect-square rounded-lg sm:rounded-xl overflow-hidden bg-zinc-100 mb-2">
-            <img src="${isSow ? 'https://lh3.googleusercontent.com/aida-public/AB6AXuAwJwjClrMEmcZdI7T5_s4E_hHPVNSvONzixL7JG9-QvsrOFNVHsJuM34lczkEnDZwBuddxz_XYgYNG3dVxfyDWbS9nWSmYIm9hoZqLJC2kjzY0eZzeqffaWX-YYCyBV25Vha3ShEgy8-DsQyeiv8v-7doFJr0Aw4myGI4pHt412ia-kqZZyIN1J3O23yjiYoMKkZDS_f51t6qAJ4pXlwdu3EG3rgGzswUdnY2fxQ' : 'https://lh3.googleusercontent.com/aida-public/AB6AXuCCzKTdaaLRbanuHgk9tAnT3Od__K8RJ47QNldYiRR7AoApQCc0HaB6DuiijDI5ZEsm_MO36AofuWSm3CtHtIHJdUo8d3wJzYt5KYDvHtElcj6lVKsIi7pIJ1VneHGXzzBkdECisyUWAX_3O0YzSplDkpd2O2JyP3TdEAs03UoHehNq07xRUXrRNGRT1Cav6rakkFNYrqdyZSGUBe6S931X1B2eLXQOeaWtVGZ8bw'}" alt="${isSow ? 'Sports Bras' : 'T-Shirts'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 rounded-lg sm:rounded-xl" />
+            <img src="${isSow ? 'https://lh3.googleusercontent.com/aida-public/AB6AXuAwJwjClrMEmcZdI7T5_s4E_hHPVNSvONzixL7JG9-QvsrOFNVHsJuM34lczkEnDZwBuddxz_XYgYNG3dVxfyDWbS9nWSmYIm9hoZqLJC2kjzY0eZzeqffaWX-YYCyBV25Vha3ShEgy8-DsQyeiv8v-7doFJr0Aw4myGI4pHt412ia-kqZZyIN1J3O23yjiYoMKkZDS_f51t6qAJ4pXlwdu3EG3rgGzswUdnY2fxQ' : 'https://lh3.googleusercontent.com/aida-public/AB6AXuCCzKTdaaLRbanuHgk9tAnT3Od__K8RJ47QNldYiRR7AoApQCc0HaB6DuiijDI5ZEsm_MO36AofuWSm3CtHtIHJdUo8d3wJzYt5KYDvHtElcj6lVKsIi7pIJ1VneHGXzzBkdECisyUWAX_3O0YzSplDkpd2O2JyP3TdEAs03UoHehNq07xRUXrRNGRT1Cav6rakkFNYrqdyZSGUBe6S931X1B2eLXQOeaWtVGZ8bw'}" alt="${isSow ? 'Sports Bras' : 'T-Shirts'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 will-change-transform rounded-lg sm:rounded-xl" />
           </div>
           <div class="w-full pt-1.5 flex flex-col items-center justify-center text-center min-w-0">
             <h3 class="font-headline text-xs sm:text-sm text-zinc-900 uppercase font-bold tracking-wide truncate w-full text-center">${isSow ? 'Sports Bras' : 'T-Shirts'}</h3>
@@ -149,10 +150,10 @@ export async function render(container) {
           </div>
         </a>
 
-        <!-- Category 2 (Valid Non-Truncated SOW Leggings Image) -->
-        <a href="#collection" class="group relative rounded-xl sm:rounded-2xl bg-white p-3 pb-4 sm:p-4 sm:pb-5 shadow-xs hover:shadow-md transition-all flex flex-col items-center border border-zinc-200/80 category-card-lift">
+        <!-- Category 2 -->
+        <a href="#collection" class="group relative rounded-xl sm:rounded-2xl bg-white p-3 pb-4 sm:p-4 sm:pb-5 shadow-xs hover:shadow-md transition-[transform,shadow] duration-300 ease-out hover:-translate-y-1 will-change-transform flex flex-col items-center border border-zinc-200/80">
           <div class="w-full aspect-square rounded-lg sm:rounded-xl overflow-hidden bg-zinc-100 mb-2">
-            <img src="${isSow ? 'https://lh3.googleusercontent.com/aida-public/AB6AXuA4Mwdd33IQiXxYvoZjoUYwVaNsHMyQqHGgfwrOLC7mgwyMN3lSQTRaAsvH_c2sWptQerXsbHRreHedH5S_sijZ2e9eD11keAse9pyNAJaO8GNrRM_mIUVfqDic0edxJTyW_sOIZDPUKThT-y1_8bMr9J7Yal_Sbrxk3jvw0pWsNV9HEJZeHeb9ZGWzF83475qVnVZTEVvoPfuPh-_QdwrIvx2C35dqyAykokYYRw' : 'https://lh3.googleusercontent.com/aida-public/AB6AXuBZfUaCLWobDsFeaa3fUotfDOwDwDCxViQiwoun9TK6_dXUUQXFOlWFGADID0ZMmkVuKjshRg_yXJ_0z9ern--ww8BVZ0wSTA7axQtzGhOEm14Kbno0vi-J495g6ghRL0de6ua4PncYU_8gVguf39AOI0U8ta6Agsn3oGpaUhfCyQYJhEJhNpyPwWR_3wWKE1p-FYpNffpR1LfSXhpLQ1ufI_FWbeQ2rivNiV_9uQ'}" alt="${isSow ? 'Contour Tights' : 'Tank Tops'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 rounded-lg sm:rounded-xl" />
+            <img src="${isSow ? 'https://lh3.googleusercontent.com/aida-public/AB6AXuA4Mwdd33IQiXxYvoZjoUYwVaNsHMyQqHGgfwrOLC7mgwyMN3lSQTRaAsvH_c2sWptQerXsbHRreHedH5S_sijZ2e9eD11keAse9pyNAJaO8GNrRM_mIUVfqDic0edxJTyW_sOIZDPUKThT-y1_8bMr9J7Yal_Sbrxk3jvw0pWsNV9HEJZeHeb9ZGWzF83475qVnVZTEVvoPfuPh-_QdwrIvx2C35dqyAykokYYRw' : 'https://lh3.googleusercontent.com/aida-public/AB6AXuBZfUaCLWobDsFeaa3fUotfDOwDwDCxViQiwoun9TK6_dXUUQXFOlWFGADID0ZMmkVuKjshRg_yXJ_0z9ern--ww8BVZ0wSTA7axQtzGhOEm14Kbno0vi-J495g6ghRL0de6ua4PncYU_8gVguf39AOI0U8ta6Agsn3oGpaUhfCyQYJhEJhNpyPwWR_3wWKE1p-FYpNffpR1LfSXhpLQ1ufI_FWbeQ2rivNiV_9uQ'}" alt="${isSow ? 'Contour Tights' : 'Tank Tops'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 will-change-transform rounded-lg sm:rounded-xl" />
           </div>
           <div class="w-full pt-1.5 flex flex-col items-center justify-center text-center min-w-0">
             <h3 class="font-headline text-xs sm:text-sm text-zinc-900 uppercase font-bold tracking-wide truncate w-full text-center">${isSow ? 'Contour Tights' : 'Tank Tops'}</h3>
@@ -161,9 +162,9 @@ export async function render(container) {
         </a>
 
         <!-- Category 3 -->
-        <a href="#collection" class="group relative rounded-xl sm:rounded-2xl bg-white p-3 pb-4 sm:p-4 sm:pb-5 shadow-xs hover:shadow-md transition-all flex flex-col items-center border border-zinc-200/80 category-card-lift">
+        <a href="#collection" class="group relative rounded-xl sm:rounded-2xl bg-white p-3 pb-4 sm:p-4 sm:pb-5 shadow-xs hover:shadow-md transition-[transform,shadow] duration-300 ease-out hover:-translate-y-1 will-change-transform flex flex-col items-center border border-zinc-200/80">
           <div class="w-full aspect-square rounded-lg sm:rounded-xl overflow-hidden bg-zinc-100 mb-2">
-            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQEiogc_cPXim5UCGnhYNjkqhNBolHTUYVLmqhnzr9avfYJ3iL_FxP5Ms6egN1z6_30qHnq1THf0gkHHYr4apPcM0A0i6Za-NpBQlrl6THFESDuh0cwSL-TFQ8yhT03GNn129FPbbTTjblL7Td3hyUSQd0l7a6iquHpLS_cJ81XPtoOcbfO17xZxFBhAjnP4-vaB3dtZDRi8lytMq4pOCSwyvG41cKE6fHzltWvQ" alt="${isSow ? 'Biker Shorts' : 'Shorts'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 rounded-lg sm:rounded-xl" />
+            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQEiogc_cPXim5UCGnhYNjkqhNBolHTUYVLmqhnzr9avfYJ3iL_FxP5Ms6egN1z6_30qHnq1THf0gkHHYr4apPcM0A0i6Za-NpBQlrl6THFESDuh0cwSL-TFQ8yhT03GNn129FPbbTTjblL7Td3hyUSQd0l7a6iquHpLS_cJ81XPtoOcbfO17xZxFBhAjnP4-vaB3dtZDRi8lytMq4pOCSwyvG41cKE6fHzltWvQ" alt="${isSow ? 'Biker Shorts' : 'Shorts'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 will-change-transform rounded-lg sm:rounded-xl" />
           </div>
           <div class="w-full pt-1.5 flex flex-col items-center justify-center text-center min-w-0">
             <h3 class="font-headline text-xs sm:text-sm text-zinc-900 uppercase font-bold tracking-wide truncate w-full text-center">${isSow ? 'Biker Shorts' : 'Shorts'}</h3>
@@ -172,9 +173,9 @@ export async function render(container) {
         </a>
 
         <!-- Category 4 -->
-        <a href="#collection" class="group relative rounded-xl sm:rounded-2xl bg-white p-3 pb-4 sm:p-4 sm:pb-5 shadow-xs hover:shadow-md transition-all flex flex-col items-center border border-zinc-200/80 category-card-lift">
+        <a href="#collection" class="group relative rounded-xl sm:rounded-2xl bg-white p-3 pb-4 sm:p-4 sm:pb-5 shadow-xs hover:shadow-md transition-[transform,shadow] duration-300 ease-out hover:-translate-y-1 will-change-transform flex flex-col items-center border border-zinc-200/80">
           <div class="w-full aspect-square rounded-lg sm:rounded-xl overflow-hidden bg-zinc-100 mb-2">
-            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBQEsW48g189o2HUpuW4bFaJfaUBgKBVtO_OU2E2bAnL3yp0UngrE1oIWVJ1yPQ2P1bop8H5Y8cG8KxRVAC6oX4H52nf0pDhKf2Y5sJvekTMYg237GbPCjj4GlRHLMzgoa0-2RscYX7onBeEc4Ijz5jTQAQS_vad33JlCG9u4Y2BA7c7uFJFhcSQBo6kLHg6sjIQKx_ORBdCq-Fx4OsagH26f8nNj45yBC2rSlMsA" alt="${isSow ? 'Ribbed Tops' : 'Joggers'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 rounded-lg sm:rounded-xl" />
+            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBQEsW48g189o2HUpuW4bFaJfaUBgKBVtO_OU2E2bAnL3yp0UngrE1oIWVJ1yPQ2P1bop8H5Y8cG8KxRVAC6oX4H52nf0pDhKf2Y5sJvekTMYg237GbPCjj4GlRHLMzgoa0-2RscYX7onBeEc4Ijz5jTQAQS_vad33JlCG9u4Y2BA7c7uFJFhcSQBo6kLHg6sjIQKx_ORBdCq-Fx4OsagH26f8nNj45yBC2rSlMsA" alt="${isSow ? 'Ribbed Tops' : 'Joggers'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 will-change-transform rounded-lg sm:rounded-xl" />
           </div>
           <div class="w-full pt-1.5 flex flex-col items-center justify-center text-center min-w-0">
             <h3 class="font-headline text-xs sm:text-sm text-zinc-900 uppercase font-bold tracking-wide truncate w-full text-center">${isSow ? 'Ribbed Tops' : 'Joggers'}</h3>
@@ -200,8 +201,8 @@ export async function render(container) {
             ${isSow ? 'SOW New Arrivals' : 'New Arrivals'}
           </h2>
         </div>
-        <a href="#collection" class="text-xs font-bold text-zinc-700 hover:text-black uppercase font-headline">
-          Explore All <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+        <a href="#collection" class="text-xs font-bold text-zinc-700 hover:text-black uppercase font-headline inline-flex items-center gap-1">
+          Explore All <span>${Icons.chevronRight}</span>
         </a>
       </div>
 
@@ -236,8 +237,8 @@ export async function render(container) {
             ${isSow ? 'SOW Engineered Drops' : 'Engineered Drops'}
           </h2>
         </div>
-        <a href="#collection" class="text-xs font-bold text-zinc-700 hover:text-black uppercase font-headline">
-          View All <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+        <a href="#collection" class="text-xs font-bold text-zinc-700 hover:text-black uppercase font-headline inline-flex items-center gap-1">
+          View All <span>${Icons.chevronRight}</span>
         </a>
       </div>
 
@@ -263,7 +264,7 @@ export async function render(container) {
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-gutter-desktop">
         <div class="p-4 md:p-space-lg rounded-xl bg-white shadow-xs flex items-start gap-3 border border-zinc-200/80">
           <div class="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center text-black flex-shrink-0">
-            <span class="material-symbols-outlined text-[20px]">local_shipping</span>
+            ${Icons.shipping}
           </div>
           <div>
             <h3 class="font-headline text-xs sm:text-sm text-zinc-900 uppercase font-bold mb-0.5">Complimentary Shipping</h3>
@@ -275,7 +276,7 @@ export async function render(container) {
 
         <div class="p-4 md:p-space-lg rounded-xl bg-white shadow-xs flex items-start gap-3 border border-zinc-200/80">
           <div class="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center text-black flex-shrink-0">
-            <span class="material-symbols-outlined text-[20px]">chat</span>
+            ${Icons.chat}
           </div>
           <div>
             <h3 class="font-headline text-xs sm:text-sm text-zinc-900 uppercase font-bold mb-0.5">1-Tap WhatsApp Checkout</h3>
@@ -287,7 +288,7 @@ export async function render(container) {
 
         <div class="p-4 md:p-space-lg rounded-xl bg-white shadow-xs flex items-start gap-3 border border-zinc-200/80">
           <div class="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center text-black flex-shrink-0">
-            <span class="material-symbols-outlined text-[20px]">published_with_changes</span>
+            ${Icons.exchange}
           </div>
           <div>
             <h3 class="font-headline text-xs sm:text-sm text-zinc-900 uppercase font-bold mb-0.5">Doorstep Exchange Support</h3>
@@ -299,7 +300,7 @@ export async function render(container) {
       </div>
     </section>
 
-    <!-- Recently Viewed Section (Item 4) -->
+    <!-- Recently Viewed Section -->
     <section class="w-full max-w-[1360px] mx-auto px-4 md:px-gutter-desktop mb-12 md:mb-space-2xl hidden" id="home-recent-section">
       <div class="mb-6 flex items-center justify-between">
         <div>
@@ -361,7 +362,7 @@ export async function render(container) {
     });
   }
 
-  // Populate Recently Viewed Products (Item 4)
+  // Populate Recently Viewed Products
   const recentSection = page.querySelector('#home-recent-section');
   const recentGrid = page.querySelector('#home-recent-grid');
   const recentIds = getRecentlyViewedIds();

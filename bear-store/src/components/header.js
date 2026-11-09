@@ -156,10 +156,10 @@ export function mount(container) {
                 }" type="button">SOW</button>
             </div>
             <button id="header-search-btn" aria-label="Search" class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all cursor-pointer" type="button">
-              <span class="material-symbols-outlined text-[17px]">search</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             </button>
             <button id="header-cart-btn" aria-label="Cart" class="relative w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all cursor-pointer" type="button">
-              <span class="material-symbols-outlined text-[17px]">shopping_bag</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
               ${cartCount > 0 ? `<span class="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-primary text-on-primary font-label-caps text-[8px] flex items-center justify-center font-bold">${cartCount > 9 ? '9+' : cartCount}</span>` : ''}
             </button>
             <a href="#account" class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary hover:opacity-90 transition-opacity" title="My Account" aria-label="My Account">
