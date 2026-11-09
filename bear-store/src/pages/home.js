@@ -7,9 +7,27 @@ import { skeletonHome } from '../utils/skeletons.js';
 import heroBearImg from '../assets/hero/hero-bear.webp';
 import heroSowImg from '../assets/hero/hero-sow.webp';
 
+// Canonical asset URL resolver with static fallback support
+const resolveAsset = (imported, staticPath) => {
+  if (typeof imported === 'string' && imported.trim().length > 0) return imported;
+  if (imported && typeof imported === 'object' && typeof imported.default === 'string') return imported.default;
+  return staticPath;
+};
+
+const HERO_BEAR_SRC = resolveAsset(heroBearImg, '/assets/hero/hero-bear.webp');
+const HERO_SOW_SRC = resolveAsset(heroSowImg, '/assets/hero/hero-sow.webp');
+
 export async function render(container) {
   const currentMode = getMode();
   const isSow = currentMode === 'sow';
+
+  const heroImageSrc = isSow ? HERO_SOW_SRC : HERO_BEAR_SRC;
+  const heroFallbackPath = isSow ? '/assets/hero/hero-sow.webp' : '/assets/hero/hero-bear.webp';
+
+  // Explicit conditional styling for Call-To-Action button to preserve crisp white pill look in both modes
+  const ctaBtnClasses = isSow
+    ? 'inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-full bg-white text-zinc-950 text-xs md:text-sm font-bold font-headline shadow-lg hover:bg-zinc-100 hover:shadow-xl active:scale-[0.98] transition-all border border-white cursor-pointer select-none no-underline'
+    : 'inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-full bg-white text-black text-xs md:text-sm font-bold font-headline shadow-md hover:bg-zinc-100 hover:shadow-lg active:scale-[0.98] transition-all border border-white cursor-pointer select-none no-underline';
 
   container.innerHTML = skeletonHome();
 
@@ -20,15 +38,16 @@ export async function render(container) {
     <!-- Top Hero Campaign Section -->
     <section class="relative w-full max-w-[1360px] mx-auto px-4 md:px-gutter-desktop mt-2 md:mt-space-lg mb-6 md:mb-space-2xl">
       <div class="relative w-full min-h-[440px] md:min-h-[580px] rounded-2xl md:rounded-lg overflow-hidden shadow-sm flex items-center bg-primary" id="campaign-banner">
-        <!-- Hero Background Image (LCP Prioritized) -->
+        <!-- Hero Background Image (LCP Prioritized with Static Public Fallback) -->
         <img 
-          src="${isSow ? heroSowImg : heroBearImg}" 
+          src="${heroImageSrc}" 
           alt="${isSow ? 'SOW Athletic Luxury Campaign' : 'BEAR High-Performance Campaign'}" 
-          class="absolute inset-0 w-full h-full object-cover object-center"
+          class="absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-300"
           id="hero-bg-img"
           fetchpriority="high"
           loading="eager"
           decoding="async"
+          onerror="if (this.dataset.fallback !== '1') { this.dataset.fallback = '1'; this.src = '${heroFallbackPath}'; }"
         />
         <!-- Ambient Gradient Overlay -->
         <div class="absolute inset-0 pointer-events-none" style="background: linear-gradient(to right, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.65) 50%, rgba(0,0,0,0.2) 100%);"></div>
@@ -59,9 +78,14 @@ export async function render(container) {
             </p>
 
             <div class="pt-2 flex items-center flex-wrap gap-2.5 md:gap-space-md reveal reveal-d2">
-              <a href="#collection" class="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-white text-black text-xs md:text-sm hover:opacity-90 active:scale-[0.98] transition-all shadow-md font-bold font-headline">
+              <a 
+                href="#collection" 
+                class="${ctaBtnClasses}" 
+                id="hero-shop-collection-cta"
+                style="background-color: #ffffff !important; color: #111111 !important; border: 1.5px solid #ffffff !important; display: inline-flex !important;"
+              >
                 <span>Shop Collection</span>
-                <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+                <span class="material-symbols-outlined text-[16px] font-bold">arrow_forward</span>
               </a>
               <div class="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md text-white border border-white/20">
                 <span class="material-symbols-outlined text-[14px] ${isSow ? 'text-[#ffc3bb]' : 'text-green-400'}">verified</span>
@@ -95,9 +119,6 @@ export async function render(container) {
               </div>
             </div>
           </div>
-        </div>
-      </div>
-    </section>
         </div>
       </div>
     </section>
