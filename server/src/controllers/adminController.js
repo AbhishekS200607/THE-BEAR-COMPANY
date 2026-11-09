@@ -21,6 +21,8 @@ import {
   deleteStoredReview,
   calculateStoredReviewMetrics,
 } from '../services/storePersistence.js';
+import { clearProductCatalogCache } from '../services/productService.js';
+import { clearCategoriesCache } from './categoryController.js';
 
 export async function handleGetAdminMe(req, res) {
   return successResponse(res, {
@@ -343,6 +345,7 @@ export async function handleUpdateInventory(req, res, next) {
       ipAddress: req.ip,
     });
 
+    clearProductCatalogCache();
     return successResponse(res, data, 200, 'Inventory stock updated successfully');
   } catch (err) {
     return next(err);
@@ -452,6 +455,7 @@ export async function handleBulkImportInventory(req, res, next) {
       ipAddress: req.ip,
     });
 
+    clearProductCatalogCache();
     return successResponse(res, {
       total: items.length,
       updatedCount: results.length,
@@ -665,6 +669,7 @@ export async function handleCreateProduct(req, res, next) {
       ipAddress: req.ip,
     });
 
+    clearProductCatalogCache();
     return successResponse(res, newProduct, 201, 'Product created successfully');
   } catch (err) {
     return next(err);
@@ -760,6 +765,7 @@ export async function handleUpdateProduct(req, res, next) {
       ipAddress: req.ip,
     });
 
+    clearProductCatalogCache();
     return successResponse(res, data, 200, 'Product updated successfully');
   } catch (err) {
     return next(err);
@@ -790,6 +796,8 @@ export async function handleArchiveProduct(req, res, next) {
       changes: { is_active: targetActive },
       ipAddress: req.ip,
     });
+
+    clearProductCatalogCache();
 
     return successResponse(
       res,
@@ -836,6 +844,8 @@ export async function handleDeleteProduct(req, res, next) {
       changes: { deletedProduct: product },
       ipAddress: req.ip,
     });
+
+    clearProductCatalogCache();
 
     return successResponse(res, { id, name: product.name }, 200, `Product "${product.name}" permanently deleted`);
   } catch (err) {
@@ -986,6 +996,7 @@ export async function handleCreateCategory(req, res, next) {
       ipAddress: req.ip,
     });
 
+    clearCategoriesCache();
     return successResponse(res, {
       id: data.id,
       name: data.name,
@@ -1029,6 +1040,7 @@ export async function handleUpdateCategory(req, res, next) {
       ipAddress: req.ip,
     });
 
+    clearCategoriesCache();
     return successResponse(res, {
       id: data.id,
       name: data.name,
@@ -1083,6 +1095,7 @@ export async function handleDeleteCategory(req, res, next) {
       ipAddress: req.ip,
     });
 
+    clearCategoriesCache();
     return successResponse(res, { id }, 200, 'Category deleted successfully');
   } catch (err) {
     return next(err);

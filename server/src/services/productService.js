@@ -1,6 +1,21 @@
 import { supabaseAdmin } from '../config/supabase.js';
 
+// In-Memory Catalog Cache for sub-millisecond responses
+const catalogCache = new Map();
+const CATALOG_CACHE_TTL_MS = 30 * 1000; // 30 seconds
+const PRODUCT_SLUG_CACHE_TTL_MS = 60 * 1000; // 60 seconds
+
+export function clearProductCatalogCache() {
+  catalogCache.clear();
+}
+
 export async function getProducts({ mode, category, search, limit = 50 }) {
+  const cacheKey = `list:${mode || ''}:${category || ''}:${search || ''}:${limit}`;
+  const cached = catalogCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CATALOG_CACHE_TTL_MS) {
+    return cached.data;
+  }
+
   let query = supabaseAdmin
     .from('products')
     .select(`
@@ -61,10 +76,18 @@ export async function getProducts({ mode, category, search, limit = 50 }) {
     throw new Error(`Failed to fetch products: ${error.message}`);
   }
 
-  return (data || []).map(formatProductResponse);
+  const result = (data || []).map(formatProductResponse);
+  catalogCache.set(cacheKey, { data: result, timestamp: Date.now() });
+  return result;
 }
 
 export async function getProductBySlug(slugOrId) {
+  const cacheKey = `slug:${slugOrId}`;
+  const cached = catalogCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < PRODUCT_SLUG_CACHE_TTL_MS) {
+    return cached.data;
+  }
+
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slugOrId);
 
   let query = supabaseAdmin
@@ -123,7 +146,9 @@ export async function getProductBySlug(slugOrId) {
     throw err;
   }
 
-  return formatProductResponse(data);
+  const result = formatProductResponse(data);
+  catalogCache.set(cacheKey, { data: result, timestamp: Date.now() });
+  return result;
 }
 
 function formatProductResponse(p) {
